@@ -1,0 +1,145 @@
+//manage version by header x-api-version
+//manage key by header x-api-key
+//rate limit :X-RateLimit-Limit X-RateLimit-Remaining X-RateLimit-Reset
+abi-management/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       └── deploy.yml
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── abis/
+│   │   │   │   ├── route.ts                 
+│   │   │   │   ├── [id]/
+│   │   │   │   │   ├── route.ts             
+│   │   │   │   │   └── versions/
+│   │   │   │   │       └── route.ts         
+│   │   │   │   ├── search/
+│   │   │   │   │   └── route.ts            
+│   │   │   │   ├── import/
+│   │   │   │   │   └── route.ts            
+│   │   │   │   └── export/
+│   │   │   │       └── route.ts            
+│   │   │   ├── contracts/
+│   │   │   │   ├── route.ts                
+│   │   │   │   ├── [address]/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── verify/
+│   │   │   │       └── route.ts            
+│   │   │   ├── networks/
+│   │   │   │   └── route.ts                
+│   │   │   ├── ipfs/
+│   │   │   │   ├── upload/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── retrieve/
+│   │   │   │       └── route.ts
+│   │   │   ├── health/
+│   │   │   │   └── route.ts
+│   │   │   └── webhooks/
+│   │   │       └── route.ts
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   │
+│   ├── db/
+│   │   ├── index.ts                             # Drizzle client instance
+│   │   ├── schema/
+│   │   │   ├── abis.ts                          # ABIs table schema
+│   │   │   ├── abi-versions.ts                  # ABI versions table
+│   │   │   ├── contracts.ts                     # Contracts table
+│   │   │   ├── networks.ts                      # Networks table
+│   │   │   ├── users.ts                         # Users/API keys
+│   │   │   ├── webhooks.ts                      # Webhook subscriptions
+│   │   │   └── index.ts                         # Export all schemas
+│   │   ├── migrations/
+│   │   │   ├── 0000_init.sql
+│   │   │   ├── 0001_add_versions.sql
+│   │   │   ├── 0002_add_indexes.sql
+│   │   │   └── meta/
+│   │   │       ├── _journal.json
+│   │   │       └── 0000_snapshot.json
+│   │   ├── queries/
+│   │   │   ├── abis.queries.ts                  # Reusable ABI queries
+│   │   │   ├── contracts.queries.ts
+│   │   │   └── versions.queries.ts
+│   │   └── seed/
+│   │       ├── seed.ts                          # Seed data
+│   │       └── data/
+│   │           └── sample-abis.ts
+│   │
+│   ├── lib/
+│   │   ├── cache/
+│   │   │   ├── redis.ts                         # Upstash Redis client
+│   │   │   └── cache-strategies.ts
+│   │   ├── ipfs/
+│   │   │   ├── client.ts                        # IPFS client
+│   │   │   └── backup.ts
+│   │   ├── validation/
+│   │   │   ├── abi-validator.ts
+│   │   │   └── schemas.ts                       # Zod schemas
+│   │   ├── security/
+│   │   │   ├── rate-limiter.ts
+│   │   │   ├── auth.ts
+│   │   │   └── encryption.ts
+│   │   ├── utils/
+│   │   │   ├── logger.ts
+│   │   │   ├── error-handler.ts
+│   │   │   └── helpers.ts
+│   │   └── constants/
+│   │       ├── networks.ts
+│   │       └── config.ts
+│   │
+│   ├── services/
+│   │   ├── abi.service.ts
+│   │   ├── contract.service.ts
+│   │   ├── backup.service.ts
+│   │   └── notification.service.ts
+│   │
+│   ├── middleware/
+│   │   ├── auth.middleware.ts
+│   │   ├── rate-limit.middleware.ts
+│   │   ├── validation.middleware.ts
+│   │   └── error.middleware.ts
+│   │
+│   └── types/
+│       ├── abi.types.ts
+│       ├── contract.types.ts
+│       ├── api.types.ts
+│       └── index.ts
+│
+│
+├── tests/
+│   ├── unit/
+│   │   ├── services/
+│   │   ├── db/
+│   │   │   └── queries/
+│   │   └── validation/
+│   ├── integration/
+│   │   ├── api/
+│   │   └── db/
+│   ├── e2e/
+│   │   └── flows/
+│   └── fixtures/
+│       └── sample-abis.ts
+│
+├── scripts/
+│   ├── migrate.ts                                # Run Drizzle migrations
+│   ├── generate.ts                               # Generate migrations
+│   ├── push.ts                                   # Drizzle push (dev)
+│   ├── studio.ts                                 # Run Drizzle Studio
+│   ├── seed.ts                                   # Seed database
+│   ├── backup.ts
+│   └── cleanup.ts
+│
+├── .env.example
+├── .env.local
+├── .eslintrc.json
+├── .prettierrc
+├── drizzle.config.ts                             # Drizzle configuration file
+├── next.config.js
+├── tsconfig.json
+├── jest.config.js
+├── docker-compose.yml
+├── Dockerfile
+├── package.json
+└── README.md
