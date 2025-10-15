@@ -3,12 +3,19 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins";
 import { apiKey, openAPI, bearer } from "better-auth/plugins";
 import { db } from "@/infrastructure/database/drizzle/client";
+import * as drizzleSchema from "@/infrastructure/database/drizzle/schema";
 import { env } from "@/shared/config/env";
 import { appConfig } from "@/shared/config/app.config";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
+    // Pass a minimal, explicit schema and include adapter's expected alias keys
+    schema: {
+      ...drizzleSchema,
+      apikey: drizzleSchema.apiKey,
+      rateLimit: drizzleSchema.rateLimit,
+    },
   }),
 
   secret: env.BETTER_AUTH_SECRET,
@@ -47,6 +54,7 @@ export const auth = betterAuth({
     window: 60, // 60 seconds
     max: 100, // 100 requests per minute per IP
     storage: "database", // Store rate limit data in database
+    modelName: "rateLimit",
   },
 
   plugins: [
@@ -97,9 +105,10 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false,
     },
-
-    // Generate secure session tokens
-    generateId: () => crypto.randomUUID(),
+    // Preferred generateId location per deprecation notice
+    database: {
+      generateId: () => crypto.randomUUID(),
+    },
   },
 
   // CORS configuration

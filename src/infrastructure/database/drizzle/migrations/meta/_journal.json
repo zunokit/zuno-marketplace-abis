@@ -15,6 +15,13 @@
       "when": 1760543339736,
       "tag": "0001_awesome_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760543886142,
+      "tag": "0002_careful_captain_britain",
+      "breakpoints": true
     }
   ]
 }

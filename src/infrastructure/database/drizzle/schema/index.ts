@@ -5,6 +5,7 @@ export * from "./abis.schema";
 export * from "./contracts.schema";
 export * from "./audit-logs.schema";
 export * from "./versions.schema";
+export * from "./rate-limit.schema";
 
 // Export relations for Drizzle queries
 import { relations } from "drizzle-orm";
