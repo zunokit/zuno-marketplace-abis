@@ -1,5 +1,8 @@
-import { NextResponse } from "next/server";
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { db } from "@/infrastructure/database/drizzle/client";
+import { networks } from "@/infrastructure/database/drizzle/schema/networks.schema";
+import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import { auth } from "@/infrastructure/auth/better-auth.config";
 
 // GET /api/health - Health check endpoint
 export const GET = ApiWrapper.create(
@@ -7,48 +10,52 @@ export const GET = ApiWrapper.create(
     const startTime = Date.now();
 
     const healthChecks = {
-      status: "healthy",
+      status: "healthy" as "healthy" | "degraded" | "unhealthy",
       timestamp: new Date().toISOString(),
       version: "1.0.0",
       environment: process.env.NODE_ENV || "development",
       checks: {
-        database: "healthy", // TODO: Implement actual DB health check
-        cache: "healthy",    // TODO: Implement actual Redis health check
-        storage: "healthy",  // TODO: Implement actual IPFS health check
+        database: "unknown" as "healthy" | "unhealthy" | "unknown",
+        cache: "unknown" as "healthy" | "unhealthy" | "unknown",
+        auth: "unknown" as "healthy" | "unhealthy" | "unknown",
       },
-      responseTime: `${Date.now() - startTime}ms`,
+      responseTime: "0ms",
     };
 
-    // TODO: Implement actual health checks
-    // try {
-    //   const dbCheck = await db.select().from(networks).limit(1);
-    //   healthChecks.checks.database = "healthy";
-    // } catch (error) {
-    //   healthChecks.checks.database = "unhealthy";
-    //   healthChecks.status = "degraded";
-    // }
+    // DB check (simple select)
+    try {
+      await db.select({ id: networks.id }).from(networks).limit(1);
+      healthChecks.checks.database = "healthy";
+    } catch {
+      healthChecks.checks.database = "unhealthy";
+      healthChecks.status = "degraded";
+    }
 
-    // try {
-    //   const cacheService = new CacheService();
-    //   const cacheHealthy = await cacheService.health();
-    //   healthChecks.checks.cache = cacheHealthy ? "healthy" : "unhealthy";
-    // } catch (error) {
-    //   healthChecks.checks.cache = "unhealthy";
-    //   healthChecks.status = "degraded";
-    // }
+    // Cache check (PING)
+    try {
+      const cache = CacheAdapter.getInstance();
+      const ok = await cache.health();
+      healthChecks.checks.cache = ok ? "healthy" : "unhealthy";
+      if (!ok) healthChecks.status = "degraded";
+    } catch {
+      healthChecks.checks.cache = "unhealthy";
+      healthChecks.status = "degraded";
+    }
 
-    // try {
-    //   const ipfsService = new IPFSStorageService();
-    //   const ipfsHealthy = await ipfsService.health();
-    //   healthChecks.checks.storage = ipfsHealthy ? "healthy" : "unhealthy";
-    // } catch (error) {
-    //   healthChecks.checks.storage = "unhealthy";
-    //   healthChecks.status = "degraded";
-    // }
+    // Auth check (get-session without cookies should not throw)
+    try {
+      const session = await auth.api.getSession({ headers: {} as any });
+      // Even if session null, endpoint works; mark healthy
+      healthChecks.checks.auth = "healthy";
+    } catch {
+      healthChecks.checks.auth = "unhealthy";
+      healthChecks.status = "degraded";
+    }
 
-    const statusCode = healthChecks.status === "healthy" ? 200 : 503;
+    healthChecks.responseTime = `${Date.now() - startTime}ms`;
 
-    return NextResponse.json(healthChecks, { status: statusCode });
+    // Return plain object; ApiWrapper will wrap it into success response
+    return healthChecks;
   },
   {
     auth: {

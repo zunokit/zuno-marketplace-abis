@@ -11,9 +11,7 @@
 GET {{apiUrl}}/health
 Accept: application/json
 
-### 1.2. Detailed Health Check
-GET {{apiUrl}}/health/detailed
-Accept: application/json
+
 
 ###############################################################################
 # 2. API VERSION
