@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(pnpm typecheck:*)",
+      "WebFetch(domain:www.better-auth.com)",
+      "Bash(npx tsc:*)",
+      "Bash(npm test:*)",
+      "Bash(pnpm test:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
