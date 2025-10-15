@@ -1,0 +1,56 @@
+### ABI Marketplace - Health & System Tests
+### Base URL
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+###############################################################################
+# 1. HEALTH CHECKS
+###############################################################################
+
+### 1.1. Basic Health Check
+GET {{apiUrl}}/health
+Accept: application/json
+
+### 1.2. Detailed Health Check
+GET {{apiUrl}}/health/detailed
+Accept: application/json
+
+###############################################################################
+# 2. API VERSION
+###############################################################################
+
+### 2.1. API v1 with Version Header
+GET {{baseUrl}}/api/abis?limit=1
+X-API-Version: v1
+Accept: application/json
+
+### 2.2. API v1 with Accept-Version Header
+GET {{baseUrl}}/api/abis?limit=1
+Accept-Version: 1.0
+Accept: application/json
+
+### 2.3. API v1 without Version Header (Should Default to v1)
+GET {{baseUrl}}/api/abis?limit=1
+Accept: application/json
+
+### 2.4. Invalid API Version (Should Fail - 400)
+GET {{baseUrl}}/api/abis?limit=1
+X-API-Version: v99
+Accept: application/json
+
+###############################################################################
+# 3. BETTER AUTH OPENAPI
+###############################################################################
+
+### 3.1. Better Auth API Reference
+GET {{apiUrl}}/auth/reference
+Accept: application/json
+
+###############################################################################
+# 4. API VERSION ENDPOINT
+###############################################################################
+
+### 4.1. Get API version summary
+GET {{baseUrl}}/api/version
+Accept: application/json
+

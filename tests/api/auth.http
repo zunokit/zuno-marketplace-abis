@@ -1,0 +1,230 @@
+### Better Auth - Authentication & Authorization Tests
+### Base URL
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+### Variables (update these with actual values after testing)
+@userEmail = test@example.com
+@userPassword = SecurePassword123!
+@adminEmail = admin@example.com
+@adminPassword = AdminPassword123!
+@sessionToken = 
+@apiKey = 
+@userId = 
+@apiKeyId = 
+
+###############################################################################
+# 1. AUTHENTICATION
+###############################################################################
+
+### 1.1. Sign Up - Create New User
+POST {{apiUrl}}/auth/sign-up/email
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}",
+  "name": "Test User"
+}
+
+### 1.2. Sign In - Get Session
+POST {{apiUrl}}/auth/sign-in/email
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### 1.3. Get Session Info
+GET {{apiUrl}}/auth/get-session
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 1.4. Sign Out
+POST {{apiUrl}}/auth/sign-out
+Cookie: better-auth.session_token={{sessionToken}}
+
+###############################################################################
+# 2. ADMIN OPERATIONS
+###############################################################################
+
+### 2.1. Admin Sign In
+POST {{apiUrl}}/auth/sign-in/email
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### 2.2. List All Users (Admin Only)
+GET {{apiUrl}}/auth/admin/list-users?limit=20&offset=0
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 2.3. Create User as Admin
+POST {{apiUrl}}/auth/admin/create-user
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "email": "newuser@example.com",
+  "password": "Password123!",
+  "name": "New User",
+  "role": "user"
+}
+
+### 2.4. Set User Role (Admin Only)
+POST {{apiUrl}}/auth/admin/set-role
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "userId": "{{userId}}",
+  "role": "admin"
+}
+
+### 2.5. Ban User (Admin Only)
+POST {{apiUrl}}/auth/admin/ban-user
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "userId": "{{userId}}",
+  "banReason": "Violation of terms",
+  "banExpiresIn": 604800
+}
+
+### 2.6. Unban User (Admin Only)
+POST {{apiUrl}}/auth/admin/unban-user
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "userId": "{{userId}}"
+}
+
+###############################################################################
+# 3. API KEY MANAGEMENT
+###############################################################################
+
+### 3.1. Create Personal API Key (via Better Auth)
+POST {{apiUrl}}/auth/api-key/create
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "My Development Key",
+  "expiresAt": "2025-12-31T23:59:59Z",
+  "permissions": {
+    "abis": ["read", "write", "delete"],
+    "contracts": ["read", "write"],
+    "networks": ["read"]
+  },
+  "metadata": {
+    "type": "personal",
+    "scopes": ["read:abis", "write:abis", "delete:abis", "read:contracts"],
+    "notes": "Development API key"
+  }
+}
+
+### 3.2. Create API Key with Rate Limiting
+POST {{apiUrl}}/admin/api-keys
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "Rate Limited Key",
+  "expiresIn": 2592000,
+  "permissions": {
+    "abis": ["read", "list"],
+    "contracts": ["read"]
+  },
+  "scopes": ["read:abis", "list:abis"],
+  "rateLimit": {
+    "enabled": true,
+    "max": 100,
+    "timeWindow": 3600000
+  },
+  "metadata": {
+    "type": "personal",
+    "notes": "Limited to 100 requests per hour"
+  }
+}
+
+### 3.3. Create API Key with IP Whitelist
+POST {{apiUrl}}/admin/api-keys
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "IP Whitelisted Key",
+  "permissions": {
+    "abis": ["read", "write"]
+  },
+  "scopes": ["read:abis", "write:abis"],
+  "metadata": {
+    "type": "organization",
+    "ipWhitelist": ["192.168.1.0/24", "10.0.0.1"],
+    "allowedOrigins": ["https://example.com", "https://app.example.com"],
+    "notes": "Only accessible from specific IPs and origins"
+  }
+}
+
+### 3.4. List My API Keys
+GET {{apiUrl}}/admin/api-keys?limit=20
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 3.5. Get API Key Details
+GET {{apiUrl}}/admin/api-keys/{{apiKeyId}}
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 3.6. Update API Key
+PATCH {{apiUrl}}/admin/api-keys/{{apiKeyId}}
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "Updated Key Name",
+  "enabled": true,
+  "scopes": ["read:abis", "write:abis", "delete:abis"],
+  "metadata": {
+    "notes": "Updated permissions"
+  }
+}
+
+### 3.7. Revoke API Key
+DELETE {{apiUrl}}/admin/api-keys/{{apiKeyId}}
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 3.8. Admin: List All API Keys
+GET {{apiUrl}}/admin/api-keys?userId={{userId}}&limit=50
+Cookie: better-auth.session_token={{sessionToken}}
+
+###############################################################################
+# 4. VERIFY AUTHENTICATION
+###############################################################################
+
+### 4.1. Test API Key Authentication
+GET {{apiUrl}}/abis?limit=5
+X-API-Key: {{apiKey}}
+
+### 4.2. Test API Key with Bearer Token
+GET {{apiUrl}}/abis?limit=5
+Authorization: Bearer {{sessionToken}}
+
+### 4.3. Test Session Authentication
+GET {{apiUrl}}/abis?limit=5
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 4.4. Test Unauthorized Access (No Auth)
+GET {{apiUrl}}/abis
+
+### 4.5. Test Rate Limit Headers
+GET {{apiUrl}}/abis
+X-API-Key: {{apiKey}}
+
+# Check response headers:
+# X-RateLimit-Limit: 100
+# X-RateLimit-Remaining: 99
+# X-RateLimit-Reset: 1234567890
+

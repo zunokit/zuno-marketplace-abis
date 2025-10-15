@@ -8,6 +8,13 @@
       "when": 1760535965399,
       "tag": "0000_fancy_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1760543339736,
+      "tag": "0001_awesome_bishop",
+      "breakpoints": true
     }
   ]
 }

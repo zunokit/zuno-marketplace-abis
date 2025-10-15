@@ -4,16 +4,11 @@ export * from "./networks.schema";
 export * from "./abis.schema";
 export * from "./contracts.schema";
 export * from "./audit-logs.schema";
+export * from "./versions.schema";
 
 // Export relations for Drizzle queries
 import { relations } from "drizzle-orm";
-import {
-  user,
-  session,
-  account,
-  verification,
-  apiKey,
-} from "./auth.schema";
+import { user, session, account, verification, apiKey } from "./auth.schema";
 import { networks } from "./networks.schema";
 import { abis, abiVersions } from "./abis.schema";
 import { contracts } from "./contracts.schema";

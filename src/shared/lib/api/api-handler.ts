@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createSuccessResponse, createErrorResponse, ErrorCode } from "@/shared/types";
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  ErrorCode,
+} from "@/shared/types";
+import {
+  verifyApiKey,
+  verifySession,
+  verifySessionFromHeaders,
+  hasPermission,
+  isAdmin,
+  canAccessResource,
+  isIpAllowed,
+  isOriginAllowed,
+  checkRateLimit,
+  type AuthContext,
+  type AuthUser,
+  type AuthApiKey,
+} from "@/infrastructure/auth/auth-helpers";
+import { logger } from "@/shared/lib/utils/logger";
 
-export interface ApiContext {
+export interface ApiContext extends AuthContext {
   request: NextRequest;
   params?: Record<string, string>;
-  user?: {
-    id: string;
-    email: string;
-    role?: string;
-  };
-  apiKey?: {
-    id: string;
-    userId: string;
-    permissions: string[];
-    metadata?: Record<string, unknown>;
+  rateLimit?: {
+    limit: number;
+    remaining: number;
+    reset: number;
   };
 }
 
@@ -46,11 +59,18 @@ export class ApiWrapper {
     handler: ApiHandler<TInput, TOutput>,
     config: ApiRouteConfig = {}
   ) {
-    return async (request: NextRequest, context?: { params?: Promise<Record<string, string>> }) => {
+    return async (
+      request: NextRequest,
+      context?: { params?: Promise<Record<string, string>> }
+    ) => {
       try {
         // 1. Parse and validate request data
         const params = context?.params ? await context.params : {};
-        const parsedData = await this.parseRequest(request, config.validation, params);
+        const parsedData = await this.parseRequest(
+          request,
+          config.validation,
+          params
+        );
 
         // 2. Create API context
         const apiContext: ApiContext = {
@@ -67,8 +87,27 @@ export class ApiWrapper {
         const result = await handler(parsedData as TInput, apiContext);
 
         // 5. Return success response
-        return NextResponse.json(createSuccessResponse(result), { status: 200 });
+        const response = NextResponse.json(createSuccessResponse(result), {
+          status: 200,
+        });
 
+        // Add rate limit headers if available
+        if (apiContext.rateLimit) {
+          response.headers.set(
+            "X-RateLimit-Limit",
+            apiContext.rateLimit.limit.toString()
+          );
+          response.headers.set(
+            "X-RateLimit-Remaining",
+            apiContext.rateLimit.remaining.toString()
+          );
+          response.headers.set(
+            "X-RateLimit-Reset",
+            apiContext.rateLimit.reset.toString()
+          );
+        }
+
+        return response;
       } catch (error) {
         return this.handleError(error);
       }
@@ -126,55 +165,187 @@ export class ApiWrapper {
     context: ApiContext,
     authConfig?: ApiRouteConfig["auth"]
   ) {
-    if (!authConfig?.required) return;
-
     const { request } = context;
+    let authenticated = false;
 
     // Try API key authentication first
-    if (authConfig.allowApiKey !== false) {
-      const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "");
+    if (authConfig?.allowApiKey !== false) {
+      const apiKeyValue =
+        request.headers.get("x-api-key") ||
+        request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
 
-      if (apiKey) {
-        // TODO: Implement API key validation
-        // For now, we'll skip API key validation
-        return;
+      if (apiKeyValue) {
+        const apiKey = await verifyApiKey(apiKeyValue);
+
+        if (apiKey) {
+          // Validate IP whitelist
+          const clientIp =
+            request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+            request.headers.get("x-real-ip") ||
+            "unknown";
+
+          if (!isIpAllowed(apiKey, clientIp)) {
+            logger.warn("API key IP not whitelisted", {
+              keyId: apiKey.id,
+              ip: clientIp,
+            });
+            throw new ApiError(
+              "Access denied: IP not whitelisted",
+              ErrorCode.FORBIDDEN,
+              403
+            );
+          }
+
+          // Validate origin
+          const origin =
+            request.headers.get("origin") ||
+            request.headers.get("referer") ||
+            "";
+          if (origin && !isOriginAllowed(apiKey, origin)) {
+            logger.warn("API key origin not allowed", {
+              keyId: apiKey.id,
+              origin,
+            });
+            throw new ApiError(
+              "Access denied: Origin not allowed",
+              ErrorCode.FORBIDDEN,
+              403
+            );
+          }
+
+          // Check rate limit
+          const rateLimit = await checkRateLimit(apiKey);
+          context.rateLimit = rateLimit;
+
+          if (!rateLimit.allowed) {
+            const retryAfter = Math.ceil((rateLimit.reset - Date.now()) / 1000);
+            throw new ApiError(
+              "Rate limit exceeded",
+              ErrorCode.RATE_LIMITED,
+              429,
+              { retryAfter }
+            );
+          }
+
+          // Set API key context
+          context.apiKey = apiKey;
+          authenticated = true;
+
+          logger.debug("API key authenticated", {
+            keyId: apiKey.id,
+            userId: apiKey.userId,
+            remaining: rateLimit.remaining,
+          });
+        }
       }
     }
 
-    // Try session authentication
-    if (authConfig.allowSession !== false) {
-      // TODO: Implement session validation with Better Auth
-      // For now, we'll skip session validation
-      return;
+    // Try session authentication if API key not used
+    if (!authenticated && authConfig?.allowSession !== false) {
+      // Let Better Auth's bearer plugin/cookies handle it via headers
+      const sessionData = await verifySessionFromHeaders(
+        request.headers as any
+      );
+
+      if (sessionData) {
+        context.user = sessionData.user;
+        context.session = sessionData.session;
+        authenticated = true;
+
+        logger.debug("Session authenticated", {
+          userId: sessionData.user.id,
+          role: sessionData.user.role,
+        });
+      }
     }
 
-    // If authentication is required but not provided
-    if (authConfig.required) {
-      throw new ApiError("Authentication required", ErrorCode.UNAUTHORIZED, 401);
+    // Check if authentication is required
+    if (authConfig?.required && !authenticated) {
+      throw new ApiError(
+        "Authentication required. Provide a valid API key or session.",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
+    // Check permissions
+    if (
+      authenticated &&
+      authConfig?.requiredPermissions &&
+      authConfig.requiredPermissions.length > 0
+    ) {
+      const hasRequiredPermissions = hasPermission(
+        context,
+        authConfig.requiredPermissions
+      );
+
+      if (!hasRequiredPermissions) {
+        logger.warn("Insufficient permissions", {
+          userId: context.user?.id || context.apiKey?.userId,
+          required: authConfig.requiredPermissions,
+          userRole: context.user?.role,
+          apiKeyScopes: context.apiKey?.scopes,
+        });
+
+        throw new ApiError(
+          `Insufficient permissions. Required: ${authConfig.requiredPermissions.join(
+            ", "
+          )}`,
+          ErrorCode.FORBIDDEN,
+          403
+        );
+      }
     }
   }
 
   private static handleError(error: unknown): NextResponse {
-    console.error("API Error:", error);
+    logger.error("API Error:", error);
 
     if (error instanceof ApiError) {
-      return NextResponse.json(
-        createErrorResponse(error.code as ErrorCode, error.message, error.statusCode),
+      const response = NextResponse.json(
+        createErrorResponse(
+          error.code as ErrorCode,
+          error.message,
+          error.statusCode,
+          error.details
+        ),
         { status: error.statusCode }
       );
+
+      // Add Retry-After header for rate limit errors
+      if (
+        error.statusCode === 429 &&
+        error.details &&
+        typeof error.details === "object" &&
+        "retryAfter" in error.details
+      ) {
+        response.headers.set("Retry-After", String(error.details.retryAfter));
+      }
+
+      return response;
     }
 
     if (error instanceof z.ZodError) {
-      const message = error.issues.map(e => `${e.path.join(".")}: ${e.message}`).join(", ");
+      const message = error.issues
+        .map((e) => `${e.path.join(".")}: ${e.message}`)
+        .join(", ");
       return NextResponse.json(
-        createErrorResponse(ErrorCode.VALIDATION_ERROR, `Validation error: ${message}`, 400),
+        createErrorResponse(
+          ErrorCode.VALIDATION_ERROR,
+          `Validation error: ${message}`,
+          400
+        ),
         { status: 400 }
       );
     }
 
     // Generic server error
     return NextResponse.json(
-      createErrorResponse(ErrorCode.INTERNAL_ERROR, "Internal server error", 500),
+      createErrorResponse(
+        ErrorCode.INTERNAL_ERROR,
+        "Internal server error",
+        500
+      ),
       { status: 500 }
     );
   }
@@ -184,7 +355,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public code: ErrorCode,
-    public statusCode: number = 500
+    public statusCode: number = 500,
+    public details?: unknown
   ) {
     super(message);
     this.name = "ApiError";

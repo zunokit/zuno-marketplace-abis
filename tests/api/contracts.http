@@ -1,0 +1,105 @@
+### ABI Marketplace - Contract Management Tests
+### Base URL
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+### Variables
+@apiKey = zuno_your_api_key_here
+@sessionToken = your_session_token_here
+@contractId = 
+@abiId = 
+@networkId = 
+
+###############################################################################
+# 1. PUBLIC ENDPOINTS - CONTRACTS
+###############################################################################
+
+### 1.1. List All Contracts
+GET {{apiUrl}}/contracts?page=1&limit=20
+Accept: application/json
+
+### 1.2. Filter by Network
+GET {{apiUrl}}/contracts?networkId={{networkId}}&limit=20
+Accept: application/json
+
+### 1.3. Filter by Type
+GET {{apiUrl}}/contracts?type=token&limit=20
+Accept: application/json
+
+### 1.4. Filter Verified Only
+GET {{apiUrl}}/contracts?verified=true&limit=20
+Accept: application/json
+
+### 1.5. Get Contract by Address
+GET {{apiUrl}}/contracts/0x1234567890abcdef1234567890abcdef12345678
+Accept: application/json
+
+###############################################################################
+# 2. AUTHENTICATED - REGISTER CONTRACTS
+###############################################################################
+
+### 2.1. Register ERC20 Token Contract
+POST {{apiUrl}}/contracts
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "address": "0x1234567890abcdef1234567890abcdef12345678",
+  "networkId": "{{networkId}}",
+  "abiId": "{{abiId}}",
+  "name": "My Token",
+  "type": "token",
+  "metadata": {
+    "symbol": "MTK",
+    "decimals": 18,
+    "totalSupply": "1000000000000000000000000"
+  },
+  "deployer": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+}
+
+### 2.2. Register NFT Contract
+POST {{apiUrl}}/contracts
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+  "networkId": "{{networkId}}",
+  "abiId": "{{abiId}}",
+  "name": "My NFT Collection",
+  "type": "nft",
+  "metadata": {
+    "symbol": "MNFT",
+    "totalSupply": "10000"
+  }
+}
+
+### 2.3. Register Proxy Contract
+POST {{apiUrl}}/contracts
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "address": "0x9876543210fedcba9876543210fedcba98765432",
+  "networkId": "{{networkId}}",
+  "abiId": "{{abiId}}",
+  "name": "Upgradeable Contract",
+  "type": "defi",
+  "metadata": {
+    "isProxy": true,
+    "implementation": "0x1111111111111111111111111111111111111111"
+  }
+}
+
+###############################################################################
+# 3. PUBLIC ENDPOINTS - NETWORKS
+###############################################################################
+
+### 3.1. List All Networks
+GET {{apiUrl}}/networks
+Accept: application/json
+
+### 3.2. Get Contracts by Chain ID
+GET {{apiUrl}}/networks/1/contracts
+Accept: application/json
+

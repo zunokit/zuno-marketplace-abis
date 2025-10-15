@@ -4,9 +4,11 @@ import { db } from "@/infrastructure/database/drizzle";
 import { networks } from "@/infrastructure/database/drizzle/schema/networks.schema";
 import { abis } from "@/infrastructure/database/drizzle/schema/abis.schema";
 import { user } from "@/infrastructure/database/drizzle/schema/auth.schema";
+import { apiVersions } from "@/infrastructure/database/drizzle/schema/versions.schema";
 import { eq } from "drizzle-orm";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
 import { logger } from "@/shared/lib/utils/logger";
+import { env } from "@/shared/config/env";
 
 // Popular networks data
 const networksData = [
@@ -32,7 +34,10 @@ const networksData = [
     slug: "goerli",
     type: "testnet",
     isTestnet: true,
-    rpcUrls: ["https://goerli.infura.io/v3/", "https://rpc.ankr.com/eth_goerli"],
+    rpcUrls: [
+      "https://goerli.infura.io/v3/",
+      "https://rpc.ankr.com/eth_goerli",
+    ],
     explorerUrls: ["https://goerli.etherscan.io"],
     nativeCurrency: {
       name: "Goerli Ether",
@@ -48,7 +53,10 @@ const networksData = [
     slug: "sepolia",
     type: "testnet",
     isTestnet: true,
-    rpcUrls: ["https://sepolia.infura.io/v3/", "https://rpc.ankr.com/eth_sepolia"],
+    rpcUrls: [
+      "https://sepolia.infura.io/v3/",
+      "https://rpc.ankr.com/eth_sepolia",
+    ],
     explorerUrls: ["https://sepolia.etherscan.io"],
     nativeCurrency: {
       name: "Sepolia Ether",
@@ -80,7 +88,10 @@ const networksData = [
     slug: "mumbai",
     type: "testnet",
     isTestnet: true,
-    rpcUrls: ["https://rpc-mumbai.maticvigil.com", "https://rpc.ankr.com/polygon_mumbai"],
+    rpcUrls: [
+      "https://rpc-mumbai.maticvigil.com",
+      "https://rpc.ankr.com/polygon_mumbai",
+    ],
     explorerUrls: ["https://mumbai.polygonscan.com"],
     nativeCurrency: {
       name: "MATIC",
@@ -160,7 +171,10 @@ const networksData = [
     slug: "avalanche",
     type: "mainnet",
     isTestnet: false,
-    rpcUrls: ["https://api.avax.network/ext/bc/C/rpc", "https://rpc.ankr.com/avalanche"],
+    rpcUrls: [
+      "https://api.avax.network/ext/bc/C/rpc",
+      "https://rpc.ankr.com/avalanche",
+    ],
     explorerUrls: ["https://snowtrace.io"],
     nativeCurrency: {
       name: "Avalanche",
@@ -563,6 +577,67 @@ async function seedSystemUser(): Promise<string> {
   }
 }
 
+async function seedPublicUser(): Promise<string> {
+  logger.info("Seeding public API user...");
+
+  const desiredId = env.PUBLIC_API_USER_ID || "public";
+  const desiredEmail = `public@zuno-marketplace.local`;
+
+  const existing = await db
+    .select()
+    .from(user)
+    .where(eq(user.id, desiredId))
+    .limit(1);
+  if (existing.length > 0) {
+    logger.info(`Public user '${desiredId}' already exists`);
+    return existing[0].id;
+  }
+
+  const [created] = await db
+    .insert(user)
+    .values({
+      id: desiredId,
+      email: desiredEmail,
+      name: "Public",
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  logger.info(
+    `✓ Public API user created with id='${created.id}'. Set PUBLIC_API_USER_ID=${created.id}`
+  );
+  return created.id;
+}
+
+async function seedApiVersions() {
+  logger.info("Seeding API versions...");
+
+  const versions = [
+    { id: "v1", label: "v1", isCurrent: true, deprecated: false },
+    { id: "1.0", label: "1.0", isCurrent: false, deprecated: false },
+    { id: "1", label: "1", isCurrent: false, deprecated: false },
+  ];
+
+  for (const v of versions) {
+    const existing = await db
+      .select()
+      .from(apiVersions)
+      .where(eq(apiVersions.id, v.id))
+      .limit(1);
+    if (existing.length > 0) continue;
+    await db.insert(apiVersions).values({
+      id: v.id,
+      label: v.label,
+      isCurrent: v.isCurrent,
+      deprecated: v.deprecated,
+      releasedAt: new Date(),
+    });
+    logger.info(`Seeded API version: ${v.id}`);
+  }
+}
+
 async function seedNetworks() {
   logger.info("Seeding networks...");
 
@@ -640,11 +715,17 @@ async function main() {
     // Create system user first
     const systemUserId = await seedSystemUser();
 
+    // Ensure public user exists
+    await seedPublicUser();
+
     // Seed networks
     await seedNetworks();
 
     // Seed ABIs using the system user
     await seedAbis(systemUserId);
+
+    // Seed API versions
+    await seedApiVersions();
 
     logger.info("✓ Database seeding completed successfully!");
     process.exit(0);

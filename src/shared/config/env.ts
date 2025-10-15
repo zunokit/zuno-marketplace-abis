@@ -21,8 +21,13 @@ export const env = createEnv({
     // Optional Monitoring
     // SENTRY_DSN: z.string().url().optional(),
 
+    // Public API key issuance
+    PUBLIC_API_USER_ID: z.string().optional(),
+
     // Node Environment
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
   },
 
   client: {
@@ -40,6 +45,8 @@ export const env = createEnv({
     PINATA_GATEWAY_URL: process.env.PINATA_GATEWAY_URL,
     // SENTRY_DSN: process.env.SENTRY_DSN,
     NODE_ENV: process.env.NODE_ENV,
+
+    PUBLIC_API_USER_ID: process.env.PUBLIC_API_USER_ID,
 
     // Client
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
