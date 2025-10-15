@@ -1,0 +1,1 @@
+techstack: drizzle+betterauth+neondatabase(database)+upstash(cache)+ipfs+pinata+jest+playwright+nextjs+Zod+t3env+shadcn/ui+Sentry optional for product(custom logger),cron job check health

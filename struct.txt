@@ -1,144 +1,219 @@
-//manage version by header x-api-version
-//manage key by header x-api-key
-//rate limit :X-RateLimit-Limit X-RateLimit-Remaining X-RateLimit-Reset
 abi-management/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
-│       └── deploy.yml
+│       ├── deploy.yml
+│       └── db-backup.yml
+│
 ├── src/
 │   ├── app/
+│   │   ├── (auth)/                          # Route group cho authenticated routes
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx
+│   │   │   └── layout.tsx
+│   │   │
 │   │   ├── api/
-│   │   │   ├── abis/
-│   │   │   │   ├── route.ts                 
-│   │   │   │   ├── [id]/
-│   │   │   │   │   ├── route.ts             
-│   │   │   │   │   └── versions/
-│   │   │   │   │       └── route.ts         
-│   │   │   │   ├── search/
-│   │   │   │   │   └── route.ts            
-│   │   │   │   ├── import/
-│   │   │   │   │   └── route.ts            
-│   │   │   │   └── export/
-│   │   │   │       └── route.ts            
+│   │   │   ├── auth/
+│   │   │   │   └── [...all]/route.ts        # Better Auth catch-all
+│   │   │   │
 │   │   │   ├── contracts/
-│   │   │   │   ├── route.ts                
+│   │   │   │   ├── route.ts                 # GET, POST
 │   │   │   │   ├── [address]/
-│   │   │   │   │   └── route.ts
-│   │   │   │   └── verify/
-│   │   │   │       └── route.ts            
+│   │   │   │   │   ├── route.ts             # GET, PUT, DELETE
+│   │   │   │   │   ├── versions/
+│   │   │   │   │   │   ├── route.ts         # GET all versions
+│   │   │   │   │   │   └── [versionId]/
+│   │   │   │   │   │       └── route.ts     # GET specific version
+│   │   │   │   │   ├── abi/
+│   │   │   │   │   │   └── route.ts         # GET latest ABI
+│   │   │   │   │
+│   │   │   │   └── by-name/
+│   │   │   │       └── [name]/
+│   │   │   │           ├── route.ts
+│   │   │   │           └── versions/
+│   │   │   │               └── route.ts
+│   │   │   │
 │   │   │   ├── networks/
-│   │   │   │   └── route.ts                
-│   │   │   ├── ipfs/
-│   │   │   │   ├── upload/
+│   │   │   │   ├── route.ts                 # GET all networks
+│   │   │   │   └── [chainId]/
+│   │   │   │       └── contracts/
+│   │   │   │           └── route.ts
+│   │   │   │
+│   │   │   ├── abis/
+│   │   │   │   ├── route.ts                 # Search ABIs
+│   │   │   │   ├── [id]/
 │   │   │   │   │   └── route.ts
-│   │   │   │   └── retrieve/
+│   │   │   │
+│   │   │   ├── backup/
+│   │   │   │   ├── create/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── restore/
 │   │   │   │       └── route.ts
-│   │   │   ├── health/
-│   │   │   │   └── route.ts
-│   │   │   └── webhooks/
+│   │   │   │
+│   │   │   └── health/
 │   │   │       └── route.ts
+│   │   │
 │   │   ├── layout.tsx
-│   │   └── page.tsx
+│   │   ├── page.tsx
+│   │   └── globals.css
 │   │
-│   ├── db/
-│   │   ├── index.ts                             # Drizzle client instance
-│   │   ├── schema/
-│   │   │   ├── abis.ts                          # ABIs table schema
-│   │   │   ├── abi-versions.ts                  # ABI versions table
-│   │   │   ├── contracts.ts                     # Contracts table
-│   │   │   ├── networks.ts                      # Networks table
-│   │   │   ├── users.ts                         # Users/API keys
-│   │   │   ├── webhooks.ts                      # Webhook subscriptions
-│   │   │   └── index.ts                         # Export all schemas
-│   │   ├── migrations/
-│   │   │   ├── 0000_init.sql
-│   │   │   ├── 0001_add_versions.sql
-│   │   │   ├── 0002_add_indexes.sql
-│   │   │   └── meta/
-│   │   │       ├── _journal.json
-│   │   │       └── 0000_snapshot.json
-│   │   ├── queries/
-│   │   │   ├── abis.queries.ts                  # Reusable ABI queries
-│   │   │   ├── contracts.queries.ts
-│   │   │   └── versions.queries.ts
-│   │   └── seed/
-│   │       ├── seed.ts                          # Seed data
-│   │       └── data/
-│   │           └── sample-abis.ts
+│   ├── core/                                 # Core business logic
+│   │   ├── domain/                           # Domain models
+│   │   │   ├── abi/
+│   │   │   │   ├── abi.entity.ts
+│   │   │   │   ├── abi.repository.ts
+│   │   │   │   └── abi.errors.ts
+│   │   │   ├── contract/
+│   │   │   │   ├── contract.entity.ts
+│   │   │   │   ├── contract.repository.ts
+│   │   │   │   └── contract.errors.ts
+│   │   │   └── version/
+│   │   │       ├── version.entity.ts
+│   │   │       ├── version.repository.ts
+│   │   │       ├── version.strategy.ts      # Versioning strategy
+│   │   │
+│   │   ├── use-cases/                        # Application use cases
+│   │   │   ├── abi/
+│   │   │   │   ├── create-abi.use-case.ts
+│   │   │   │   ├── update-abi.use-case.ts
+│   │   │   │   ├── get-abi-versions.use-case.ts
+│   │   │   ├── contract/
+│   │   │   │   ├── register-contract.use-case.ts
+│   │   │   │   ├── update-contract-abi.use-case.ts
+│   │   │   │   └── get-contract-history.use-case.ts
+│   │   │   └── backup/
+│   │   │       ├── create-backup.use-case.ts
+│   │   │       └── restore-backup.use-case.ts
+│   │   │
+│   │   └── ports/                            # Interfaces cho adapters
+│   │       ├── cache.port.ts
+│   │       ├── storage.port.ts
+│   │       └── repository.port.ts
 │   │
-│   ├── lib/
+│   ├── infrastructure/                       # External services
+│   │   ├── database/
+│   │   │   ├── drizzle/
+│   │   │   │   ├── client.ts
+│   │   │   │   ├── schema/
+│   │   │   │   │   ├── *.schema.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── migrations/
+│   │   │   │   │   └── ...
+│   │   │   │
+│   │   │   └── seed/
+│   │   │       ├── seed.ts
+│   │   │       └── data/
+│   │   │           ├── networks.data.ts
+│   │   │           └── sample-contracts.data.ts
+│   │   │
 │   │   ├── cache/
-│   │   │   ├── redis.ts                         # Upstash Redis client
-│   │   │   └── cache-strategies.ts
-│   │   ├── ipfs/
-│   │   │   ├── client.ts                        # IPFS client
-│   │   │   └── backup.ts
-│   │   ├── validation/
-│   │   │   ├── abi-validator.ts
-│   │   │   └── schemas.ts                       # Zod schemas
-│   │   ├── security/
-│   │   │   ├── rate-limiter.ts
-│   │   │   ├── auth.ts
-│   │   │   └── encryption.ts
-│   │   ├── utils/
-│   │   │   ├── logger.ts
-│   │   │   ├── error-handler.ts
-│   │   │   └── helpers.ts
-│   │   └── constants/
-│   │       ├── networks.ts
-│   │       └── config.ts
+│   │   │   ├── redis.client.ts
+│   │   │   ├── cache.adapter.ts             # Implements cache.port.ts
+│   │   │
+│   │   ├── storage/
+│   │   │   └── ipfs/
+│   │   │       ├── ipfs.client.ts
+│   │   │       └── pinata.adapter.ts        # Implements storage.port.ts
+│   │   │
+│   │   ├── auth/
+│   │   │   ├── better-auth.config.ts        # Better Auth config + rate limit
+│   │   │   └── auth.client.ts
+│   │   │
+│   │   └── monitoring/
+│   │       ├── sentry.config.ts             # Optional
+│   │       └── logger.ts
 │   │
-│   ├── services/
-│   │   ├── abi.service.ts
-│   │   ├── contract.service.ts
-│   │   ├── backup.service.ts
-│   │   └── notification.service.ts
+│   ├── shared/                               # Shared utilities
+│   │   ├── lib/
+│   │   │   ├── api/
+│   │   │   │   ├── api-handler.ts           # Wrapper với version check
+│   │   │   │   ├── api-response.ts
+│   │   │   │   └── api-version.ts           # Version từ header
+│   │   │   │
+│   │   │   ├── validation/
+│   │   │   │   ├── abi-validator.ts
+│   │   │   │   ├── contract-validator.ts
+│   │   │   │
+│   │   │   ├── security/
+│   │   │   │   ├── encryption.ts
+│   │   │   │
+│   │   │   ├── utils/
+│   │   │   │   ├── logger.ts
+│   │   │   │   ├── error-handler.ts
+│   │   │   │   ├── retry.ts
+│   │   │   │   └── async-helpers.ts
+│   │   │   │
+│   │   │   └── abi-utils/
+│   │   │       ├── abi-hasher.ts
+│   │   │       ├── abi-parser.ts
+│   │   │       └── abi-normalizer.ts
+│   │   │
+│   │   ├── constants/
+│   │   │   ├── networks.constant.ts
+│   │   │   ├── errors.constant.ts
+│   │   │   └── api-versions.constant.ts     # API versions
+│   │   │
+│   │   ├── types/
+│   │   │   ├── *.types.ts
+│   │   │   └── index.ts
+│   │   │
+│   │   └── config/
+│   │       ├── env.ts                       # t3-env
+│   │       └── app.config.ts
 │   │
-│   ├── middleware/
-│   │   ├── auth.middleware.ts
-│   │   ├── rate-limit.middleware.ts
-│   │   ├── validation.middleware.ts
-│   │   └── error.middleware.ts
+│   ├── components/                           # UI components
+│   │   ├── ui/                              # shadcn/ui
+│   │   ├── feature/
+│   │   │   ├── * (or) *-* .tsx
 │   │
-│   └── types/
-│       ├── abi.types.ts
-│       ├── contract.types.ts
-│       ├── api.types.ts
-│       └── index.ts
-│
+│   ├── hooks/
+│   │   └── * (or) *-*.ts
+│   │
+│   └── middleware.ts                         # Better Auth + API version check
 │
 ├── tests/
 │   ├── unit/
-│   │   ├── services/
-│   │   ├── db/
-│   │   │   └── queries/
-│   │   └── validation/
+│   │   ├── core/
+│   │   │   ├── domain/
+│   │   │   └── use-cases/
+│   │   ├── infrastructure/
+│   │   │   └── repositories/
+│   │   └── shared/
+│   │       └── lib/
+│   │
 │   ├── integration/
 │   │   ├── api/
-│   │   └── db/
+│   │   ├── database/
+│   │   └── cache/
+│   │
 │   ├── e2e/
 │   │   └── flows/
-│   └── fixtures/
-│       └── sample-abis.ts
+│   │       ├── contract-lifecycle.spec.ts
+│   │       └── version-management.spec.ts
+│   │
+│   ├── fixtures/
+│   │   ├── abis/
+│   │   └── contracts/
+│   │
+│   └── helpers/
+│       ├── test-db.ts
+│       └── test-cache.ts
 │
 ├── scripts/
-│   ├── migrate.ts                                # Run Drizzle migrations
-│   ├── generate.ts                               # Generate migrations
-│   ├── push.ts                                   # Drizzle push (dev)
-│   ├── studio.ts                                 # Run Drizzle Studio
-│   ├── seed.ts                                   # Seed database
-│   ├── backup.ts
-│   └── cleanup.ts
-│
+│   ├── seed.ts
+│   ├── backup/
+│   │   ├── create-backup.ts
+│   │   └── restore-backup.ts
+│   └── maintenance/
+│       └── cleanup-old-versions.ts
 ├── .env.example
-├── .env.local
 ├── .eslintrc.json
 ├── .prettierrc
-├── drizzle.config.ts                             # Drizzle configuration file
+├── drizzle.config.ts
 ├── next.config.js
 ├── tsconfig.json
 ├── jest.config.js
+├── playwright.config.ts
 ├── docker-compose.yml
 ├── Dockerfile
 ├── package.json
