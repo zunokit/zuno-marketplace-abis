@@ -197,6 +197,15 @@ export class IPFSStorageService {
     totalSize: number;
   } | null> {
     const ipfs = IPFSClient.getInstance();
-    return ipfs.getUsage();
+    const usage = await ipfs.getUsage();
+    if (!usage) return null;
+
+    return {
+      totalPins: usage.pinCount,
+      totalSize: usage.totalSize,
+    };
   }
 }
+
+// Alias for compatibility with use cases
+export { IPFSStorageService as PinataStorageAdapter };

@@ -5,12 +5,11 @@ import {
   AbiDuplicateError,
   AbiInvalidError,
 } from "@/core/domain/abi/abi.entity";
-import { AbiRepository } from "@/core/domain/abi/abi.repository";
-import { CachePort, StoragePort } from "@/core/ports/repository.port";
+import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiValidator } from "@/shared/lib/validation/abi-validator";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
-import { IPFSStorageService } from "@/infrastructure/storage/ipfs/pinata.adapter";
-import { CacheService } from "@/infrastructure/cache/cache.adapter";
+import { PinataStorageAdapter } from "@/infrastructure/storage/ipfs/pinata.adapter";
+import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
 
 export interface CreateAbiUseCaseInput {
   userId: string;
@@ -40,8 +39,8 @@ export interface CreateAbiUseCaseOutput {
 export class CreateAbiUseCase {
   constructor(
     private abiRepository: AbiRepository,
-    private storageService: IPFSStorageService,
-    private cacheService: CacheService
+    private storageService: PinataStorageAdapter,
+    private cacheService: CacheAdapter
   ) {}
 
   async execute(input: CreateAbiUseCaseInput): Promise<CreateAbiUseCaseOutput> {
@@ -66,7 +65,7 @@ export class CreateAbiUseCase {
     }
 
     // 3. Generate ABI hash
-    const abiHash = AbiHasher.generateHash(typedAbi);
+    const abiHash = AbiHasher.hashAbi(typedAbi);
 
     // 4. Check for duplicates
     const existingAbi = await this.abiRepository.findByHash(abiHash);
@@ -116,10 +115,10 @@ export class CreateAbiUseCase {
     const savedAbi = await this.abiRepository.create(abiEntity);
 
     // 8. Cache the result
-    await this.cacheService.cacheAbi(savedAbi.id, savedAbi);
+    await this.cacheService.set(`abi:${savedAbi.id}`, savedAbi, 3600);
 
     // 9. Invalidate user's ABI list cache
-    await this.cacheService.invalidateUser(input.userId);
+    await this.cacheService.del(`user:${input.userId}:abis`);
 
     return {
       abi: savedAbi,

@@ -3,13 +3,13 @@ import {
   CreateContractParams,
   ContractFactory,
   ContractDuplicateError,
-  InvalidAddressError,
 } from "@/core/domain/contract/contract.entity";
 import { ContractRepository } from "@/core/domain/contract/contract.repository";
-import { AbiRepository } from "@/core/domain/abi/abi.repository";
+import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiNotFoundError } from "@/core/domain/abi/abi.entity";
-import { CacheService } from "@/infrastructure/cache/cache.adapter";
-import { isValidAddress, isValidChainId } from "@/shared/types";
+import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import { isValidAddress, isValidChainId, ErrorCode } from "@/shared/types";
+import { ValidationError } from "@/shared/lib/utils/error-handler";
 
 export interface RegisterContractUseCaseInput {
   address: string;
@@ -36,13 +36,13 @@ export class RegisterContractUseCase {
   constructor(
     private contractRepository: ContractRepository,
     private abiRepository: AbiRepository,
-    private cacheService: CacheService
+    private cacheService: CacheAdapter
   ) {}
 
   async execute(input: RegisterContractUseCaseInput): Promise<RegisterContractUseCaseOutput> {
     // 1. Validate contract address format
     if (!isValidAddress(input.address)) {
-      throw new InvalidAddressError(input.address);
+      throw new ValidationError(`Invalid contract address: ${input.address}`);
     }
 
     // 2. Validate that ABI exists
@@ -63,7 +63,7 @@ export class RegisterContractUseCase {
 
     // 4. Validate deployer address if provided
     if (input.deployer && !isValidAddress(input.deployer)) {
-      throw new InvalidAddressError(input.deployer);
+      throw new ValidationError(`Invalid deployer address: ${input.deployer}`);
     }
 
     // 5. Create contract entity
@@ -84,10 +84,7 @@ export class RegisterContractUseCase {
     const savedContract = await this.contractRepository.create(contractEntity);
 
     // 7. Cache the result
-    await this.cacheService.cacheContract(savedContract.id, savedContract);
-
-    // 8. Invalidate related caches
-    await this.cacheService.invalidateContract(savedContract.id);
+    await this.cacheService.set(`contract:${savedContract.id}`, savedContract, 3600);
 
     return {
       contract: savedContract,
@@ -110,7 +107,7 @@ export class UpdateContractAbiUseCase {
   constructor(
     private contractRepository: ContractRepository,
     private abiRepository: AbiRepository,
-    private cacheService: CacheService
+    private cacheService: CacheAdapter
   ) {}
 
   async execute(input: UpdateContractAbiUseCaseInput): Promise<UpdateContractAbiUseCaseOutput> {
@@ -146,7 +143,7 @@ export class UpdateContractAbiUseCase {
     }
 
     // 5. Invalidate caches
-    await this.cacheService.invalidateContract(input.contractId);
+    await this.cacheService.del(`contract:${input.contractId}`);
 
     return {
       contract: updatedContract,
@@ -172,7 +169,7 @@ export interface VerifyContractUseCaseOutput {
 export class VerifyContractUseCase {
   constructor(
     private contractRepository: ContractRepository,
-    private cacheService: CacheService
+    private cacheService: CacheAdapter
   ) {}
 
   async execute(input: VerifyContractUseCaseInput): Promise<VerifyContractUseCaseOutput> {
@@ -200,7 +197,7 @@ export class VerifyContractUseCase {
     }
 
     // 4. Invalidate caches
-    await this.cacheService.invalidateContract(input.contractId);
+    await this.cacheService.del(`contract:${input.contractId}`);
 
     return {
       contract: updatedContract,

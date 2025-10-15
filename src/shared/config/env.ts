@@ -16,10 +16,10 @@ export const env = createEnv({
 
     // IPFS Storage
     PINATA_JWT: z.string(),
-    PINATA_GATEWAY_URL: z.string().url(),
+    PINATA_GATEWAY_URL: z.string(),
 
     // Optional Monitoring
-    SENTRY_DSN: z.string().url().optional(),
+    // SENTRY_DSN: z.string().url().optional(),
 
     // Node Environment
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -38,7 +38,7 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     PINATA_JWT: process.env.PINATA_JWT,
     PINATA_GATEWAY_URL: process.env.PINATA_GATEWAY_URL,
-    SENTRY_DSN: process.env.SENTRY_DSN,
+    // SENTRY_DSN: process.env.SENTRY_DSN,
     NODE_ENV: process.env.NODE_ENV,
 
     // Client

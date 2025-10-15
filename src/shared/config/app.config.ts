@@ -60,7 +60,7 @@ export const appConfig = {
 
   // Features
   features: {
-    sentry: !!env.SENTRY_DSN,
+    sentry: false, // !!env.SENTRY_DSN when enabled
     analytics: env.NODE_ENV === "production",
     debugMode: env.NODE_ENV === "development",
   },

@@ -1,6 +1,7 @@
 import { PinataSDK } from "pinata";
 import { env } from "@/shared/config/env";
 import { appConfig } from "@/shared/config/app.config";
+import { logger } from "@/shared/lib/utils/logger";
 
 export class IPFSClient {
   private pinata: PinataSDK;
@@ -21,39 +22,8 @@ export class IPFSClient {
   }
 
   // Upload JSON data to IPFS
-  async uploadJSON(data: unknown, metadata?: {
-    name?: string;
-    description?: string;
-    keyvalues?: Record<string, string>;
-  }): Promise<{ hash: string; url: string } | null> {
-    try {
-      const jsonData = JSON.stringify(data, null, 2);
-
-      const result = await this.pinata.upload
-        .json(data)
-        .addMetadata({
-          name: metadata?.name || "ABI JSON",
-          description: metadata?.description || "Smart Contract ABI",
-          keyvalues: {
-            type: "abi",
-            format: "json",
-            ...metadata?.keyvalues,
-          },
-        });
-
-      return {
-        hash: result.IpfsHash,
-        url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.IpfsHash}`,
-      };
-    } catch (error) {
-      console.error("IPFS upload error:", error);
-      return null;
-    }
-  }
-
-  // Upload file to IPFS
-  async uploadFile(
-    file: File | Buffer,
+  async uploadJSON(
+    data: unknown,
     metadata?: {
       name?: string;
       description?: string;
@@ -61,22 +31,54 @@ export class IPFSClient {
     }
   ): Promise<{ hash: string; url: string } | null> {
     try {
-      const result = await this.pinata.upload
-        .file(file)
-        .addMetadata({
-          name: metadata?.name || "File",
-          description: metadata?.description || "Uploaded file",
+      const result = await this.pinata.upload.public.json(data as object, {
+        metadata: {
+          name: metadata?.name || "ABI JSON",
           keyvalues: {
+            type: "abi",
+            format: "json",
+            description: metadata?.description || "Smart Contract ABI",
             ...metadata?.keyvalues,
           },
-        });
+        },
+      });
 
       return {
-        hash: result.IpfsHash,
-        url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.IpfsHash}`,
+        hash: result.cid,
+        url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.cid}`,
       };
     } catch (error) {
-      console.error("IPFS file upload error:", error);
+      logger.error("IPFS upload error", error);
+      return null;
+    }
+  }
+
+  // Upload file to IPFS
+  async uploadFile(
+    file: File,
+    metadata?: {
+      name?: string;
+      description?: string;
+      keyvalues?: Record<string, string>;
+    }
+  ): Promise<{ hash: string; url: string } | null> {
+    try {
+      const result = await this.pinata.upload.public.file(file, {
+        metadata: {
+          name: metadata?.name || "File",
+          keyvalues: {
+            description: metadata?.description || "Uploaded file",
+            ...metadata?.keyvalues,
+          },
+        },
+      });
+
+      return {
+        hash: result.cid,
+        url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.cid}`,
+      };
+    } catch (error) {
+      logger.error("IPFS file upload error", error);
       return null;
     }
   }
@@ -94,32 +96,35 @@ export class IPFSClient {
 
       const contentType = response.headers.get("content-type");
       if (contentType?.includes("application/json")) {
-        return await response.json() as T;
+        return (await response.json()) as T;
       } else {
-        return await response.text() as T;
+        return (await response.text()) as T;
       }
     } catch (error) {
-      console.error(`IPFS retrieve error for hash ${hash}:`, error);
+      logger.error(`IPFS retrieve error for hash ${hash}`, error);
       return null;
     }
   }
 
   // Pin existing IPFS hash
-  async pin(hash: string, metadata?: {
-    name?: string;
-    description?: string;
-    keyvalues?: Record<string, string>;
-  }): Promise<boolean> {
+  async pin(
+    hash: string,
+    metadata?: {
+      name?: string;
+      description?: string;
+      keyvalues?: Record<string, string>;
+    }
+  ): Promise<boolean> {
     try {
-      await this.pinata.pin.add(hash, {
-        pinataMetadata: {
+      await this.pinata.upload.public.cid(hash, {
+        metadata: {
           name: metadata?.name || hash,
           keyvalues: metadata?.keyvalues,
         },
       });
       return true;
     } catch (error) {
-      console.error(`IPFS pin error for hash ${hash}:`, error);
+      logger.error(`IPFS pin error for hash ${hash}`, error);
       return false;
     }
   }
@@ -127,10 +132,15 @@ export class IPFSClient {
   // Unpin IPFS hash
   async unpin(hash: string): Promise<boolean> {
     try {
-      await this.pinata.pin.remove(hash);
-      return true;
+      // Pinata v2 uses file ID for deletion, so we need to find the file first
+      const files = await this.pinata.files.public.list().cid(hash).limit(1);
+      if (files && files.files.length > 0) {
+        await this.pinata.files.public.delete([files.files[0].id]);
+        return true;
+      }
+      return false;
     } catch (error) {
-      console.error(`IPFS unpin error for hash ${hash}:`, error);
+      logger.error(`IPFS unpin error for hash ${hash}`, error);
       return false;
     }
   }
@@ -149,22 +159,24 @@ export class IPFSClient {
     metadata?: Record<string, string>;
   }> | null> {
     try {
-      const result = await this.pinata.pin.list({
-        status: filters?.status || "pinned",
-        pageLimit: filters?.pageLimit || 100,
-        pageOffset: filters?.pageOffset || 0,
-        metadata: filters?.metadata,
-      });
+      let query = this.pinata.files.public.list().limit(filters?.pageLimit || 100);
 
-      return result.rows.map((pin) => ({
-        hash: pin.ipfs_pin_hash,
-        name: pin.metadata?.name || pin.ipfs_pin_hash,
-        size: pin.size,
-        pinDate: pin.date_pinned,
-        metadata: pin.metadata?.keyvalues,
+      // Apply metadata filters if provided
+      if (filters?.metadata) {
+        query = query.keyvalues(filters.metadata);
+      }
+
+      const result = await query;
+
+      return result.files.map((file: any) => ({
+        hash: file.cid === "pending" ? "" : file.cid,
+        name: file.name || file.cid,
+        size: file.size,
+        pinDate: file.created_at,
+        metadata: file.keyvalues,
       }));
     } catch (error) {
-      console.error("IPFS list pins error:", error);
+      logger.error("IPFS list pins error", error);
       return null;
     }
   }
@@ -175,19 +187,20 @@ export class IPFSClient {
     totalSize: number;
   } | null> {
     try {
-      const result = await this.pinata.pin.list({
-        status: "pinned",
-        pageLimit: 1,
-      });
+      // Get a larger batch to calculate total size
+      const result = await this.pinata.files.public.list().limit(1000);
 
-      // Note: This is a simplified version. For accurate total size,
-      // you'd need to paginate through all pins
+      const totalSize = result.files.reduce(
+        (sum: number, file: any) => sum + file.size,
+        0
+      );
+
       return {
-        pinCount: result.count,
-        totalSize: 0, // Would need to calculate from all pins
+        pinCount: result.files.length,
+        totalSize,
       };
     } catch (error) {
-      console.error("IPFS usage error:", error);
+      logger.error("IPFS usage error", error);
       return null;
     }
   }
@@ -195,13 +208,11 @@ export class IPFSClient {
   // Health check
   async health(): Promise<boolean> {
     try {
-      // Try to list pins as a health check
-      const result = await this.pinata.pin.list({
-        pageLimit: 1,
-      });
+      // Try to list files as a health check
+      const result = await this.pinata.files.public.list().limit(1);
       return !!result;
     } catch (error) {
-      console.error("IPFS health check failed:", error);
+      logger.error("IPFS health check failed", error);
       return false;
     }
   }
@@ -209,7 +220,8 @@ export class IPFSClient {
   // Validate IPFS hash format
   static isValidHash(hash: string): boolean {
     // Basic IPFS hash validation (v0 and v1)
-    const ipfsHashRegex = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58}|baf[A-Za-z2-7]{54})$/;
+    const ipfsHashRegex =
+      /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58}|baf[A-Za-z2-7]{54})$/;
     return ipfsHashRegex.test(hash);
   }
 

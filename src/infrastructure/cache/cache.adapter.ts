@@ -12,9 +12,17 @@ export interface CachePort {
 
 export class CacheAdapter implements CachePort {
   private redis: RedisClient;
+  private static instance: CacheAdapter;
 
-  constructor() {
+  private constructor() {
     this.redis = RedisClient.getInstance();
+  }
+
+  static getInstance(): CacheAdapter {
+    if (!CacheAdapter.instance) {
+      CacheAdapter.instance = new CacheAdapter();
+    }
+    return CacheAdapter.instance;
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -127,7 +135,7 @@ export class CacheService {
   private cache: CacheAdapter;
 
   constructor() {
-    this.cache = new CacheAdapter();
+    this.cache = CacheAdapter.getInstance();
   }
 
   // ABI caching methods

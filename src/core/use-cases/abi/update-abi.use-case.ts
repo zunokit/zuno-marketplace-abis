@@ -6,11 +6,11 @@ import {
   AbiVersionEntity,
   AbiFactory,
 } from "@/core/domain/abi/abi.entity";
-import { AbiRepository } from "@/core/domain/abi/abi.repository";
+import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiValidator } from "@/shared/lib/validation/abi-validator";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
-import { IPFSStorageService } from "@/infrastructure/storage/ipfs/pinata.adapter";
-import { CacheService } from "@/infrastructure/cache/cache.adapter";
+import { PinataStorageAdapter } from "@/infrastructure/storage/ipfs/pinata.adapter";
+import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
 
 export interface UpdateAbiUseCaseInput {
   abiId: string;
@@ -43,8 +43,8 @@ export interface UpdateAbiUseCaseOutput {
 export class UpdateAbiUseCase {
   constructor(
     private abiRepository: AbiRepository,
-    private storageService: IPFSStorageService,
-    private cacheService: CacheService
+    private storageService: PinataStorageAdapter,
+    private cacheService: CacheAdapter
   ) {}
 
   async execute(input: UpdateAbiUseCaseInput): Promise<UpdateAbiUseCaseOutput> {
@@ -92,7 +92,7 @@ export class UpdateAbiUseCase {
       }
 
       // Generate new ABI hash
-      const newAbiHash = AbiHasher.generateHash(typedAbi);
+      const newAbiHash = AbiHasher.hashAbi(typedAbi);
 
       // Check if ABI actually changed
       if (newAbiHash !== existingAbi.abiHash) {
@@ -170,8 +170,8 @@ export class UpdateAbiUseCase {
     }
 
     // 7. Invalidate cache
-    await this.cacheService.invalidateAbi(input.abiId);
-    await this.cacheService.invalidateUser(input.userId);
+    await this.cacheService.del(`abi:${input.abiId}`);
+    await this.cacheService.del(`user:${input.userId}:abis`);
 
     return {
       abi: updatedAbi,

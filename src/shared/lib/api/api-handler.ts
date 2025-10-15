@@ -213,7 +213,7 @@ export const commonSchemas = {
 
   address: z.string().regex(/^0x[a-fA-F0-9]{40}$/i, "Invalid Ethereum address"),
 
-  abi: z.array(z.record(z.unknown())).min(1, "ABI cannot be empty"),
+  abi: z.array(z.record(z.string(), z.unknown())).min(1, "ABI cannot be empty"),
 };
 
 // Helper functions for common operations

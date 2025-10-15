@@ -148,4 +148,11 @@ export class AbiHasher {
     const fullHash = this.generateHash(abi);
     return fullHash.substring(0, length);
   }
+
+  /**
+   * Alias for generateHash for compatibility
+   */
+  static hashAbi(abi: ContractAbi): string {
+    return this.generateHash(abi);
+  }
 }

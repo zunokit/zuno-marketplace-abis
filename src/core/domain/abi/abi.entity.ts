@@ -69,6 +69,7 @@ export interface UpdateAbiParams {
   description?: string;
   contractName?: string;
   abi?: ContractAbi;
+  version?: string;
   tags?: string[];
   standard?: string;
   metadata?: {
