@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionCookie } from 'better-auth/cookies';
 
 export async function middleware(request: NextRequest) {
-  // Get the pathname
-  const pathname = request.nextUrl.pathname;
+  const sessionCookie = getSessionCookie(request);
+  const { pathname } = request.nextUrl;
 
   // API Version check for /api/v1 routes
   if (pathname.startsWith('/api/v1')) {
@@ -40,8 +41,18 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Protected routes (dashboard, admin)
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+  // Redirect authenticated users away from auth pages
+  if (sessionCookie && ['/auth/signin', '/auth/signup'].includes(pathname)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // Redirect unauthenticated users to signin
+  if (!sessionCookie && pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/auth/signin', request.url));
+  }
+
+  // Admin routes require admin role - need to verify via API call
+  if (sessionCookie && pathname.startsWith('/admin')) {
     try {
       const sessionResponse = await fetch(
         `${request.nextUrl.origin}/api/auth/get-session`,
@@ -52,31 +63,19 @@ export async function middleware(request: NextRequest) {
         }
       );
 
-      if (!sessionResponse.ok) {
-        return NextResponse.redirect(new URL('/auth/signin', request.url));
-      }
-
-      const sessionData = (await sessionResponse.json()) as {
-        user?: {
-          id: string;
-          email: string;
-          role?: string;
+      if (sessionResponse.ok) {
+        const sessionData = (await sessionResponse.json()) as {
+          user?: {
+            role?: string;
+          };
         };
-        session?: {
-          id: string;
-          userId: string;
-        };
-      };
 
-      if (!sessionData.user || !sessionData.session) {
-        return NextResponse.redirect(new URL('/auth/signin', request.url));
-      }
-
-      // Admin routes require admin role
-      if (pathname.startsWith('/admin') && sessionData.user.role !== 'admin') {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        if (sessionData.user?.role !== 'admin') {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
       }
     } catch {
+      // If session check fails, redirect to signin
       return NextResponse.redirect(new URL('/auth/signin', request.url));
     }
   }
