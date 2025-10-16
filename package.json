@@ -16,7 +16,8 @@
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
     "auth:generate": "better-auth generate",
-    "auth:migrate": "better-auth migrate"
+    "auth:migrate": "better-auth migrate",
+    "db:check": "tsx scripts/check-db-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
