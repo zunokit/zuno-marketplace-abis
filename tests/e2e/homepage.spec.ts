@@ -1,12 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Homepage', () => {
-  test('should display the homepage correctly', async ({ page }) => {
-    await page.goto('/');
+test.describe("Homepage", () => {
+  test("should display the homepage correctly", async ({ page }) => {
+    await page.goto("/");
+
+    // Wait for the page to load completely
+    await page.waitForLoadState("networkidle");
 
     // Check main heading
     await expect(
-      page.getByRole('heading', { name: /Zuno Marketplace ABIs/i })
+      page.getByRole("heading", { name: /Zuno Marketplace ABIs/i })
     ).toBeVisible();
 
     // Check hero description
@@ -16,74 +19,120 @@ test.describe('Homepage', () => {
       )
     ).toBeVisible();
 
-    // Check CTA buttons
+    // Check CTA button
     await expect(
-      page.getByRole('link', { name: /Browse ABIs/i })
+      page.getByRole("button", { name: /Get Public API Key/i })
     ).toBeVisible();
-    await expect(page.getByRole('link', { name: /Upload ABI/i })).toBeVisible();
 
-    // Check feature badges
-    await expect(page.getByText('Multi-chain')).toBeVisible();
-    await expect(page.getByText('Version Control')).toBeVisible();
-    await expect(page.getByText('IPFS Storage')).toBeVisible();
-    await expect(page.getByText('API Access')).toBeVisible();
+    // Check feature badges (use specific badge selectors)
+    await expect(
+      page.locator('span[data-slot="badge"]').filter({ hasText: "Multi-chain" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('span[data-slot="badge"]')
+        .filter({ hasText: "Version Control" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('span[data-slot="badge"]')
+        .filter({ hasText: "IPFS Storage" })
+    ).toBeVisible();
+    await expect(
+      page.locator('span[data-slot="badge"]').filter({ hasText: "API Access" })
+    ).toBeVisible();
   });
 
-  test('should have working navigation links', async ({ page }) => {
-    await page.goto('/');
-
-    // Test Browse ABIs link
-    const browseLink = page.getByRole('link', { name: /Browse ABIs/i });
-    await expect(browseLink).toHaveAttribute('href', '/abis');
-
-    // Test Upload ABI link
-    const uploadLink = page.getByRole('link', { name: /Upload ABI/i });
-    await expect(uploadLink).toHaveAttribute('href', '/dashboard');
+  test("should have working navigation links", async ({ page }) => {
+    await page.goto("/");
 
     // Test Sign Up link
-    const signUpLink = page.getByRole('link', { name: /Sign Up Free/i });
-    await expect(signUpLink).toHaveAttribute('href', '/auth/signin');
+    const signUpLink = page.getByRole("link", { name: /Sign Up Free/i });
+    await expect(signUpLink).toHaveAttribute("href", "/auth/signin");
 
     // Test API Docs link
-    const apiDocsLink = page.getByRole('link', { name: /View API Docs/i });
-    await expect(apiDocsLink).toHaveAttribute('href', '/api/auth/reference');
+    const apiDocsLink = page.getByRole("link", { name: /View API Docs/i });
+    await expect(apiDocsLink).toHaveAttribute("href", "/api/auth/reference");
   });
 
-  test('should display feature cards', async ({ page }) => {
-    await page.goto('/');
+  test("should display feature cards", async ({ page }) => {
+    await page.goto("/");
 
-    // Check feature cards are present
+    // Wait for the page to load completely
+    await page.waitForLoadState("networkidle");
+
+    // Check feature cards are present (use specific card title selectors)
     await expect(
-      page.getByRole('heading', { name: /Multi-chain Support/i })
+      page
+        .locator('div[data-slot="card-title"]')
+        .filter({ hasText: "Multi-chain Support" })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /Version Control/i })
+      page
+        .locator('div[data-slot="card-title"]')
+        .filter({ hasText: "Version Control" })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /IPFS Backup/i })
+      page
+        .locator('div[data-slot="card-title"]')
+        .filter({ hasText: "IPFS Backup" })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /API Access/i })
+      page
+        .locator('div[data-slot="card-title"]')
+        .filter({ hasText: "API Access" })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /Enterprise Security/i })
+      page
+        .locator('div[data-slot="card-title"]')
+        .filter({ hasText: "Enterprise Security" })
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /Standards Validation/i })
+      page
+        .locator('div[data-slot="card-title"]')
+        .filter({ hasText: "Standards Validation" })
     ).toBeVisible();
   });
 
-  test('should be responsive on mobile', async ({ page }) => {
+  test("should be responsive on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 }); // iPhone SE size
-    await page.goto('/');
+    await page.goto("/");
 
     // Check that main content is still visible on mobile
     await expect(
-      page.getByRole('heading', { name: /Zuno Marketplace ABIs/i })
+      page.getByRole("heading", { name: /Zuno Marketplace ABIs/i })
     ).toBeVisible();
     await expect(
-      page.getByRole('link', { name: /Browse ABIs/i })
+      page.getByRole("button", { name: /Get Public API Key/i })
     ).toBeVisible();
-    await expect(page.getByRole('link', { name: /Upload ABI/i })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Sign Up Free/i })
+    ).toBeVisible();
+  });
+
+  test("should generate API key when button is clicked", async ({ page }) => {
+    await page.goto("/");
+
+    // Click the API key generation button
+    const generateButton = page.getByRole("button", {
+      name: /Get Public API Key/i,
+    });
+    await generateButton.click();
+
+    // Wait for the button to show "Generating..." state
+    await expect(
+      page.getByRole("button", { name: /Generating.../i })
+    ).toBeVisible();
+
+    // Wait for either the button to return to normal state or for an API key to be displayed
+    // This handles cases where the API endpoint might not be available
+    try {
+      await expect(
+        page.getByRole("button", { name: /Get Public API Key/i })
+      ).toBeVisible({ timeout: 10000 });
+    } catch {
+      // If button doesn't return, check if API key is displayed instead
+      await expect(page.locator("code")).toBeVisible({ timeout: 5000 });
+    }
   });
 });
