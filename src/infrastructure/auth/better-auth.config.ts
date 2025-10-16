@@ -93,10 +93,7 @@ export const auth = betterAuth({
       defaultKeyLength: 32,
     }),
 
-    // OpenAPI documentation
-    openAPI({
-      path: "/api/auth/reference",
-    }),
+    openAPI(),
   ],
 
   // Advanced security options
