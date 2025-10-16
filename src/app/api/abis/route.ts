@@ -1,66 +1,44 @@
 import { z } from "zod";
-import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import {
   ListAbisSchema,
   CreateAbiSchema,
 } from "@/shared/lib/validation/abi.dto";
-import { AbiRepositoryImpl } from "@/infrastructure/database/repositories/abi.repository.impl";
 import { CreateAbiUseCase } from "@/core/use-cases/abi/create-abi.use-case";
-import { PinataStorageAdapter } from "@/infrastructure/storage/ipfs/pinata.adapter";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
-import { ErrorCode } from "@/shared/types";
+import {
+  getAbiRepository,
+  getStorageService,
+  getCacheService,
+} from "@/infrastructure/di/container";
+import {
+  AbiDtoMapper,
+  type PaginatedAbiResponseDto,
+  type CreatedAbiResponseDto,
+} from "@/shared/dto/abi.dto";
+import { AbiQueryService } from "@/core/services/abi/abi-query.service";
+import { AuthContextService } from "@/core/services/auth/auth-context.service";
 
-// GET /api/abis - List ABIs
-export const GET = ApiWrapper.create(
-  async (input: z.infer<typeof ListAbisSchema>, context) => {
-    const abiRepository = new AbiRepositoryImpl();
+/**
+ * GET /api/abis - List ABIs
+ *
+ */
+export const GET = ApiWrapper.create<
+  z.infer<typeof ListAbisSchema>,
+  PaginatedAbiResponseDto
+>(
+  async (input, context) => {
+    // Extract query from nested input structure
+    const queryParams = (input as any).query || input;
 
-    // Build filters
-    const filters: any = {};
+    // 1. Build list params qua service
+    const listParams = AbiQueryService.buildListParams(queryParams, context);
 
-    if (input.standard) {
-      filters.standard = input.standard;
-    }
+    // 2. Fetch data qua repository
+    const abiRepository = getAbiRepository();
+    const result = await abiRepository.list(listParams);
 
-    if (input.tags && typeof input.tags === "string") {
-      filters.tags = input.tags.split(",");
-    }
-
-    // If userId is specified, only admins can query other users' ABIs
-    if (input.userId) {
-      const isAdmin = context.user?.role === "admin";
-      const isOwnUser =
-        context.user?.id === input.userId ||
-        context.apiKey?.userId === input.userId;
-
-      if (!isAdmin && !isOwnUser) {
-        throw new ApiError(
-          "You can only list your own ABIs unless you're an admin",
-          ErrorCode.FORBIDDEN,
-          403
-        );
-      }
-
-      filters.userId = input.userId;
-    }
-
-    if (
-      input.compatibleNetworks &&
-      typeof input.compatibleNetworks === "string"
-    ) {
-      filters.compatibleNetworks = input.compatibleNetworks.split(",");
-    }
-
-    const listParams: any = {
-      page: input.page as number,
-      limit: input.limit as number,
-      sortBy: input.sortBy as string | undefined,
-      sortOrder: input.sortOrder as "asc" | "desc" | undefined,
-      query: input.query as string | undefined,
-      filters,
-    };
-
-    return await abiRepository.list(listParams);
+    // 3. Convert sang DTOs
+    return AbiDtoMapper.toPaginatedResponseDto(result);
   },
   {
     validation: {
@@ -74,53 +52,35 @@ export const GET = ApiWrapper.create(
   }
 );
 
-// POST /api/abis - Create ABI
-export const POST = ApiWrapper.create(
-  async (input: { body: z.infer<typeof CreateAbiSchema> }, context) => {
-    const userId = context.user?.id || context.apiKey?.userId;
+/**
+ * POST /api/abis - Create ABI
+ */
+export const POST = ApiWrapper.create<
+  { body: z.infer<typeof CreateAbiSchema> },
+  CreatedAbiResponseDto
+>(
+  async (input, context) => {
+    // 1. Extract user ID qua service
+    const userId = AuthContextService.extractUserId(context);
 
-    if (!userId) {
-      throw new ApiError(
-        "User ID not found in authentication context",
-        ErrorCode.UNAUTHORIZED,
-        401
-      );
-    }
-
-    // Initialize dependencies
-    const abiRepository = new AbiRepositoryImpl();
-    const storageService = new PinataStorageAdapter();
-    const cacheService = CacheAdapter.getInstance();
-
-    // Create use case
+    // 2. Create use case với DI
     const createAbiUseCase = new CreateAbiUseCase(
-      abiRepository,
-      storageService,
-      cacheService
+      getAbiRepository(),
+      getStorageService(),
+      getCacheService()
     );
 
-    // Execute
+    // 3. Execute use case
     const result = await createAbiUseCase.execute({
       userId,
       ...input.body,
     });
 
-    return {
-      id: result.abi.id,
-      name: result.abi.name,
-      description: result.abi.description,
-      contractName: result.abi.contractName,
-      abi: result.abi.abi,
-      abiHash: result.abi.abiHash,
-      version: result.abi.version,
-      tags: result.abi.tags,
-      standard: result.abi.standard,
-      metadata: result.abi.metadata,
-      ipfsHash: result.ipfsHash,
-      ipfsUrl: result.ipfsUrl,
-      createdAt: result.abi.createdAt?.toISOString(),
-      updatedAt: result.abi.updatedAt?.toISOString(),
-    };
+    // 4. Convert sang response DTO
+    return AbiDtoMapper.toCreatedResponseDto(result.abi, {
+      hash: result.ipfsHash,
+      url: result.ipfsUrl,
+    });
   },
   {
     validation: {

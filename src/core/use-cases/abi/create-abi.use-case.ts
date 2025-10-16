@@ -8,8 +8,7 @@ import {
 import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiValidator } from "@/shared/lib/validation/abi-validator";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
-import { PinataStorageAdapter } from "@/infrastructure/storage/ipfs/pinata.adapter";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import type { IStorageService, ICacheService } from "@/infrastructure/di/container";
 
 export interface CreateAbiUseCaseInput {
   userId: string;
@@ -39,8 +38,8 @@ export interface CreateAbiUseCaseOutput {
 export class CreateAbiUseCase {
   constructor(
     private abiRepository: AbiRepository,
-    private storageService: PinataStorageAdapter,
-    private cacheService: CacheAdapter
+    private storageService: IStorageService,
+    private cacheService: ICacheService
   ) {}
 
   async execute(input: CreateAbiUseCaseInput): Promise<CreateAbiUseCaseOutput> {

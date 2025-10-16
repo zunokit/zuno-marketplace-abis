@@ -1,6 +1,6 @@
 import { ContractRepository } from "@/core/domain/contract/contract.repository";
 import { ContractNotFoundError } from "@/core/domain/contract/contract.entity";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import type { ICacheService } from "@/infrastructure/di/container";
 import { logger } from "@/shared/lib/utils/logger";
 
 /**
@@ -67,7 +67,7 @@ export interface DeleteContractOutput {
 export class DeleteContractUseCase {
   constructor(
     private readonly contractRepository: ContractRepository,
-    private readonly cacheService: CacheAdapter
+    private readonly cacheService: ICacheService
   ) {}
 
   /**

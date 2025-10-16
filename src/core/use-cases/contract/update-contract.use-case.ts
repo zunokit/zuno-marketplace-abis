@@ -6,7 +6,7 @@ import {
 } from "@/core/domain/contract/contract.entity";
 import { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiNotFoundError } from "@/core/domain/abi/abi.entity";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import type { ICacheService } from "@/infrastructure/di/container";
 import { logger } from "@/shared/lib/utils/logger";
 
 /**
@@ -73,7 +73,7 @@ export class UpdateContractUseCase {
   constructor(
     private readonly contractRepository: ContractRepository,
     private readonly abiRepository: AbiRepository,
-    private readonly cacheService: CacheAdapter
+    private readonly cacheService: ICacheService
   ) {}
 
   /**

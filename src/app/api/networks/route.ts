@@ -1,37 +1,40 @@
 import { z } from "zod";
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import { ListNetworksSchema } from "@/shared/lib/validation/network.dto";
-import { NetworkRepositoryImpl } from "@/infrastructure/database/repositories/network.repository.impl";
+import { getNetworkRepository } from "@/infrastructure/di/container";
+import {
+  NetworkDtoMapper,
+  type PaginatedNetworkResponseDto,
+} from "@/shared/dto/network.dto";
+import { NetworkQueryService } from "@/core/services/network/network-query.service";
 
 /**
  * GET /api/networks - List blockchain networks
- *
- * Returns a paginated list of supported blockchain networks.
- *
- * Query parameters:
- * - page, limit: Pagination
- * - query: Search by name, slug, or chain ID
- * - sortBy, sortOrder: Sorting
- * - type: Filter by network type (mainnet, testnet, local)
- * - isTestnet: Filter by testnet flag
- * - isActive: Filter by active status
  */
-export const GET = ApiWrapper.create(
-  async (input: z.infer<typeof ListNetworksSchema>) => {
-    const networkRepository = new NetworkRepositoryImpl();
+export const GET = ApiWrapper.create<
+  z.infer<typeof ListNetworksSchema>,
+  PaginatedNetworkResponseDto
+>(
+  async (input, context) => {
+    // Extract query from nested input structure
+    const queryParams = (input as any).query || input;
+
+    const networkRepository = getNetworkRepository();
 
     // Special case: if "all" is requested (no pagination)
-    if (input.all === "true") {
-      const allNetworks = input.isActive === "true"
+    if (queryParams.all === "true") {
+      const allNetworks = queryParams.isActive === "true"
         ? await networkRepository.getAllActive()
         : await networkRepository.getAll();
 
+      const dtos = NetworkDtoMapper.toListDtos(allNetworks);
+
       return {
-        data: allNetworks,
+        data: dtos,
         pagination: {
           page: 1,
-          limit: allNetworks.length,
-          total: allNetworks.length,
+          limit: dtos.length,
+          total: dtos.length,
           totalPages: 1,
           hasNext: false,
           hasPrev: false,
@@ -39,32 +42,14 @@ export const GET = ApiWrapper.create(
       };
     }
 
-    // Build filters
-    const filters: any = {};
+    // 1. Build list params qua service
+    const listParams = NetworkQueryService.buildListParams(queryParams);
 
-    if (input.type) {
-      filters.type = input.type;
-    }
+    // 2. Fetch data qua repository
+    const result = await networkRepository.list(listParams);
 
-    if (input.isTestnet !== undefined) {
-      filters.isTestnet = input.isTestnet === "true";
-    }
-
-    if (input.isActive !== undefined) {
-      filters.isActive = input.isActive === "true";
-    }
-
-    // List networks with pagination
-    const result = await networkRepository.list({
-      page: input.page as number,
-      limit: input.limit as number,
-      sortBy: input.sortBy as any,
-      sortOrder: input.sortOrder as "asc" | "desc",
-      query: input.query as string | undefined,
-      filters,
-    });
-
-    return result;
+    // 3. Convert sang DTOs
+    return NetworkDtoMapper.toPaginatedResponseDto(result);
   },
   {
     validation: {
