@@ -6,7 +6,7 @@ import { auth } from "@/infrastructure/auth/better-auth.config";
 
 // GET /api/health - Health check endpoint
 export const GET = ApiWrapper.create(
-  async (input, context) => {
+  async () => {
     const startTime = Date.now();
 
     const healthChecks = {
@@ -44,7 +44,7 @@ export const GET = ApiWrapper.create(
 
     // Auth check (get-session without cookies should not throw)
     try {
-      const session = await auth.api.getSession({ headers: {} as any });
+      await auth.api.getSession({ headers: {} as any });
       // Even if session null, endpoint works; mark healthy
       healthChecks.checks.auth = "healthy";
     } catch {

@@ -1,14 +1,13 @@
 "use client";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Upload, Shield, Database, Zap, Globe } from "lucide-react";
+import { Shield, Database, Zap, Globe } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useClipboard } from "@/hooks/use-clipboard";

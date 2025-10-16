@@ -95,7 +95,13 @@ export class AbiNormalizer {
    */
   private static compareItems(a: AbiItem, b: AbiItem): number {
     // Sort by type first
-    const typeOrder = ["constructor", "receive", "fallback", "function", "event"];
+    const typeOrder = [
+      "constructor",
+      "receive",
+      "fallback",
+      "function",
+      "event",
+    ];
     const aTypeIndex = typeOrder.indexOf(a.type);
     const bTypeIndex = typeOrder.indexOf(b.type);
 
@@ -194,7 +200,7 @@ export class AbiNormalizer {
     const fixed: AbiItem[] = [];
 
     abi.forEach((item, index) => {
-      let fixedItem = { ...item };
+      const fixedItem = { ...item };
 
       // Fix missing inputs/outputs
       if (item.type === "function" || item.type === "event") {
@@ -204,7 +210,10 @@ export class AbiNormalizer {
         }
 
         if (item.type === "function") {
-          if (!("outputs" in fixedItem) || !Array.isArray((fixedItem as any).outputs)) {
+          if (
+            !("outputs" in fixedItem) ||
+            !Array.isArray((fixedItem as any).outputs)
+          ) {
             (fixedItem as any).outputs = [];
             issues.push(`Item ${index}: Added missing outputs array`);
           }
@@ -218,7 +227,10 @@ export class AbiNormalizer {
       }
 
       // Fix empty names
-      if ((item.type === "function" || item.type === "event") && !("name" in fixedItem || !(fixedItem as any).name)) {
+      if (
+        (item.type === "function" || item.type === "event") &&
+        !("name" in fixedItem || !(fixedItem as any).name)
+      ) {
         (fixedItem as any).name = `unnamed_${item.type}_${index}`;
         issues.push(`Item ${index}: Added default name`);
       }

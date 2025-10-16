@@ -17,7 +17,7 @@ import { NetworkRepositoryImpl } from "@/infrastructure/database/repositories/ne
  * - isActive: Filter by active status
  */
 export const GET = ApiWrapper.create(
-  async (input: z.infer<typeof ListNetworksSchema>, context) => {
+  async (input: z.infer<typeof ListNetworksSchema>) => {
     const networkRepository = new NetworkRepositoryImpl();
 
     // Special case: if "all" is requested (no pagination)

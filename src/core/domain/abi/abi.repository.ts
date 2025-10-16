@@ -2,9 +2,7 @@ import {
   AbiEntity,
   AbiVersionEntity,
   AbiListParams,
-  CreateAbiParams,
   UpdateAbiParams,
-  CreateAbiVersionParams,
 } from "./abi.entity";
 import { PaginatedResult } from "@/shared/types";
 
@@ -19,13 +17,22 @@ export interface AbiRepository {
 
   // List and search operations
   list(params: AbiListParams): Promise<PaginatedResult<AbiEntity>>;
-  findByUserId(userId: string, params?: AbiListParams): Promise<PaginatedResult<AbiEntity>>;
-  search(query: string, params?: AbiListParams): Promise<PaginatedResult<AbiEntity>>;
+  findByUserId(
+    userId: string,
+    params?: AbiListParams
+  ): Promise<PaginatedResult<AbiEntity>>;
+  search(
+    query: string,
+    params?: AbiListParams
+  ): Promise<PaginatedResult<AbiEntity>>;
 
   // Version management
   createVersion(version: AbiVersionEntity): Promise<AbiVersionEntity>;
   findVersions(abiId: string): Promise<AbiVersionEntity[]>;
-  findVersionByNumber(abiId: string, versionNumber: number): Promise<AbiVersionEntity | null>;
+  findVersionByNumber(
+    abiId: string,
+    versionNumber: number
+  ): Promise<AbiVersionEntity | null>;
   getLatestVersion(abiId: string): Promise<AbiVersionEntity | null>;
 
   // Utility methods
@@ -40,6 +47,4 @@ export interface AbiRepository {
   deleteMany(ids: string[]): Promise<number>;
 }
 
-export interface AbiRepositoryImpl extends AbiRepository {
-  // Implementation-specific methods for Drizzle ORM
-}
+export type AbiRepositoryImpl = AbiRepository;

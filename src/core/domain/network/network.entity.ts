@@ -1,5 +1,3 @@
-import { PaginatedResult } from "@/shared/types";
-
 export interface NetworkEntity {
   id: string;
   chainId: number;

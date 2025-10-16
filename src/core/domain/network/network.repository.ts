@@ -1,7 +1,6 @@
 import {
   NetworkEntity,
   NetworkListParams,
-  CreateNetworkParams,
   UpdateNetworkParams,
 } from "./network.entity";
 import { PaginatedResult } from "@/shared/types";

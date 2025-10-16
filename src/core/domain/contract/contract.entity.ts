@@ -1,5 +1,3 @@
-import { PaginatedResult } from "@/shared/types";
-
 export interface ContractEntity {
   id: string;
   address: string;

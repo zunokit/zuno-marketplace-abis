@@ -58,7 +58,7 @@ export const POST = ApiWrapper.create(
       );
     }
 
-    let targetUserId = input.body.userId || currentUserId;
+    const targetUserId = input.body.userId || currentUserId;
 
     if (input.body.userId && input.body.userId !== currentUserId) {
       if (!isAdmin(context)) {
@@ -70,10 +70,7 @@ export const POST = ApiWrapper.create(
       }
     }
 
-    let expiresAt: Date | undefined;
-    if (input.body.expiresIn) {
-      expiresAt = new Date(Date.now() + input.body.expiresIn * 1000);
-    }
+    // expiresAt is derived in service via expiresIn; local variable not needed
 
     const metadata = {
       ...input.body.metadata,

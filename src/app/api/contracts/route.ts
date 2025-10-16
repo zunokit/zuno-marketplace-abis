@@ -24,7 +24,7 @@ import { ErrorCode } from "@/shared/types";
  * - deployer: Filter by deployer address
  */
 export const GET = ApiWrapper.create(
-  async (input: z.infer<typeof ListContractsSchema>, context) => {
+  async (input: z.infer<typeof ListContractsSchema>) => {
     const contractRepository = new ContractRepositoryImpl();
 
     // Build filters
