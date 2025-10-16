@@ -26,6 +26,12 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    files: ["jest.config.js", "jest.config.mjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
