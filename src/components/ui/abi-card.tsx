@@ -1,6 +1,13 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Copy, Download, Edit, Trash2 } from "lucide-react";
@@ -33,7 +40,7 @@ export function AbiCard({
   onEdit,
   onDelete,
   onCopy,
-  showActions = true
+  showActions = true,
 }: AbiCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -48,10 +55,10 @@ export function AbiCard({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -107,6 +114,7 @@ export function AbiCard({
                 size="sm"
                 onClick={handleCopy}
                 className="h-6 w-6 p-0"
+                aria-label="Copy ABI hash"
               >
                 <Copy className="h-3 w-3" />
               </Button>
@@ -127,8 +135,14 @@ export function AbiCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.open(`https://ipfs.io/ipfs/${abi.ipfsHash}`, '_blank')}
+                  onClick={() =>
+                    window.open(
+                      `https://ipfs.io/ipfs/${abi.ipfsHash}`,
+                      "_blank"
+                    )
+                  }
                   className="h-6 w-6 p-0"
+                  aria-label="Download from IPFS"
                 >
                   <Download className="h-3 w-3" />
                 </Button>
@@ -163,6 +177,7 @@ export function AbiCard({
               variant="outline"
               size="sm"
               onClick={() => onEdit(abi.id)}
+              aria-label="Edit ABI"
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -174,6 +189,7 @@ export function AbiCard({
               size="sm"
               onClick={() => onDelete(abi.id)}
               className="text-destructive hover:text-destructive"
+              aria-label="Delete ABI"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
