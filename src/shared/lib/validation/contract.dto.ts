@@ -3,8 +3,8 @@ import { commonSchemas, withPagination, withSearch, withSort } from "@/shared/li
 
 export const CreateContractSchema = z.object({
   address: commonSchemas.address,
-  networkId: z.string().uuid(),
-  abiId: z.string().uuid(),
+  networkId: z.string().min(1), // Support custom ID format (net_v1_...)
+  abiId: z.string().min(1), // Support custom ID format (abi_v1_...)
   name: z.string().min(1).max(255).optional(),
   type: z.enum(["token", "nft", "defi", "dao", "bridge", "other"]).optional(),
   metadata: z
@@ -24,8 +24,8 @@ export const ListContractsSchema = withSort(
   withSearch(
     withPagination(
       z.object({
-        networkId: z.string().uuid().optional(),
-        abiId: z.string().uuid().optional(),
+        networkId: z.string().min(1).optional(), // Support custom ID format
+        abiId: z.string().min(1).optional(), // Support custom ID format
         type: z.string().optional(),
         isVerified: z.enum(["true", "false"]).optional(),
         deployer: commonSchemas.address.optional(),
@@ -37,7 +37,7 @@ export const ListContractsSchema = withSort(
 export const UpdateContractSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   type: z.enum(["token", "nft", "defi", "dao", "bridge", "other"]).optional(),
-  abiId: z.string().uuid().optional(),
+  abiId: z.string().min(1).optional(), // Support custom ID format
   isVerified: z.boolean().optional(),
   verificationSource: z.enum(["etherscan", "sourcify", "manual"]).optional(),
   metadata: z
@@ -56,7 +56,7 @@ export const UpdateContractSchema = z.object({
 export const ContractAddressParamsSchema = z.object({ address: commonSchemas.address });
 export const ContractVersionParamsSchema = z.object({
   address: commonSchemas.address,
-  versionId: z.string().uuid(),
+  versionId: z.string().min(1), // Support custom ID format (abv_v1_...)
 });
 export const ContractNameParamsSchema = z.object({ name: z.string().min(1) });
 

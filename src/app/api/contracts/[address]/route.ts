@@ -22,6 +22,7 @@ import {
 } from "@/shared/dto/contract.dto";
 import { AuthContextService } from "@/core/services/auth/auth-context.service";
 import { ErrorCode } from "@/shared/types";
+import { ContractError } from "@/core/domain/contract/contract.entity";
 
 const ParamsSchema = ContractAddressParamsSchema;
 

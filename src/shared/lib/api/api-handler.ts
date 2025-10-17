@@ -16,12 +16,22 @@ import {
   type AuthUser,
   type AuthApiKey,
 } from "@/infrastructure/auth/auth-helpers";
-import { RateLimitService, RateLimitError } from "@/infrastructure/services/rate-limit.service";
+import {
+  RateLimitService,
+  RateLimitError,
+} from "@/infrastructure/services/rate-limit.service";
 import { logger } from "@/shared/lib/utils/logger";
+import {
+  createFormattedErrorResponse,
+  extractRequestId,
+  logError,
+  type FriendlyErrorResponse,
+} from "./error-formatter";
 
 export interface ApiContext extends AuthContext {
   request: NextRequest;
   params?: Record<string, string>;
+  requestId: string;
   rateLimit?: {
     limit: number;
     remaining: number;
@@ -62,7 +72,10 @@ export class ApiWrapper {
       context?: { params?: Promise<Record<string, string>> }
     ) => {
       try {
-        // 1. Parse and validate request data
+        // 1. Extract request metadata
+        const requestId = extractRequestId(request);
+
+        // 2. Parse and validate request data
         const params = context?.params ? await context.params : {};
         const parsedData = await this.parseRequest(
           request,
@@ -70,24 +83,28 @@ export class ApiWrapper {
           params
         );
 
-        // 2. Create API context
+        // 3. Create API context
         const apiContext: ApiContext = {
           request,
           params,
+          requestId,
         };
 
-        // 3. Handle authentication if required
+        // 4. Handle authentication if required
         if (config.auth?.required !== false) {
           await this.handleAuth(apiContext, config.auth);
         }
 
-        // 4. Execute the handler
+        // 5. Execute the handler
         const result = await handler(parsedData as TInput, apiContext);
 
-        // 5. Return success response
+        // 6. Return success response
         const response = NextResponse.json(createSuccessResponse(result), {
           status: 200,
         });
+
+        // Add request tracking headers
+        response.headers.set("X-Request-ID", requestId);
 
         // Add rate limit headers if available
         if (apiContext.rateLimit) {
@@ -107,7 +124,7 @@ export class ApiWrapper {
 
         return response;
       } catch (error) {
-        return this.handleError(error);
+        return this.handleError(error, request);
       }
     };
   }
@@ -133,7 +150,15 @@ export class ApiWrapper {
     if (["POST", "PUT", "PATCH"].includes(method)) {
       const contentType = request.headers.get("content-type");
       if (contentType?.includes("application/json")) {
-        body = await request.json();
+        try {
+          const text = await request.text();
+          if (text.trim()) {
+            body = JSON.parse(text);
+          }
+        } catch (error) {
+          // If parsing fails, leave body as undefined
+          logger.debug("Failed to parse request body as JSON", { error });
+        }
       }
     }
 
@@ -216,16 +241,11 @@ export class ApiWrapper {
                 retryAfter,
               });
 
-              throw new ApiError(
-                error.message,
-                ErrorCode.RATE_LIMITED,
-                429,
-                {
-                  retryAfter,
-                  limit: error.result.limit,
-                  reset: error.result.reset
-                }
-              );
+              throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
+                retryAfter,
+                limit: error.result.limit,
+                reset: error.result.reset,
+              });
             }
             throw error; // Re-throw other errors
           }
@@ -301,56 +321,64 @@ export class ApiWrapper {
     }
   }
 
-  private static handleError(error: unknown): NextResponse {
-    logger.error("API Error:", error);
+  private static handleError(
+    error: unknown,
+    request: NextRequest
+  ): NextResponse {
+    // Convert all errors to ApiError for consistent handling
+    let apiError: ApiError;
 
     if (error instanceof ApiError) {
-      const response = NextResponse.json(
-        createErrorResponse(
-          error.code as ErrorCode,
-          error.message,
-          error.statusCode,
-          error.details
-        ),
-        { status: error.statusCode }
+      apiError = error;
+    } else if (error instanceof z.ZodError) {
+      // Convert Zod validation errors to ApiError
+      apiError = new ApiError(
+        "Validation failed. Please check your input.",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+        { issues: error.issues }
       );
-
-      // Add Retry-After header for rate limit errors
-      if (
-        error.statusCode === 429 &&
-        error.details &&
-        typeof error.details === "object" &&
-        "retryAfter" in error.details
-      ) {
-        response.headers.set("Retry-After", String(error.details.retryAfter));
-      }
-
-      return response;
-    }
-
-    if (error instanceof z.ZodError) {
-      const message = error.issues
-        .map((e) => `${e.path.join(".")}: ${e.message}`)
-        .join(", ");
-      return NextResponse.json(
-        createErrorResponse(
-          ErrorCode.VALIDATION_ERROR,
-          `Validation error: ${message}`,
-          400
-        ),
-        { status: 400 }
-      );
-    }
-
-    // Generic server error
-    return NextResponse.json(
-      createErrorResponse(
+    } else if (error instanceof Error) {
+      // Generic error handling
+      apiError = new ApiError(
+        error.message || "Internal server error",
         ErrorCode.INTERNAL_ERROR,
-        "Internal server error",
         500
-      ),
-      { status: 500 }
-    );
+      );
+    } else {
+      // Unknown error type
+      apiError = new ApiError(
+        "An unexpected error occurred",
+        ErrorCode.INTERNAL_ERROR,
+        500
+      );
+    }
+
+    // Format error response with user-friendly messages
+    const formattedError = createFormattedErrorResponse(apiError, request, {
+      includeDebugInfo: process.env.NODE_ENV === "development",
+      environment: process.env.NODE_ENV as "development" | "production",
+    });
+
+    // Create response
+    const response = NextResponse.json(formattedError, {
+      status: apiError.statusCode,
+    });
+
+    // Add request tracking header
+    response.headers.set("X-Request-ID", formattedError.error.requestId);
+
+    // Add Retry-After header for rate limit errors
+    if (
+      apiError.statusCode === 429 &&
+      apiError.details &&
+      typeof apiError.details === "object" &&
+      "retryAfter" in apiError.details
+    ) {
+      response.headers.set("Retry-After", String(apiError.details.retryAfter));
+    }
+
+    return response;
   }
 }
 

@@ -28,7 +28,9 @@
       "mcp__better-auth__search",
       "Bash(pnpm add:*)",
       "Bash(psql:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(pnpm tsx:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
