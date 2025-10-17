@@ -14,7 +14,9 @@ import { getSeedConfig, overrideConfig } from "./config";
 
 // Import database connection
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { neon } from "@neondatabase/serverless";
+import { Pool } from "@neondatabase/serverless";
+import * as schema from "@/infrastructure/database/drizzle/schema";
+import { AdminSeeder } from "./seeders/admin.seeder";
 
 /**
  * Main seed function
@@ -37,8 +39,10 @@ export async function seed(config?: {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL environment variable is required");
     }
-    const sql = neon(process.env.DATABASE_URL);
-    const db = drizzle(sql);
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+    const db = drizzle(pool, { schema });
 
     logger.info("Database connection established");
 
@@ -50,6 +54,7 @@ export async function seed(config?: {
     orchestrator.register(new ApiVersionSeeder());
     orchestrator.register(new NetworkSeeder());
     orchestrator.register(new AbiSeeder());
+    orchestrator.register(new AdminSeeder());
 
     // TODO: Register additional seeders as they are implemented
     // orchestrator.register(new ContractSeeder());

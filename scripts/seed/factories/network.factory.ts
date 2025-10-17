@@ -54,7 +54,7 @@ export class NetworkFactory implements SeedFactory<NetworkData> {
       case 'optimism':
         return this.getOptimismData();
       case 'base':
-        return this.getBaseData();
+        return this.getBaseNetworkData();
       case 'testnet':
         return this.getTestnetData();
       default:
@@ -198,7 +198,7 @@ export class NetworkFactory implements SeedFactory<NetworkData> {
     };
   }
 
-  private getBaseData(): NetworkData {
+  private getBaseNetworkData(): NetworkData {
     return {
       id: IdGenerator.generate({ prefix: EntityPrefix.NETWORK, apiVersion: 'v1' }),
       chainId: 8453,

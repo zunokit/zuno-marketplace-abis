@@ -12,7 +12,6 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed/index.ts",
-    "db:seed:admin": "tsx scripts/seed-admin.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",

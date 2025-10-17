@@ -123,7 +123,7 @@ export class NetworkSeeder implements Seeder {
           
           if (batch.length === 0) break;
           
-          const ids = batch.map(row => row.id);
+          const ids = batch.map((row: { id: string }) => row.id);
           await context.db
             .delete(networks)
             .where(eq(networks.id, ids[0])); // Delete one by one to avoid FK issues

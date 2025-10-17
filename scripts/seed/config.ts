@@ -37,8 +37,8 @@ export const STAGING_SEED_CONFIG: SeedConfig = {
  */
 export function getSeedConfig(): SeedConfig {
   const env = process.env.NODE_ENV || 'development';
-  
-  switch (env) {
+
+  switch (env as 'development' | 'staging' | 'production') {
     case 'production':
       return PRODUCTION_SEED_CONFIG;
     case 'staging':

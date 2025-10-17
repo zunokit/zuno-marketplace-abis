@@ -47,6 +47,7 @@ export class SeedOrchestrator {
       config: this.config,
       results: [],
       shared: {},
+      logger: this.logger,
     };
 
     // Resolve execution order based on dependencies

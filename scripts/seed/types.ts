@@ -58,6 +58,9 @@ export interface SeedContext {
 
   /** Shared data between seeders */
   shared: Record<string, any>;
+
+  /** Logger instance */
+  logger?: any;
 }
 
 export interface Seeder {
