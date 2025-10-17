@@ -17,7 +17,6 @@ import { getSeedConfig, overrideConfig } from './config';
 // Import database connection
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '@/infrastructure/database/drizzle/schema';
-import { AdminSeeder } from './seeders/admin.seeder';
 import { env } from '@/shared/config/env';
 
 /**
@@ -49,13 +48,12 @@ export async function seed(config?: {
     const orchestrator = new SeedOrchestrator(seedConfig);
 
     // Register seeders in dependency order
-    orchestrator.register(new UserSeeder());
+    orchestrator.register(new UserSeeder()); // Creates admin + public users
     orchestrator.register(new ApiVersionSeeder());
     orchestrator.register(new NetworkSeeder());
     orchestrator.register(new AbiSeeder());
     orchestrator.register(new AbiVersionSeeder());
     orchestrator.register(new ContractSeeder());
-    orchestrator.register(new AdminSeeder());
 
     logger.info(`Registered ${orchestrator.getSeeders().length} seeders`);
 

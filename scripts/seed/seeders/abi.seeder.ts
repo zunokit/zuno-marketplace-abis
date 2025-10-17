@@ -20,10 +20,10 @@ export class AbiSeeder implements Seeder {
     let updated = 0;
 
     try {
-      // Get system user ID from shared context
-      const systemUserId = context.shared.systemUserId;
-      if (!systemUserId) {
-        throw new Error("System user ID not found in shared context");
+      // Get admin user ID from shared context
+      const adminUserId = context.shared.adminUserId;
+      if (!adminUserId) {
+        throw new Error("Admin user ID not found in shared context");
       }
 
       const abiData = [
@@ -105,7 +105,7 @@ export class AbiSeeder implements Seeder {
 
           await context.db.insert(abis).values({
             id: abiId,
-            userId: systemUserId,
+            userId: adminUserId,
             name: abiInfo.name,
             description: abiInfo.description,
             contractName: abiInfo.contractName,

@@ -26,6 +26,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
+    requireEmailVerification: false, // Allow login without email verification
     disableSignUp: true, // Disable public signup - admin creates accounts
   },
 

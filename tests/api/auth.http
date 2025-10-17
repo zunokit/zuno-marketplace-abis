@@ -4,28 +4,16 @@
 @apiUrl = {{baseUrl}}/api
 
 ### Variables (update these with actual values after testing)
-@userEmail = test@example.com
-@userPassword = SecurePassword123!
-@adminEmail = admin@example.com
-@adminPassword = AdminPassword123!
-@sessionToken = 
-@apiKey = 
-@userId = 
+@userEmail = admin@zuno-marketplace.local
+@userPassword = adminadmin
+@sessionToken = Yz0fvTKl5IQRnaPsuLSasfUJM6WO2141
+@apiKey = zuno_ENevpQVcjuOsKpJJrWFWpOBvWaZkQzCP
+@userId = usr_v1_RqEzd3eP8EjL
 @apiKeyId = 
 
 ###############################################################################
 # 1. AUTHENTICATION
 ###############################################################################
-
-### 1.1. Sign Up - Create New User
-POST {{apiUrl}}/auth/sign-up/email
-Content-Type: application/json
-
-{
-  "email": "{{userEmail}}",
-  "password": "{{userPassword}}",
-  "name": "Test User"
-}
 
 ### 1.2. Sign In - Get Session
 POST {{apiUrl}}/auth/sign-in/email
@@ -47,15 +35,6 @@ Cookie: better-auth.session_token={{sessionToken}}
 ###############################################################################
 # 2. ADMIN OPERATIONS
 ###############################################################################
-
-### 2.1. Admin Sign In
-POST {{apiUrl}}/auth/sign-in/email
-Content-Type: application/json
-
-{
-  "email": "{{adminEmail}}",
-  "password": "{{adminPassword}}"
-}
 
 ### 2.2. List All Users (Admin Only)
 GET {{apiUrl}}/auth/admin/list-users?limit=20&offset=0

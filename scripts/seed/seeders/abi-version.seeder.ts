@@ -67,6 +67,8 @@ export class AbiVersionSeeder implements Seeder {
             versionNumber: 2,
             abi: version2Abi,
             abiHash: version2Hash,
+            ipfsHash: null,
+            ipfsUrl: null,
             changeLog: "Added newFunction for extended functionality",
             metadata: {
               breaking: false,
@@ -104,6 +106,8 @@ export class AbiVersionSeeder implements Seeder {
             versionNumber: 3,
             abi: version3Abi,
             abiHash: version3Hash,
+            ipfsHash: null,
+            ipfsUrl: null,
             changeLog: "Breaking change: Restructured ABI with renamed functions",
             metadata: {
               breaking: true,
