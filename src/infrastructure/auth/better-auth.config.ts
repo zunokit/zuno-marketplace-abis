@@ -15,7 +15,7 @@ export const auth = betterAuth({
     schema: {
       ...drizzleSchema,
       apikey: drizzleSchema.apiKey,
-      rateLimit: drizzleSchema.rateLimit,
+      rateLimit: drizzleSchema.rateLimit, // For global rate limiting (per IP)
     },
   }),
 
@@ -50,12 +50,14 @@ export const auth = betterAuth({
     },
   },
 
-  // Global rate limiting configuration
+  // Global rate limiting (per IP/session)
+  // Protects server from DDoS and brute force attacks
+  // This is DIFFERENT from API key rate limiting (which uses Redis)
   rateLimit: {
     enabled: true,
     window: 60, // 60 seconds
     max: 100, // 100 requests per minute per IP
-    storage: "database", // Store rate limit data in database
+    storage: "database", // Store in database
     modelName: "rateLimit",
   },
 
@@ -70,11 +72,11 @@ export const auth = betterAuth({
 
     // API Key plugin for programmatic access
     apiKey({
-      // Rate limiting per API key
+      // Rate limiting - DISABLED
+      // We use custom Redis-based RateLimitService in api-handler.ts instead
+      // This provides tier-based limits and distributed rate limiting via Upstash
       rateLimit: {
-        enabled: true,
-        timeWindow: appConfig.rateLimit.free.window * 1000, // Convert to ms
-        maxRequests: appConfig.rateLimit.free.requests,
+        enabled: false, // Disabled - using custom Redis implementation
       },
 
       // Permissions system - Better Auth format (resource: ['action'])
