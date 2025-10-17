@@ -9,6 +9,8 @@ import { NetworkSeeder } from './seeders/network.seeder';
 import { UserSeeder } from './seeders/user.seeder';
 import { ApiVersionSeeder } from './seeders/api-version.seeder';
 import { AbiSeeder } from './seeders/abi.seeder';
+import { AbiVersionSeeder } from './seeders/abi-version.seeder';
+import { ContractSeeder } from './seeders/contract.seeder';
 import { SeedLogger } from './logger';
 import { getSeedConfig, overrideConfig } from './config';
 
@@ -51,10 +53,9 @@ export async function seed(config?: {
     orchestrator.register(new ApiVersionSeeder());
     orchestrator.register(new NetworkSeeder());
     orchestrator.register(new AbiSeeder());
+    orchestrator.register(new AbiVersionSeeder());
+    orchestrator.register(new ContractSeeder());
     orchestrator.register(new AdminSeeder());
-
-    // TODO: Register additional seeders as they are implemented
-    // orchestrator.register(new ContractSeeder());
 
     logger.info(`Registered ${orchestrator.getSeeders().length} seeders`);
 

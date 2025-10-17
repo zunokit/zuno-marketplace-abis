@@ -39,6 +39,7 @@ export enum EntityPrefix {
   API_KEY = 'key',
   NETWORK = 'net',
   ABI = 'abi',
+  ABI_VERSION = 'abv',
   CONTRACT = 'ctr',
   SESSION = 'ses',
   VERIFICATION = 'ver',
