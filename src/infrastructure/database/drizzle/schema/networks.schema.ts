@@ -12,7 +12,7 @@ import {
 export const networks = pgTable(
   "networks",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: varchar("id", { length: 50 }).primaryKey(),
 
     chainId: integer("chain_id").unique().notNull(),
     name: varchar("name", { length: 100 }).notNull(),

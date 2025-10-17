@@ -48,6 +48,7 @@ CREATE TABLE "session" (
 	"ip_address" text,
 	"user_agent" text,
 	"user_id" text NOT NULL,
+	"impersonated_by" text,
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
@@ -59,6 +60,10 @@ CREATE TABLE "user" (
 	"image" text,
 	"created_at" timestamp NOT NULL,
 	"updated_at" timestamp NOT NULL,
+	"role" text DEFAULT 'user' NOT NULL,
+	"banned" boolean DEFAULT false,
+	"ban_reason" text,
+	"ban_expires" timestamp,
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
@@ -72,7 +77,7 @@ CREATE TABLE "verification" (
 );
 --> statement-breakpoint
 CREATE TABLE "networks" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"chain_id" integer NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"slug" varchar(100) NOT NULL,
@@ -90,8 +95,8 @@ CREATE TABLE "networks" (
 );
 --> statement-breakpoint
 CREATE TABLE "abi_versions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"abi_id" uuid NOT NULL,
+	"id" varchar(50) PRIMARY KEY NOT NULL,
+	"abi_id" varchar(50) NOT NULL,
 	"version" varchar(50) NOT NULL,
 	"version_number" integer NOT NULL,
 	"abi" jsonb NOT NULL,
@@ -105,7 +110,7 @@ CREATE TABLE "abi_versions" (
 );
 --> statement-breakpoint
 CREATE TABLE "abis" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"description" text,
@@ -126,10 +131,10 @@ CREATE TABLE "abis" (
 );
 --> statement-breakpoint
 CREATE TABLE "contracts" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" varchar(50) PRIMARY KEY NOT NULL,
 	"address" varchar(42) NOT NULL,
-	"network_id" uuid NOT NULL,
-	"abi_id" uuid NOT NULL,
+	"network_id" varchar(50) NOT NULL,
+	"abi_id" varchar(50) NOT NULL,
 	"name" varchar(255),
 	"type" varchar(50),
 	"is_verified" boolean DEFAULT false NOT NULL,
@@ -158,6 +163,22 @@ CREATE TABLE "audit_logs" (
 	"duration" integer,
 	"metadata" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "api_versions" (
+	"id" text PRIMARY KEY NOT NULL,
+	"label" varchar(32) NOT NULL,
+	"is_current" boolean DEFAULT false NOT NULL,
+	"deprecated" boolean DEFAULT false NOT NULL,
+	"released_at" timestamp NOT NULL,
+	"sunset_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "rate_limit" (
+	"id" text PRIMARY KEY NOT NULL,
+	"key" text NOT NULL,
+	"count" integer DEFAULT 0 NOT NULL,
+	"last_request" bigint NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
