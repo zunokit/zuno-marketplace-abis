@@ -6,6 +6,7 @@
 import { Seeder, SeedContext, SeedResult } from "../types";
 import { abis } from "@/infrastructure/database/drizzle/schema/abis.schema";
 import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
+import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
 
 export class AbiSeeder implements Seeder {
   name = "abis";
@@ -61,7 +62,6 @@ export class AbiSeeder implements Seeder {
             },
           ],
           standard: "ERC20",
-          isPublic: true,
           tags: ["token", "erc20", "standard"],
         },
         {
@@ -90,7 +90,6 @@ export class AbiSeeder implements Seeder {
             },
           ],
           standard: "ERC721",
-          isPublic: true,
           tags: ["nft", "erc721", "standard"],
         },
       ];
@@ -102,6 +101,8 @@ export class AbiSeeder implements Seeder {
             apiVersion: "v1",
           });
 
+          const abiHash = AbiHasher.generateHash(abiInfo.abi);
+
           await context.db.insert(abis).values({
             id: abiId,
             userId: systemUserId,
@@ -109,8 +110,8 @@ export class AbiSeeder implements Seeder {
             description: abiInfo.description,
             contractName: abiInfo.contractName,
             abi: abiInfo.abi,
+            abiHash: abiHash,
             standard: abiInfo.standard,
-            isPublic: abiInfo.isPublic,
             tags: abiInfo.tags,
             createdAt: new Date(),
             updatedAt: new Date(),
