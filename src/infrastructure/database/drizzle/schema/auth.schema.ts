@@ -117,7 +117,9 @@ export const apiKey = pgTable("api_key", {
   permissions: text("permissions"), // JSON string: '{"files":["read","write"],"users":["read"]}'
 
   // Custom Metadata (Your business logic)
-  metadata: jsonb("metadata").$type<{
+  // Note: Better Auth expects this to be text, not jsonb
+  // Better Auth handles JSON serialization/deserialization internally
+  metadata: text("metadata").$type<{
     // Key type
     type?: "personal" | "organization" | "public";
     // Custom scopes (application-specific)

@@ -33,7 +33,7 @@ CREATE TABLE "api_key" (
 	"enabled" boolean DEFAULT true NOT NULL,
 	"expires_at" timestamp,
 	"permissions" text,
-	"metadata" jsonb,
+	"metadata" text,
 	"created_at" timestamp NOT NULL,
 	"updated_at" timestamp NOT NULL,
 	CONSTRAINT "api_key_key_unique" UNIQUE("key")

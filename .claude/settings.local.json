@@ -26,7 +26,8 @@
       "Bash(npm run build)",
       "Bash(find:*)",
       "mcp__better-auth__search",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

@@ -111,10 +111,8 @@ export class UserSeeder implements Seeder {
 
   private async createPublicUser(context: SeedContext): Promise<boolean> {
     try {
-      const publicUserId = IdGenerator.generate({
-        prefix: EntityPrefix.USER,
-        apiVersion: "v1",
-      });
+      // Use fixed ID for public user (can be overridden by PUBLIC_API_USER_ID env var)
+      const publicUserId = process.env.PUBLIC_API_USER_ID || "usr_v1_public_system";
 
       await context.db.insert(user).values({
         id: publicUserId,
@@ -131,6 +129,7 @@ export class UserSeeder implements Seeder {
       });
 
       context.logger?.info(`Created public user: ${publicUserId}`);
+      context.logger?.info(`💡 Make sure PUBLIC_API_USER_ID="${publicUserId}" is set in your .env`);
       return true;
     } catch (error: any) {
       if (this.isUniqueConstraintError(error)) {
