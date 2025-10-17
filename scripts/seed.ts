@@ -9,6 +9,8 @@ import { eq } from "drizzle-orm";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
 import { logger } from "@/shared/lib/utils/logger";
 import { env } from "@/shared/config/env";
+import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
+import { AbiVersionService } from "@/infrastructure/services/abi-version.service";
 
 // Popular networks data
 const networksData = [
@@ -544,11 +546,13 @@ async function seedSystemUser(): Promise<string> {
   logger.info("Seeding system user...");
 
   try {
+    const systemEmail = "system@zuno-marketplace.local";
+
     // Check if system user already exists
     const existing = await db
       .select()
       .from(user)
-      .where(eq(user.id, "system"))
+      .where(eq(user.email, systemEmail))
       .limit(1);
 
     if (existing.length > 0) {
@@ -556,12 +560,16 @@ async function seedSystemUser(): Promise<string> {
       return existing[0].id;
     }
 
-    // Create system user
+    // Create system user with friendly ID (default v1)
+    const systemUserId = IdGenerator.generate({
+      prefix: EntityPrefix.USER,
+      apiVersion: 'v1',
+    });
     const [systemUser] = await db
       .insert(user)
       .values({
-        id: "system",
-        email: "system@zuno-marketplace.local",
+        id: systemUserId,
+        email: systemEmail,
         name: "System",
         emailVerified: true,
         createdAt: new Date(),
@@ -569,7 +577,7 @@ async function seedSystemUser(): Promise<string> {
       })
       .returning();
 
-    logger.info("✓ System user created successfully");
+    logger.info(`✓ System user created: ${systemUser.id}`);
     return systemUser.id;
   } catch (error) {
     logger.error("Failed to create system user", error);
@@ -580,34 +588,37 @@ async function seedSystemUser(): Promise<string> {
 async function seedPublicUser(): Promise<string> {
   logger.info("Seeding public API user...");
 
-  const desiredId = env.PUBLIC_API_USER_ID || "public";
-  const desiredEmail = `public@zuno-marketplace.local`;
+  const publicEmail = "public@zuno-marketplace.local";
 
   const existing = await db
     .select()
     .from(user)
-    .where(eq(user.id, desiredId))
+    .where(eq(user.email, publicEmail))
     .limit(1);
+
   if (existing.length > 0) {
-    logger.info(`Public user '${desiredId}' already exists`);
+    logger.info(`Public user already exists: ${existing[0].id}`);
     return existing[0].id;
   }
 
+  const publicUserId = IdGenerator.generate({
+    prefix: EntityPrefix.USER,
+    apiVersion: 'v1',
+  });
   const [created] = await db
     .insert(user)
     .values({
-      id: desiredId,
-      email: desiredEmail,
-      name: "Public",
+      id: publicUserId,
+      email: publicEmail,
+      name: "Public API",
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
     .returning();
 
-  logger.info(
-    `✓ Public API user created with id='${created.id}'. Set PUBLIC_API_USER_ID=${created.id}`
-  );
+  logger.info(`✓ Public API user created: ${created.id}`);
+  logger.info(`  Set PUBLIC_API_USER_ID=${created.id} in your .env file`);
   return created.id;
 }
 
@@ -655,8 +666,17 @@ async function seedNetworks() {
         continue;
       }
 
-      await db.insert(networks).values(networkData);
-      logger.info(`Seeded network: ${networkData.name}`);
+      // Generate friendly ID with API version
+      const networkId = IdGenerator.generate({
+        prefix: EntityPrefix.NETWORK,
+        apiVersion: 'v1',
+      });
+
+      await db.insert(networks).values({
+        id: networkId,
+        ...networkData,
+      });
+      logger.info(`Seeded network: ${networkData.name} (${networkId})`);
     }
 
     logger.info(`✓ Seeded ${networksData.length} networks successfully`);
@@ -686,8 +706,16 @@ async function seedAbis(userId: string) {
         continue;
       }
 
+      // Generate friendly ID with API version AND ABI version
+      const abiId = IdGenerator.generate({
+        prefix: EntityPrefix.ABI,
+        apiVersion: 'v1',
+        entityVersion: abiData.version,
+      });
+
       await db.insert(abis).values({
-        userId: userId, // Use the provided system user ID
+        id: abiId,
+        userId: userId,
         name: abiData.name,
         description: abiData.description,
         contractName: abiData.contractName,
@@ -698,7 +726,7 @@ async function seedAbis(userId: string) {
         tags: abiData.tags,
       });
 
-      logger.info(`Seeded ABI: ${abiData.name}`);
+      logger.info(`Seeded ABI: ${abiData.name} (${abiId})`);
     }
 
     logger.info(`✓ Seeded ${sampleAbis.length} ABIs successfully`);

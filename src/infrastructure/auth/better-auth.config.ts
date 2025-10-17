@@ -6,6 +6,7 @@ import { db } from "@/infrastructure/database/drizzle/client";
 import * as drizzleSchema from "@/infrastructure/database/drizzle/schema";
 import { env } from "@/shared/config/env";
 import { appConfig } from "@/shared/config/app.config";
+import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -25,6 +26,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
+    disableSignUp: true, // Disable public signup - admin creates accounts
   },
 
   // Session configuration
@@ -102,9 +104,29 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false,
     },
-    // Preferred generateId location per deprecation notice
+    // Use friendly IDs with default v1
+    // Note: Better Auth generateId doesn't have request context access
+    // So we default to v1 for auth entities (user, session, etc.)
     database: {
-      generateId: () => crypto.randomUUID(),
+      generateId: (opts) => {
+        const model = opts?.model;
+        const apiVersion = 'v1'; // Default for auth entities
+
+        switch (model) {
+          case 'user':
+            return IdGenerator.generate({ prefix: EntityPrefix.USER, apiVersion });
+          case 'session':
+            return IdGenerator.generate({ prefix: EntityPrefix.SESSION, apiVersion });
+          case 'verification':
+            return IdGenerator.generate({ prefix: EntityPrefix.VERIFICATION, apiVersion });
+          case 'account':
+            return IdGenerator.generate({ prefix: EntityPrefix.ACCOUNT, apiVersion });
+          case 'apiKey':
+            return IdGenerator.generate({ prefix: EntityPrefix.API_KEY, apiVersion });
+          default:
+            return IdGenerator.generate({ prefix: EntityPrefix.USER, apiVersion });
+        }
+      },
     },
   },
 

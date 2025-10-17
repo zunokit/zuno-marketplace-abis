@@ -44,7 +44,7 @@ export const GET = ApiWrapper.create<
       query: ListContractsSchema,
     },
     auth: {
-      required: false, // Public endpoint
+      required: true, // Require API key
       allowApiKey: true,
       allowSession: true,
     },

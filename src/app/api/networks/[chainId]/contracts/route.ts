@@ -93,6 +93,10 @@ export const GET = ApiWrapper.create(
       params: ChainContractsParamsSchema,
       query: ListContractsSchema,
     },
-    auth: { required: false }, // Public endpoint
+    auth: {
+      required: true, // Require API key
+      allowApiKey: true,
+      allowSession: true,
+    },
   }
 );

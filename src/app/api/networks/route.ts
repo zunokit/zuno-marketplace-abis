@@ -56,7 +56,7 @@ export const GET = ApiWrapper.create<
       query: ListNetworksSchema,
     },
     auth: {
-      required: false, // Public endpoint
+      required: true, // Require API key
       allowApiKey: true,
       allowSession: true,
     },

@@ -59,11 +59,13 @@ Content-Type: application/json
 
 ### 2.2. List All Users (Admin Only)
 GET {{apiUrl}}/auth/admin/list-users?limit=20&offset=0
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 ### 2.3. Create User as Admin
 POST {{apiUrl}}/auth/admin/create-user
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -76,6 +78,7 @@ Cookie: better-auth.session_token={{sessionToken}}
 ### 2.4. Set User Role (Admin Only)
 POST {{apiUrl}}/auth/admin/set-role
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -86,6 +89,7 @@ Cookie: better-auth.session_token={{sessionToken}}
 ### 2.5. Ban User (Admin Only)
 POST {{apiUrl}}/auth/admin/ban-user
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -97,6 +101,7 @@ Cookie: better-auth.session_token={{sessionToken}}
 ### 2.6. Unban User (Admin Only)
 POST {{apiUrl}}/auth/admin/unban-user
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -110,6 +115,7 @@ Cookie: better-auth.session_token={{sessionToken}}
 ### 3.1. Create Personal API Key (via Better Auth)
 POST {{apiUrl}}/auth/api-key/create
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -130,6 +136,7 @@ Cookie: better-auth.session_token={{sessionToken}}
 ### 3.2. Create API Key with Rate Limiting
 POST {{apiUrl}}/admin/api-keys
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -154,6 +161,7 @@ Cookie: better-auth.session_token={{sessionToken}}
 ### 3.3. Create API Key with IP Whitelist
 POST {{apiUrl}}/admin/api-keys
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -172,15 +180,18 @@ Cookie: better-auth.session_token={{sessionToken}}
 
 ### 3.4. List My API Keys
 GET {{apiUrl}}/admin/api-keys?limit=20
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 ### 3.5. Get API Key Details
 GET {{apiUrl}}/admin/api-keys/{{apiKeyId}}
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 ### 3.6. Update API Key
 PATCH {{apiUrl}}/admin/api-keys/{{apiKeyId}}
 Content-Type: application/json
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 {
@@ -194,11 +205,42 @@ Cookie: better-auth.session_token={{sessionToken}}
 
 ### 3.7. Revoke API Key
 DELETE {{apiUrl}}/admin/api-keys/{{apiKeyId}}
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
 
 ### 3.8. Admin: List All API Keys
 GET {{apiUrl}}/admin/api-keys?userId={{userId}}&limit=50
+X-API-Key: {{apiKey}}
 Cookie: better-auth.session_token={{sessionToken}}
+
+###############################################################################
+# 3.9. BACKUP MANAGEMENT (Admin Only)
+###############################################################################
+
+### 3.9.1. Create Database Backup
+POST {{apiUrl}}/backup/create
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 3.9.2. Restore Database from Backup
+POST {{apiUrl}}/backup/restore
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "backupData": {
+    "metadata": {
+      "version": "1.0.0",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "tables": ["abis", "contracts", "networks"]
+    },
+    "tables": {
+      "abis": [],
+      "contracts": [],
+      "networks": []
+    }
+  }
+}
 
 ###############################################################################
 # 4. VERIFY AUTHENTICATION

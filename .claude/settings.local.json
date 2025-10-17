@@ -24,7 +24,9 @@
       "Bash(fi)",
       "Bash(pnpm db:seed:*)",
       "Bash(npm run build)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__better-auth__search",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": []

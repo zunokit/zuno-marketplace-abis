@@ -58,7 +58,7 @@ export const GET = ApiWrapper.create<
       params: GetAbiSchema,
     },
     auth: {
-      required: false, // Public endpoint for non-deleted ABIs
+      required: true, // Require API key
       allowApiKey: true,
       allowSession: true,
     },

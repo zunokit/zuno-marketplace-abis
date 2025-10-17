@@ -3,6 +3,9 @@
 @baseUrl = http://localhost:3000
 @apiUrl = {{baseUrl}}/api
 
+### Variables
+@apiKey = zuno_your_api_key_here
+
 ###############################################################################
 # 1. HEALTH CHECKS
 ###############################################################################
@@ -20,20 +23,24 @@ Accept: application/json
 ### 2.1. API v1 with Version Header
 GET {{baseUrl}}/api/abis?limit=1
 X-API-Version: v1
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ### 2.2. API v1 with Accept-Version Header
 GET {{baseUrl}}/api/abis?limit=1
 Accept-Version: 1.0
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ### 2.3. API v1 without Version Header (Should Default to v1)
 GET {{baseUrl}}/api/abis?limit=1
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ### 2.4. Invalid API Version (Should Fail - 400)
 GET {{baseUrl}}/api/abis?limit=1
 X-API-Version: v99
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ###############################################################################

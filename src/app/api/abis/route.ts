@@ -45,7 +45,7 @@ export const GET = ApiWrapper.create<
       query: ListAbisSchema,
     },
     auth: {
-      required: false, // Public endpoint for listing
+      required: true, // Require API key
       allowApiKey: true,
       allowSession: true,
     },

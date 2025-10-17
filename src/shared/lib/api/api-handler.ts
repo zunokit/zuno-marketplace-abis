@@ -12,13 +12,11 @@ import {
   hasPermission,
   isAdmin,
   canAccessResource,
-  isIpAllowed,
-  isOriginAllowed,
-  checkRateLimit,
   type AuthContext,
   type AuthUser,
   type AuthApiKey,
 } from "@/infrastructure/auth/auth-helpers";
+import { RateLimitService, RateLimitError } from "@/infrastructure/services/rate-limit.service";
 import { logger } from "@/shared/lib/utils/logger";
 
 export interface ApiContext extends AuthContext {
@@ -178,53 +176,58 @@ export class ApiWrapper {
         const apiKey = await verifyApiKey(apiKeyValue);
 
         if (apiKey) {
-          // Validate IP whitelist
+          // Get client IP and origin
           const clientIp =
             request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
             request.headers.get("x-real-ip") ||
             "unknown";
 
-          if (!isIpAllowed(apiKey, clientIp)) {
-            logger.warn("API key IP not whitelisted", {
-              keyId: apiKey.id,
-              ip: clientIp,
-            });
-            throw new ApiError(
-              "Access denied: IP not whitelisted",
-              ErrorCode.FORBIDDEN,
-              403
-            );
-          }
-
-          // Validate origin
           const origin =
             request.headers.get("origin") ||
             request.headers.get("referer") ||
-            "";
-          if (origin && !isOriginAllowed(apiKey, origin)) {
-            logger.warn("API key origin not allowed", {
-              keyId: apiKey.id,
+            undefined;
+
+          // Check rate limit using Redis-based service
+          // This handles: IP whitelist, Origin validation, Tier-based limits
+          try {
+            const rateLimit = await RateLimitService.checkLimit(apiKey, {
+              ip: clientIp,
               origin,
             });
-            throw new ApiError(
-              "Access denied: Origin not allowed",
-              ErrorCode.FORBIDDEN,
-              403
-            );
-          }
 
-          // Check rate limit
-          const rateLimit = await checkRateLimit(apiKey);
-          context.rateLimit = rateLimit;
+            context.rateLimit = {
+              limit: rateLimit.limit,
+              remaining: rateLimit.remaining,
+              reset: rateLimit.reset,
+            };
 
-          if (!rateLimit.allowed) {
-            const retryAfter = Math.ceil((rateLimit.reset - Date.now()) / 1000);
-            throw new ApiError(
-              "Rate limit exceeded",
-              ErrorCode.RATE_LIMITED,
-              429,
-              { retryAfter }
-            );
+            logger.debug("Rate limit check passed", {
+              keyId: apiKey.id,
+              tier: rateLimit.tier,
+              remaining: rateLimit.remaining,
+            });
+          } catch (error) {
+            if (error instanceof RateLimitError) {
+              const retryAfter = error.result.retryAfter || 0;
+
+              logger.warn("Rate limit exceeded", {
+                keyId: apiKey.id,
+                tier: error.result.tier,
+                retryAfter,
+              });
+
+              throw new ApiError(
+                error.message,
+                ErrorCode.RATE_LIMITED,
+                429,
+                {
+                  retryAfter,
+                  limit: error.result.limit,
+                  reset: error.result.reset
+                }
+              );
+            }
+            throw error; // Re-throw other errors
           }
 
           // Set API key context
@@ -234,7 +237,7 @@ export class ApiWrapper {
           logger.debug("API key authenticated", {
             keyId: apiKey.id,
             userId: apiKey.userId,
-            remaining: rateLimit.remaining,
+            remaining: context.rateLimit?.remaining,
           });
         }
       }
