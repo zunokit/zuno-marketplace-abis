@@ -369,7 +369,8 @@ export class ApiError extends Error {
 // Common validation schemas
 export const commonSchemas = {
   id: z.object({
-    id: z.string().uuid("Invalid UUID format"),
+    // Support both UUID and custom ID format (e.g., abi_v1_xyz123)
+    id: z.string().min(1, "ID is required"),
   }),
 
   pagination: z.object({

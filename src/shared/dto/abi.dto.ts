@@ -83,6 +83,22 @@ export interface PaginatedAbiResponseDto {
  */
 export class AbiDtoMapper {
   /**
+   * Helper to safely convert Date or string to ISO string
+   */
+  private static toISOString(date: Date | string | null | undefined): string {
+    if (!date) {
+      return new Date().toISOString();
+    }
+    if (typeof date === 'string') {
+      return date;
+    }
+    if (date instanceof Date) {
+      return date.toISOString();
+    }
+    return new Date().toISOString();
+  }
+
+  /**
    * Convert entity sang full response DTO
    */
   static toResponseDto(entity: AbiEntity): AbiResponseDto {
@@ -99,8 +115,8 @@ export class AbiDtoMapper {
       metadata: entity.metadata || null,
       ipfsHash: entity.ipfsHash || null,
       ipfsUrl: entity.ipfsUrl || null,
-      createdAt: entity.createdAt?.toISOString() || new Date().toISOString(),
-      updatedAt: entity.updatedAt?.toISOString() || new Date().toISOString(),
+      createdAt: this.toISOString(entity.createdAt),
+      updatedAt: this.toISOString(entity.updatedAt),
     };
   }
 
@@ -133,8 +149,8 @@ export class AbiDtoMapper {
       tags: entity.tags || [],
       standard: entity.standard || null,
       ipfsHash: entity.ipfsHash || null,
-      createdAt: entity.createdAt?.toISOString() || new Date().toISOString(),
-      updatedAt: entity.updatedAt?.toISOString() || new Date().toISOString(),
+      createdAt: this.toISOString(entity.createdAt),
+      updatedAt: this.toISOString(entity.updatedAt),
     };
   }
 

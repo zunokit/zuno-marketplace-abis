@@ -4,9 +4,9 @@
 @apiUrl = {{baseUrl}}/api
 
 ### Variables (update after creating resources)
-@apiKey = zuno_your_api_key_here
+@apiKey = zuno_NGIiiZuySdjofTicoyHfvnzIvtFuMJHL
 @sessionToken = your_session_token_here
-@abiId = 
+@abiId = abi_v1_7uRub3tyLJGM
 @userId = 
 
 ###############################################################################

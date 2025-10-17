@@ -50,20 +50,35 @@ export interface AuthContext {
 
 /**
  * Verify API key from request header
+ * Uses Better Auth API to properly verify hashed keys
  */
 export async function verifyApiKey(
   apiKeyValue: string
 ): Promise<AuthApiKey | null> {
   try {
-    // Query database for API key (Better Auth stores hashed keys)
+    // Use Better Auth API to verify the key (handles hashing automatically)
+    const result = await auth.api.verifyApiKey({
+      body: {
+        key: apiKeyValue,
+      },
+    });
+
+    if (!result || !result.valid || !result.key) {
+      logger.debug("API key verification failed");
+      return null;
+    }
+
+    // Get the full key record from database for additional checks
     const [keyRecord] = await db
       .select()
       .from(apiKeyTable)
-      .where(eq(apiKeyTable.key, apiKeyValue))
+      .where(eq(apiKeyTable.id, result.key.id))
       .limit(1);
 
     if (!keyRecord) {
-      logger.debug("API key not found in database");
+      logger.warn("API key verified but not found in database", {
+        keyId: result.key.id,
+      });
       return null;
     }
 

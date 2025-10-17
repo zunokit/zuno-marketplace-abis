@@ -108,6 +108,38 @@ export interface DeletedContractResponseDto {
  */
 export class ContractDtoMapper {
   /**
+   * Helper to safely convert Date or string to ISO string
+   */
+  private static toISOString(date: Date | string | null | undefined): string {
+    if (!date) {
+      return new Date().toISOString();
+    }
+    if (typeof date === 'string') {
+      return date;
+    }
+    if (date instanceof Date) {
+      return date.toISOString();
+    }
+    return new Date().toISOString();
+  }
+
+  /**
+   * Helper for nullable dates
+   */
+  private static toISOStringOrNull(date: Date | string | null | undefined): string | null {
+    if (!date) {
+      return null;
+    }
+    if (typeof date === 'string') {
+      return date;
+    }
+    if (date instanceof Date) {
+      return date.toISOString();
+    }
+    return null;
+  }
+
+  /**
    * Convert entity sang full response DTO
    */
   static toResponseDto(entity: ContractEntity): ContractResponseDto {
@@ -119,13 +151,13 @@ export class ContractDtoMapper {
       name: entity.name || null,
       type: entity.type || null,
       isVerified: entity.isVerified,
-      verifiedAt: entity.verifiedAt?.toISOString() || null,
+      verifiedAt: this.toISOStringOrNull(entity.verifiedAt),
       verificationSource: entity.verificationSource || null,
       metadata: entity.metadata || null,
-      deployedAt: entity.deployedAt?.toISOString() || null,
+      deployedAt: this.toISOStringOrNull(entity.deployedAt),
       deployer: entity.deployer || null,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
+      createdAt: this.toISOString(entity.createdAt),
+      updatedAt: this.toISOString(entity.updatedAt),
     };
   }
 
@@ -162,9 +194,9 @@ export class ContractDtoMapper {
       name: entity.name || null,
       type: entity.type || null,
       isVerified: entity.isVerified,
-      deployedAt: entity.deployedAt?.toISOString() || null,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
+      deployedAt: this.toISOStringOrNull(entity.deployedAt),
+      createdAt: this.toISOString(entity.createdAt),
+      updatedAt: this.toISOString(entity.updatedAt),
     };
   }
 
