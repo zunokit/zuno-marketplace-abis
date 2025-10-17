@@ -6,6 +6,7 @@ import { db } from "@/infrastructure/database/drizzle/client";
 import * as drizzleSchema from "@/infrastructure/database/drizzle/schema";
 import { env } from "@/shared/config/env";
 import { appConfig } from "@/shared/config/app.config";
+import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -14,7 +15,7 @@ export const auth = betterAuth({
     schema: {
       ...drizzleSchema,
       apikey: drizzleSchema.apiKey,
-      rateLimit: drizzleSchema.rateLimit,
+      rateLimit: drizzleSchema.rateLimit, // For global rate limiting (per IP)
     },
   }),
 
@@ -25,6 +26,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
+    requireEmailVerification: false, // Allow login without email verification
+    disableSignUp: true, // Disable public signup - admin creates accounts
   },
 
   // Session configuration
@@ -48,12 +51,14 @@ export const auth = betterAuth({
     },
   },
 
-  // Global rate limiting configuration
+  // Global rate limiting (per IP/session)
+  // Protects server from DDoS and brute force attacks
+  // This is DIFFERENT from API key rate limiting (which uses Redis)
   rateLimit: {
     enabled: true,
     window: 60, // 60 seconds
     max: 100, // 100 requests per minute per IP
-    storage: "database", // Store rate limit data in database
+    storage: "database", // Store in database
     modelName: "rateLimit",
   },
 
@@ -68,11 +73,11 @@ export const auth = betterAuth({
 
     // API Key plugin for programmatic access
     apiKey({
-      // Rate limiting per API key
+      // Rate limiting - DISABLED
+      // We use custom Redis-based RateLimitService in api-handler.ts instead
+      // This provides tier-based limits and distributed rate limiting via Upstash
       rateLimit: {
-        enabled: true,
-        timeWindow: appConfig.rateLimit.free.window * 1000, // Convert to ms
-        maxRequests: appConfig.rateLimit.free.requests,
+        enabled: false, // Disabled - using custom Redis implementation
       },
 
       // Permissions system - Better Auth format (resource: ['action'])
@@ -93,10 +98,7 @@ export const auth = betterAuth({
       defaultKeyLength: 32,
     }),
 
-    // OpenAPI documentation
-    openAPI({
-      path: "/api/auth/reference",
-    }),
+    openAPI(),
   ],
 
   // Advanced security options
@@ -105,9 +107,29 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false,
     },
-    // Preferred generateId location per deprecation notice
+    // Use friendly IDs with default v1
+    // Note: Better Auth generateId doesn't have request context access
+    // So we default to v1 for auth entities (user, session, etc.)
     database: {
-      generateId: () => crypto.randomUUID(),
+      generateId: (opts) => {
+        const model = opts?.model;
+        const apiVersion = 'v1'; // Default for auth entities
+
+        switch (model) {
+          case 'user':
+            return IdGenerator.generate({ prefix: EntityPrefix.USER, apiVersion });
+          case 'session':
+            return IdGenerator.generate({ prefix: EntityPrefix.SESSION, apiVersion });
+          case 'verification':
+            return IdGenerator.generate({ prefix: EntityPrefix.VERIFICATION, apiVersion });
+          case 'account':
+            return IdGenerator.generate({ prefix: EntityPrefix.ACCOUNT, apiVersion });
+          case 'apiKey':
+            return IdGenerator.generate({ prefix: EntityPrefix.API_KEY, apiVersion });
+          default:
+            return IdGenerator.generate({ prefix: EntityPrefix.USER, apiVersion });
+        }
+      },
     },
   },
 

@@ -42,7 +42,21 @@ export class RedisClient {
     try {
       const value = await this.client.get(key);
       if (!value) return null;
-      return JSON.parse(value as string) as T;
+
+      // If value is already an object, return it directly
+      // This handles the case where Upstash Redis returns parsed JSON
+      if (typeof value === 'object') {
+        return value as T;
+      }
+
+      // Otherwise, parse the string value
+      if (typeof value === 'string') {
+        return JSON.parse(value) as T;
+      }
+
+      // Unexpected type, return null
+      console.warn(`Unexpected Redis value type for key ${key}:`, typeof value);
+      return null;
     } catch (error) {
       console.error(`Redis GET error for key ${key}:`, error);
       return null;

@@ -1,43 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
 
 export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
   const { pathname } = request.nextUrl;
 
-  // API Version enforcement for all /api routes using headers
+  // API Version detection and validation for all /api routes
   if (pathname.startsWith("/api")) {
-    const apiVersion =
+    // Get version from client headers
+    const clientVersion =
       request.headers.get("X-API-Version") ||
-      request.headers.get("Accept-Version");
+      request.headers.get("Accept-Version") ||
+      "v1"; // Default to v1
 
-    // If no version header is provided, default to v1
-    if (!apiVersion) {
-      const response = NextResponse.next();
-      response.headers.set("X-API-Version", "v1");
-      response.headers.set("X-API-Deprecated", "false");
-      return response;
-    }
+    // Validate against database
+    const isValid = await validateApiVersion(clientVersion);
+    const validatedVersion = isValid ? clientVersion : "v1";
 
-    // Validate API version
-    const supportedVersions = ["v1", "1.0", "1"];
-    if (!supportedVersions.includes(apiVersion)) {
+    // If invalid version provided, return error
+    if (!isValid && (request.headers.get("X-API-Version") || request.headers.get("Accept-Version"))) {
+      const supportedVersions = await getSupportedApiVersions();
       return NextResponse.json(
         {
           error: "Unsupported API version",
-          message: `API version '${apiVersion}' is not supported. Supported versions: ${supportedVersions.join(
-            ", "
-          )}`,
+          message: `API version '${clientVersion}' is not supported. Supported versions: ${supportedVersions.join(", ")}`,
           supportedVersions,
         },
         { status: 400 }
       );
     }
 
-    // Add version headers to response
+    // Create response with validated version
     const response = NextResponse.next();
-    response.headers.set("X-API-Version", "v1");
+
+    // Set internal header for use in route handlers
+    response.headers.set("X-Internal-API-Version", validatedVersion);
+
+    // Set public headers for client
+    response.headers.set("X-API-Version", validatedVersion);
     response.headers.set("X-API-Deprecated", "false");
+
     return response;
   }
 

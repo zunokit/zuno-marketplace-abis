@@ -1,73 +1,50 @@
 import { z } from "zod";
-import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import {
   CreateContractSchema,
   ListContractsSchema,
 } from "@/shared/lib/validation/contract.dto";
-import { ContractRepositoryImpl } from "@/infrastructure/database/repositories/contract.repository.impl";
-import { AbiRepositoryImpl } from "@/infrastructure/database/repositories/abi.repository.impl";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import {
+  getContractRepository,
+  getAbiRepository,
+  getCacheService,
+} from "@/infrastructure/di/container";
 import { CreateContractUseCase } from "@/core/use-cases/contract/create-contract.use-case";
-import { ErrorCode } from "@/shared/types";
+import {
+  ContractDtoMapper,
+  type PaginatedContractResponseDto,
+  type CreatedContractResponseDto,
+} from "@/shared/dto/contract.dto";
+import { ContractQueryService } from "@/core/services/contract/contract-query.service";
+import { AuthContextService } from "@/core/services/auth/auth-context.service";
 
 /**
  * GET /api/contracts - List contracts with filtering, pagination, and search
- *
- * Query parameters:
- * - page, limit: Pagination
- * - query: Search by name or address
- * - sortBy, sortOrder: Sorting
- * - networkId: Filter by network
- * - abiId: Filter by ABI
- * - type: Filter by contract type
- * - isVerified: Filter by verification status
- * - deployer: Filter by deployer address
  */
-export const GET = ApiWrapper.create(
-  async (input: z.infer<typeof ListContractsSchema>) => {
-    const contractRepository = new ContractRepositoryImpl();
+export const GET = ApiWrapper.create<
+  z.infer<typeof ListContractsSchema>,
+  PaginatedContractResponseDto
+>(
+  async (input, context) => {
+    // Extract query from nested input structure
+    const queryParams = (input as any).query || input;
 
-    // Build filters
-    const filters: any = {};
+    // 1. Build list params qua service
+    const listParams = ContractQueryService.buildListParams(queryParams);
 
-    if (input.networkId) {
-      filters.networkId = input.networkId;
-    }
+    // 2. Fetch data qua repository
+    const contractRepository = getContractRepository();
+    const result = await contractRepository.list(listParams);
 
-    if (input.abiId) {
-      filters.abiId = input.abiId;
-    }
-
-    if (input.type) {
-      filters.type = input.type;
-    }
-
-    if (input.isVerified !== undefined) {
-      filters.isVerified = input.isVerified === "true";
-    }
-
-    if (input.deployer) {
-      filters.deployer = input.deployer;
-    }
-
-    // List contracts
-    const result = await contractRepository.list({
-      page: input.page as number,
-      limit: input.limit as number,
-      sortBy: input.sortBy as any,
-      sortOrder: input.sortOrder as "asc" | "desc",
-      query: input.query as string | undefined,
-      filters,
-    });
-
-    return result;
+    // 3. Convert sang DTOs
+    return ContractDtoMapper.toPaginatedResponseDto(result);
   },
   {
     validation: {
       query: ListContractsSchema,
     },
     auth: {
-      required: false, // Public endpoint
+      required: true, // Require API key
       allowApiKey: true,
       allowSession: true,
     },
@@ -76,47 +53,28 @@ export const GET = ApiWrapper.create(
 
 /**
  * POST /api/contracts - Register a new smart contract
- *
- * Body:
- * - address: Contract address (0x...)
- * - networkId: Network UUID
- * - abiId: ABI UUID
- * - name: Optional contract name
- * - type: Optional contract type
- * - metadata: Optional metadata (symbol, decimals, etc.)
- * - deployedAt: Optional deployment timestamp
- * - deployer: Optional deployer address
  */
-export const POST = ApiWrapper.create(
-  async (input: { body: z.infer<typeof CreateContractSchema> }, context) => {
-    const userId = context.user?.id || context.apiKey?.userId;
+export const POST = ApiWrapper.create<
+  { body: z.infer<typeof CreateContractSchema> },
+  CreatedContractResponseDto
+>(
+  async (input, context) => {
+    // 1. Extract user ID qua service
+    const userId = AuthContextService.extractUserId(context);
 
-    if (!userId) {
-      throw new ApiError(
-        "User ID not found in authentication context",
-        ErrorCode.UNAUTHORIZED,
-        401
-      );
-    }
-
-    // Initialize dependencies
-    const contractRepository = new ContractRepositoryImpl();
-    const abiRepository = new AbiRepositoryImpl();
-    const cacheService = CacheAdapter.getInstance();
-
-    // Create use case
+    // 2. Create use case với DI
     const createContractUseCase = new CreateContractUseCase(
-      contractRepository,
-      abiRepository,
-      cacheService
+      getContractRepository(),
+      getAbiRepository(),
+      getCacheService()
     );
 
-    // Parse deployedAt if provided
+    // 3. Parse deployedAt if provided
     const deployedAt = input.body.deployedAt
       ? new Date(input.body.deployedAt)
       : undefined;
 
-    // Execute use case
+    // 4. Execute use case
     const result = await createContractUseCase.execute({
       userId,
       address: input.body.address,
@@ -129,22 +87,8 @@ export const POST = ApiWrapper.create(
       deployer: input.body.deployer,
     });
 
-    return {
-      id: result.contract.id,
-      address: result.contract.address,
-      networkId: result.contract.networkId,
-      abiId: result.contract.abiId,
-      name: result.contract.name,
-      type: result.contract.type,
-      isVerified: result.contract.isVerified,
-      verifiedAt: result.contract.verifiedAt?.toISOString(),
-      verificationSource: result.contract.verificationSource,
-      metadata: result.contract.metadata,
-      deployedAt: result.contract.deployedAt?.toISOString(),
-      deployer: result.contract.deployer,
-      createdAt: result.contract.createdAt.toISOString(),
-      updatedAt: result.contract.updatedAt.toISOString(),
-    };
+    // 5. Convert sang response DTO
+    return ContractDtoMapper.toCreatedResponseDto(result.contract);
   },
   {
     validation: {

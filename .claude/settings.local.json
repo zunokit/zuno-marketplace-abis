@@ -23,7 +23,14 @@
       "Bash(else echo \"not exists\")",
       "Bash(fi)",
       "Bash(pnpm db:seed:*)",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(find:*)",
+      "mcp__better-auth__search",
+      "Bash(pnpm add:*)",
+      "Bash(psql:*)",
+      "Bash(curl:*)",
+      "Bash(pnpm tsx:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

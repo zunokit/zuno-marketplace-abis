@@ -7,31 +7,24 @@ import {
   ListApiKeysSchema,
 } from "@/shared/lib/validation/admin.dto";
 import z from "zod";
-
-// Validation schemas
-// DTOs moved to shared lib
+import { ApiKeyService } from "@/infrastructure/services/api-key.service";
 
 // GET /api/admin/api-keys - List API keys (admin only)
-export const GET = ApiWrapper.create(
-  async (input: z.infer<typeof ListApiKeysSchema>, context) => {
+export const GET = ApiWrapper.create<
+  { query: z.infer<typeof ListApiKeysSchema> },
+  any
+>(
+  async (input, context) => {
+    // Admin authorization check
     if (!isAdmin(context)) {
       throw new ApiError("Admin access required", ErrorCode.FORBIDDEN, 403);
     }
 
-    const query: any = {
-      limit: input.limit,
-      offset: input.offset,
-    };
+    // Build params with validation
+    const params = ApiKeyService.buildListParams(input.query, context);
 
-    if (input.userId) {
-      query.userId = input.userId;
-    }
-
-    const result = await auth.api.listApiKeys({
-      query,
-    });
-
-    return result;
+    // Execute query through service layer
+    return await ApiKeyService.list(params);
   },
   {
     validation: {
@@ -48,59 +41,8 @@ export const GET = ApiWrapper.create(
 // POST /api/admin/api-keys - Create API key
 export const POST = ApiWrapper.create(
   async (input: { body: z.infer<typeof CreateApiKeySchema> }, context) => {
-    const currentUserId = context.user?.id || context.apiKey?.userId;
-
-    if (!currentUserId) {
-      throw new ApiError(
-        "User ID not found in authentication context",
-        ErrorCode.UNAUTHORIZED,
-        401
-      );
-    }
-
-    const targetUserId = input.body.userId || currentUserId;
-
-    if (input.body.userId && input.body.userId !== currentUserId) {
-      if (!isAdmin(context)) {
-        throw new ApiError(
-          "Only admins can create API keys for other users",
-          ErrorCode.FORBIDDEN,
-          403
-        );
-      }
-    }
-
-    // expiresAt is derived in service via expiresIn; local variable not needed
-
-    const metadata = {
-      ...input.body.metadata,
-      scopes: input.body.scopes || [],
-    };
-
-    const result = await auth.api.createApiKey({
-      body: {
-        userId: targetUserId,
-        name: input.body.name,
-        // Better Auth expects expiresIn (seconds). Use provided input directly when present.
-        expiresIn: input.body.expiresIn,
-        permissions: input.body.permissions,
-        metadata,
-        rateLimitEnabled: input.body.rateLimit?.enabled ?? undefined,
-        rateLimitMax: input.body.rateLimit?.max ?? undefined,
-        rateLimitTimeWindow: input.body.rateLimit?.timeWindow ?? undefined,
-      },
-    });
-
-    return {
-      id: result.id,
-      key: result.key,
-      name: result.name,
-      userId: result.userId,
-      expiresAt: result.expiresAt,
-      permissions: result.permissions,
-      metadata,
-      createdAt: result.createdAt,
-    };
+    // Delegate all logic to service layer
+    return await ApiKeyService.create(input.body, context, auth.api);
   },
   {
     validation: {

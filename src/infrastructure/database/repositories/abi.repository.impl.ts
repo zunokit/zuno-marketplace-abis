@@ -231,6 +231,16 @@ export class AbiRepositoryImpl implements AbiRepository {
         if (params.filters.standard) {
           conditions.push(eq(abis.standard, params.filters.standard));
         }
+        if (params.filters.tags && params.filters.tags.length > 0) {
+          // PostgreSQL arrayoverlap operator - check if ANY tag matches
+          // Build OR conditions for each tag
+          const tagOrConditions = params.filters.tags.map(tag =>
+            sql`${tag} = ANY(${abis.tags})`
+          );
+          if (tagOrConditions.length > 0) {
+            conditions.push(sql`(${sql.join(tagOrConditions, sql` OR `)})`);
+          }
+        }
         if (params.filters.createdAfter) {
           conditions.push(gt(abis.createdAt, params.filters.createdAfter));
         }

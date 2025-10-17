@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1760535965399,
-      "tag": "0000_fancy_dark_phoenix",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1760543339736,
-      "tag": "0001_awesome_bishop",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1760543886142,
-      "tag": "0002_careful_captain_britain",
+      "when": 1760707050785,
+      "tag": "0000_gifted_jubilee",
       "breakpoints": true
     }
   ]

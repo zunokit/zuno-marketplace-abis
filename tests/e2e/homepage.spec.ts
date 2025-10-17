@@ -24,75 +24,12 @@ test.describe("Homepage", () => {
       page.getByRole("button", { name: /Get Public API Key/i })
     ).toBeVisible();
 
-    // Check feature badges (use specific badge selectors)
-    await expect(
-      page.locator('span[data-slot="badge"]').filter({ hasText: "Multi-chain" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('span[data-slot="badge"]')
-        .filter({ hasText: "Version Control" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('span[data-slot="badge"]')
-        .filter({ hasText: "IPFS Storage" })
-    ).toBeVisible();
-    await expect(
-      page.locator('span[data-slot="badge"]').filter({ hasText: "API Access" })
-    ).toBeVisible();
+    // Feature badges removed from simplified UI
   });
 
-  test("should have working navigation links", async ({ page }) => {
-    await page.goto("/");
+  // Navigation links were removed from simplified UI
 
-    // Test Sign Up link
-    const signUpLink = page.getByRole("link", { name: /Sign Up Free/i });
-    await expect(signUpLink).toHaveAttribute("href", "/auth/signin");
-
-    // Test API Docs link
-    const apiDocsLink = page.getByRole("link", { name: /View API Docs/i });
-    await expect(apiDocsLink).toHaveAttribute("href", "/api/auth/reference");
-  });
-
-  test("should display feature cards", async ({ page }) => {
-    await page.goto("/");
-
-    // Wait for the page to load completely
-    await page.waitForLoadState("networkidle");
-
-    // Check feature cards are present (use specific card title selectors)
-    await expect(
-      page
-        .locator('div[data-slot="card-title"]')
-        .filter({ hasText: "Multi-chain Support" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('div[data-slot="card-title"]')
-        .filter({ hasText: "Version Control" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('div[data-slot="card-title"]')
-        .filter({ hasText: "IPFS Backup" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('div[data-slot="card-title"]')
-        .filter({ hasText: "API Access" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('div[data-slot="card-title"]')
-        .filter({ hasText: "Enterprise Security" })
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('div[data-slot="card-title"]')
-        .filter({ hasText: "Standards Validation" })
-    ).toBeVisible();
-  });
+  // Feature cards section removed from simplified UI
 
   test("should be responsive on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 }); // iPhone SE size
@@ -105,9 +42,7 @@ test.describe("Homepage", () => {
     await expect(
       page.getByRole("button", { name: /Get Public API Key/i })
     ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /Sign Up Free/i })
-    ).toBeVisible();
+    // No navigation links to assert on mobile
   });
 
   test("should generate API key when button is clicked", async ({ page }) => {

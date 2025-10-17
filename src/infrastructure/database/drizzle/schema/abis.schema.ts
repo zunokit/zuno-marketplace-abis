@@ -15,7 +15,7 @@ import { user } from "./auth.schema";
 export const abis = pgTable(
   "abis",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: varchar("id", { length: 50 }).primaryKey(),
 
     // Owner (via Better Auth user)
     userId: text("user_id")
@@ -75,8 +75,8 @@ export const abis = pgTable(
 export const abiVersions = pgTable(
   "abi_versions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    abiId: uuid("abi_id")
+    id: varchar("id", { length: 50 }).primaryKey(),
+    abiId: varchar("abi_id", { length: 50 })
       .references(() => abis.id, { onDelete: "cascade" })
       .notNull(),
 

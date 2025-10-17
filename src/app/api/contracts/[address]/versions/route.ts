@@ -98,7 +98,11 @@ export const GET = ApiWrapper.create(
     };
   },
   {
-    auth: { required: false }, // Public endpoint
+    auth: {
+      required: true, // Require API key
+      allowApiKey: true,
+      allowSession: true,
+    },
     validation: { params: ParamsSchema },
   }
 );

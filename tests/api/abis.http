@@ -4,33 +4,38 @@
 @apiUrl = {{baseUrl}}/api
 
 ### Variables (update after creating resources)
-@apiKey = zuno_your_api_key_here
+@apiKey = zuno_NGIiiZuySdjofTicoyHfvnzIvtFuMJHL
 @sessionToken = your_session_token_here
-@abiId = 
+@abiId = abi_v1_7uRub3tyLJGM
 @userId = 
 
 ###############################################################################
-# 1. PUBLIC ENDPOINTS (No Authentication)
+# 1. ABI ENDPOINTS (Requires API Key)
 ###############################################################################
 
-### 1.1. List All ABIs (Public)
+### 1.1. List All ABIs (Requires API Key)
 GET {{apiUrl}}/abis?page=1&limit=20&sortBy=createdAt&sortOrder=desc
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ### 1.2. Search ABIs by Query
 GET {{apiUrl}}/abis?query=ERC20&page=1&limit=10
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ### 1.3. Filter by Standard
 GET {{apiUrl}}/abis?standard=ERC20&limit=20
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ### 1.4. Filter by Tags
 GET {{apiUrl}}/abis?tags=token,defi&limit=10
+X-API-Key: {{apiKey}}
 Accept: application/json
 
-### 1.5. Get Specific ABI by ID (Public)
+### 1.5. Get Specific ABI by ID (Requires API Key)
 GET {{apiUrl}}/abis/{{abiId}}
+X-API-Key: {{apiKey}}
 Accept: application/json
 
 ###############################################################################
@@ -307,21 +312,27 @@ X-API-Key: {{apiKey}}
 
 ### 6.1. Pagination - First Page
 GET {{apiUrl}}/abis?page=1&limit=10&sortBy=createdAt&sortOrder=desc
+X-API-Key: {{apiKey}}
 
 ### 6.2. Pagination - Second Page
 GET {{apiUrl}}/abis?page=2&limit=10&sortBy=createdAt&sortOrder=desc
+X-API-Key: {{apiKey}}
 
 ### 6.3. Sort by Name Ascending
 GET {{apiUrl}}/abis?sortBy=name&sortOrder=asc&limit=20
+X-API-Key: {{apiKey}}
 
 ### 6.4. Sort by Updated Date
 GET {{apiUrl}}/abis?sortBy=updatedAt&sortOrder=desc&limit=20
+X-API-Key: {{apiKey}}
 
 ### 6.5. Complex Filter
 GET {{apiUrl}}/abis?standard=ERC20&tags=token,defi&query=swap&limit=10
+X-API-Key: {{apiKey}}
 
 ### 6.6. Filter by Compatible Networks
 GET {{apiUrl}}/abis?compatibleNetworks=ethereum,polygon&limit=20
+X-API-Key: {{apiKey}}
 
 ###############################################################################
 # 7. RATE LIMITING TESTS

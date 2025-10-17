@@ -14,15 +14,15 @@ import { abis } from "./abis.schema";
 export const contracts = pgTable(
   "contracts",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: varchar("id", { length: 50 }).primaryKey(),
 
     address: varchar("address", { length: 42 }).notNull(),
-    networkId: uuid("network_id")
+    networkId: varchar("network_id", { length: 50 })
       .references(() => networks.id)
       .notNull(),
 
     // Contract MUST have ABI (cannot exist without ABI)
-    abiId: uuid("abi_id")
+    abiId: varchar("abi_id", { length: 50 })
       .references(() => abis.id)
       .notNull(),
 

@@ -1,15 +1,7 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool } from "@neondatabase/serverless";
 import * as schema from "./schema";
 import { env } from "@/shared/config/env";
 
-// Create connection pool
-const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-});
+import { drizzle } from "drizzle-orm/neon-http";
 
-// Create Drizzle database instance with schema
-export const db = drizzle(pool, { schema });
-
-// Export types for use in repositories
+export const db = drizzle(env.DATABASE_URL!, { schema });
 export type Database = typeof db;

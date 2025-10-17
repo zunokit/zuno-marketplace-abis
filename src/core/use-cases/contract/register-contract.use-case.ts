@@ -7,7 +7,7 @@ import {
 import { ContractRepository } from "@/core/domain/contract/contract.repository";
 import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiNotFoundError } from "@/core/domain/abi/abi.entity";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import type { ICacheService } from "@/infrastructure/di/container";
 import { isValidAddress, isValidChainId, ErrorCode } from "@/shared/types";
 import { ValidationError } from "@/shared/lib/utils/error-handler";
 
@@ -36,7 +36,7 @@ export class RegisterContractUseCase {
   constructor(
     private contractRepository: ContractRepository,
     private abiRepository: AbiRepository,
-    private cacheService: CacheAdapter
+    private cacheService: ICacheService
   ) {}
 
   async execute(input: RegisterContractUseCaseInput): Promise<RegisterContractUseCaseOutput> {
@@ -107,7 +107,7 @@ export class UpdateContractAbiUseCase {
   constructor(
     private contractRepository: ContractRepository,
     private abiRepository: AbiRepository,
-    private cacheService: CacheAdapter
+    private cacheService: ICacheService
   ) {}
 
   async execute(input: UpdateContractAbiUseCaseInput): Promise<UpdateContractAbiUseCaseOutput> {
@@ -169,7 +169,7 @@ export interface VerifyContractUseCaseOutput {
 export class VerifyContractUseCase {
   constructor(
     private contractRepository: ContractRepository,
-    private cacheService: CacheAdapter
+    private cacheService: ICacheService
   ) {}
 
   async execute(input: VerifyContractUseCaseInput): Promise<VerifyContractUseCaseOutput> {

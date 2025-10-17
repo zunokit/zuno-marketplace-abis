@@ -4,27 +4,37 @@ import {
   ContractAddressParamsSchema,
   UpdateContractSchema,
 } from "@/shared/lib/validation/contract.dto";
-import { ContractRepositoryImpl } from "@/infrastructure/database/repositories/contract.repository.impl";
-import { AbiRepositoryImpl } from "@/infrastructure/database/repositories/abi.repository.impl";
-import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import {
+  getContractRepository,
+  getAbiRepository,
+  getCacheService,
+} from "@/infrastructure/di/container";
 import {
   GetContractUseCase,
   UpdateContractUseCase,
   DeleteContractUseCase,
 } from "@/core/use-cases/contract";
+import {
+  ContractDtoMapper,
+  type ContractWithAbiResponseDto,
+  type UpdatedContractResponseDto,
+  type DeletedContractResponseDto,
+} from "@/shared/dto/contract.dto";
+import { AuthContextService } from "@/core/services/auth/auth-context.service";
 import { ErrorCode } from "@/shared/types";
+import { ContractError } from "@/core/domain/contract/contract.entity";
 
 const ParamsSchema = ContractAddressParamsSchema;
 
 /**
  * GET /api/contracts/[address] - Get contract by address
- *
- * Query parameters:
- * - networkId: Required - Network UUID to identify the contract
- * - includeAbi: Optional - Whether to include full ABI (default: false)
  */
-export const GET = ApiWrapper.create(
-  async (input: { query?: { networkId?: string; includeAbi?: string } }, context) => {
+export const GET = ApiWrapper.create<
+  { query?: { networkId?: string; includeAbi?: string } },
+  ContractWithAbiResponseDto
+>(
+  async (input, context) => {
+    // 1. Extract params
     const address = context.params?.address;
     if (!address) {
       throw new ApiError(
@@ -34,7 +44,9 @@ export const GET = ApiWrapper.create(
       );
     }
 
-    const networkId = input.query?.networkId;
+    // Extract query from nested input structure
+    const queryParams = (input as any).query || input;
+    const networkId = queryParams?.networkId;
     if (!networkId) {
       throw new ApiError(
         "networkId query parameter is required",
@@ -43,73 +55,44 @@ export const GET = ApiWrapper.create(
       );
     }
 
-    // Initialize dependencies
-    const contractRepository = new ContractRepositoryImpl();
-    const abiRepository = new AbiRepositoryImpl();
-
-    // Create use case
+    // 2. Create use case với DI
     const getContractUseCase = new GetContractUseCase(
-      contractRepository,
-      abiRepository
+      getContractRepository(),
+      getAbiRepository()
     );
 
-    // Execute use case
+    // 3. Execute use case
     const result = await getContractUseCase.execute({
       identifier: address,
       networkId,
-      includeAbi: input.query?.includeAbi === "true",
+      includeAbi: queryParams?.includeAbi === "true",
     });
 
-    return {
-      contract: {
-        id: result.contract.id,
-        address: result.contract.address,
-        networkId: result.contract.networkId,
-        abiId: result.contract.abiId,
-        name: result.contract.name,
-        type: result.contract.type,
-        isVerified: result.contract.isVerified,
-        verifiedAt: result.contract.verifiedAt?.toISOString(),
-        verificationSource: result.contract.verificationSource,
-        metadata: result.contract.metadata,
-        deployedAt: result.contract.deployedAt?.toISOString(),
-        deployer: result.contract.deployer,
-        createdAt: result.contract.createdAt.toISOString(),
-        updatedAt: result.contract.updatedAt.toISOString(),
-      },
-      abi: result.abi
-        ? {
-            id: result.abi.id,
-            name: result.abi.name,
-            abi: result.abi.abi,
-            version: result.abi.version,
-            standard: result.abi.standard,
-          }
-        : undefined,
-    };
+    // 4. Convert sang response DTO
+    return ContractDtoMapper.toResponseWithAbiDto(result.contract, result.abi);
   },
   {
-    auth: { required: false }, // Public endpoint
+    auth: {
+      required: true, // Require API key
+      allowApiKey: true,
+      allowSession: true,
+    },
     validation: { params: ParamsSchema },
   }
 );
 
 /**
  * PUT /api/contracts/[address] - Update contract metadata
- *
- * Query parameters:
- * - networkId: Required - Network UUID to identify the contract
- *
- * Body: UpdateContractSchema
  */
-export const PUT = ApiWrapper.create(
-  async (
-    input: {
-      body: z.infer<typeof UpdateContractSchema>;
-      query?: { networkId?: string };
-    },
-    context
-  ) => {
+export const PUT = ApiWrapper.create<
+  {
+    body: z.infer<typeof UpdateContractSchema>;
+    query?: { networkId?: string };
+  },
+  UpdatedContractResponseDto
+>(
+  async (input, context) => {
+    // 1. Extract params
     const address = context.params?.address;
     if (!address) {
       throw new ApiError(
@@ -119,7 +102,9 @@ export const PUT = ApiWrapper.create(
       );
     }
 
-    const networkId = input.query?.networkId;
+    // Extract query from nested input structure
+    const queryParams = (input as any).query || input;
+    const networkId = queryParams?.networkId;
     if (!networkId) {
       throw new ApiError(
         "networkId query parameter is required",
@@ -128,14 +113,11 @@ export const PUT = ApiWrapper.create(
       );
     }
 
-    const userId = context.user?.id || context.apiKey?.userId;
+    // 2. Extract user ID qua service
+    const userId = AuthContextService.extractUserId(context);
 
-    // Initialize dependencies
-    const contractRepository = new ContractRepositoryImpl();
-    const abiRepository = new AbiRepositoryImpl();
-    const cacheService = CacheAdapter.getInstance();
-
-    // First find contract by address
+    // 3. Find contract by address
+    const contractRepository = getContractRepository();
     const contract = await contractRepository.findByAddress(address, networkId);
     if (!contract) {
       throw new ApiError(
@@ -145,19 +127,19 @@ export const PUT = ApiWrapper.create(
       );
     }
 
-    // Create use case
+    // 4. Create use case với DI
     const updateContractUseCase = new UpdateContractUseCase(
       contractRepository,
-      abiRepository,
-      cacheService
+      getAbiRepository(),
+      getCacheService()
     );
 
-    // Parse deployedAt if provided
+    // 5. Parse deployedAt if provided
     const deployedAt = input.body.deployedAt
       ? new Date(input.body.deployedAt)
       : undefined;
 
-    // Execute use case
+    // 6. Execute use case
     const result = await updateContractUseCase.execute({
       contractId: contract.id,
       userId,
@@ -167,25 +149,11 @@ export const PUT = ApiWrapper.create(
       },
     });
 
-    return {
-      contract: {
-        id: result.contract.id,
-        address: result.contract.address,
-        networkId: result.contract.networkId,
-        abiId: result.contract.abiId,
-        name: result.contract.name,
-        type: result.contract.type,
-        isVerified: result.contract.isVerified,
-        verifiedAt: result.contract.verifiedAt?.toISOString(),
-        verificationSource: result.contract.verificationSource,
-        metadata: result.contract.metadata,
-        deployedAt: result.contract.deployedAt?.toISOString(),
-        deployer: result.contract.deployer,
-        createdAt: result.contract.createdAt.toISOString(),
-        updatedAt: result.contract.updatedAt.toISOString(),
-      },
-      abiChanged: result.abiChanged,
-    };
+    // 7. Convert sang response DTO
+    return ContractDtoMapper.toUpdatedResponseDto(
+      result.contract,
+      result.abiChanged
+    );
   },
   {
     auth: {
@@ -203,12 +171,13 @@ export const PUT = ApiWrapper.create(
 
 /**
  * DELETE /api/contracts/[address] - Delete contract
- *
- * Query parameters:
- * - networkId: Required - Network UUID to identify the contract
  */
-export const DELETE = ApiWrapper.create(
-  async (input: { query?: { networkId?: string } }, context) => {
+export const DELETE = ApiWrapper.create<
+  { query?: { networkId?: string } },
+  DeletedContractResponseDto
+>(
+  async (input, context) => {
+    // 1. Extract params
     const address = context.params?.address;
     if (!address) {
       throw new ApiError(
@@ -218,7 +187,9 @@ export const DELETE = ApiWrapper.create(
       );
     }
 
-    const networkId = input.query?.networkId;
+    // Extract query from nested input structure
+    const queryParams = (input as any).query || input;
+    const networkId = queryParams?.networkId;
     if (!networkId) {
       throw new ApiError(
         "networkId query parameter is required",
@@ -227,13 +198,11 @@ export const DELETE = ApiWrapper.create(
       );
     }
 
-    const userId = context.user?.id || context.apiKey?.userId;
+    // 2. Extract user ID qua service
+    const userId = AuthContextService.extractUserId(context);
 
-    // Initialize dependencies
-    const contractRepository = new ContractRepositoryImpl();
-    const cacheService = CacheAdapter.getInstance();
-
-    // First find contract by address
+    // 3. Find contract by address
+    const contractRepository = getContractRepository();
     const contract = await contractRepository.findByAddress(address, networkId);
     if (!contract) {
       throw new ApiError(
@@ -243,19 +212,20 @@ export const DELETE = ApiWrapper.create(
       );
     }
 
-    // Create use case
+    // 4. Create use case với DI
     const deleteContractUseCase = new DeleteContractUseCase(
       contractRepository,
-      cacheService
+      getCacheService()
     );
 
-    // Execute use case
-    const result = await deleteContractUseCase.execute({
+    // 5. Execute use case
+    await deleteContractUseCase.execute({
       contractId: contract.id,
       userId,
     });
 
-    return result;
+    // 6. Convert sang response DTO
+    return ContractDtoMapper.toDeletedResponseDto();
   },
   {
     auth: {

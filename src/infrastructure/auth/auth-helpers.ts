@@ -50,20 +50,35 @@ export interface AuthContext {
 
 /**
  * Verify API key from request header
+ * Uses Better Auth API to properly verify hashed keys
  */
 export async function verifyApiKey(
   apiKeyValue: string
 ): Promise<AuthApiKey | null> {
   try {
-    // Query database for API key (Better Auth stores hashed keys)
+    // Use Better Auth API to verify the key (handles hashing automatically)
+    const result = await auth.api.verifyApiKey({
+      body: {
+        key: apiKeyValue,
+      },
+    });
+
+    if (!result || !result.valid || !result.key) {
+      logger.debug("API key verification failed");
+      return null;
+    }
+
+    // Get the full key record from database for additional checks
     const [keyRecord] = await db
       .select()
       .from(apiKeyTable)
-      .where(eq(apiKeyTable.key, apiKeyValue))
+      .where(eq(apiKeyTable.id, result.key.id))
       .limit(1);
 
     if (!keyRecord) {
-      logger.debug("API key not found in database");
+      logger.warn("API key verified but not found in database", {
+        keyId: result.key.id,
+      });
       return null;
     }
 
@@ -320,147 +335,25 @@ export function canAccessResource(
 }
 
 /**
- * Validate IP whitelist from API key metadata
+ * @deprecated Use RateLimitService from @/infrastructure/services/rate-limit.service instead
+ *
+ * Rate limiting has been migrated to Redis-based RateLimitService which provides:
+ * - Distributed rate limiting with Upstash Redis
+ * - Tier-based limits (Public, Free, Pro, Enterprise)
+ * - IP whitelist validation
+ * - Origin validation
+ * - Automatic TTL cleanup
+ *
+ * Migration example:
+ * ```typescript
+ * // Old (deprecated)
+ * const rateLimit = await checkRateLimit(apiKey);
+ *
+ * // New (correct)
+ * import { RateLimitService } from '@/infrastructure/services/rate-limit.service';
+ * const rateLimit = await RateLimitService.checkLimit(apiKey, {
+ *   ip: clientIp,
+ *   origin: requestOrigin
+ * });
+ * ```
  */
-export function isIpAllowed(apiKey: AuthApiKey, requestIp: string): boolean {
-  if (
-    !apiKey.metadata?.ipWhitelist ||
-    apiKey.metadata.ipWhitelist.length === 0
-  ) {
-    return true; // No whitelist means all IPs allowed
-  }
-
-  // Simple IP matching (in production, use a library like ipaddr.js for CIDR support)
-  return apiKey.metadata.ipWhitelist.some((allowedIp) => {
-    if (allowedIp.includes("/")) {
-      // CIDR notation - simplified check
-      const [network] = allowedIp.split("/");
-      return requestIp.startsWith(
-        network.substring(0, network.lastIndexOf("."))
-      );
-    }
-    return requestIp === allowedIp;
-  });
-}
-
-/**
- * Validate origin from API key metadata
- */
-export function isOriginAllowed(apiKey: AuthApiKey, origin: string): boolean {
-  if (
-    !apiKey.metadata?.allowedOrigins ||
-    apiKey.metadata.allowedOrigins.length === 0
-  ) {
-    return true; // No origin restriction
-  }
-
-  return apiKey.metadata.allowedOrigins.includes(origin);
-}
-
-/**
- * Check and update rate limit for API key
- */
-export async function checkRateLimit(apiKey: AuthApiKey): Promise<{
-  allowed: boolean;
-  limit: number;
-  remaining: number;
-  reset: number;
-}> {
-  if (
-    !apiKey.rateLimitEnabled ||
-    !apiKey.rateLimitMax ||
-    !apiKey.rateLimitTimeWindow
-  ) {
-    return {
-      allowed: true,
-      limit: Infinity,
-      remaining: Infinity,
-      reset: 0,
-    };
-  }
-
-  try {
-    const now = Date.now();
-    const windowMs = apiKey.rateLimitTimeWindow;
-    const maxRequests = apiKey.rateLimitMax;
-
-    // Get current API key state
-    const [currentKey] = await db
-      .select()
-      .from(apiKeyTable)
-      .where(eq(apiKeyTable.id, apiKey.id))
-      .limit(1);
-
-    if (!currentKey) {
-      return {
-        allowed: false,
-        limit: maxRequests,
-        remaining: 0,
-        reset: now + windowMs,
-      };
-    }
-
-    const lastRefill = currentKey.lastRefillAt
-      ? new Date(currentKey.lastRefillAt).getTime()
-      : 0;
-    const currentCount = currentKey.requestCount || 0;
-    const timeSinceRefill = now - lastRefill;
-
-    // Check if we need to refill
-    if (timeSinceRefill >= windowMs) {
-      // Refill the bucket
-      await db
-        .update(apiKeyTable)
-        .set({
-          requestCount: 1,
-          lastRefillAt: new Date(now),
-          remaining: maxRequests - 1,
-        })
-        .where(eq(apiKeyTable.id, apiKey.id));
-
-      return {
-        allowed: true,
-        limit: maxRequests,
-        remaining: maxRequests - 1,
-        reset: now + windowMs,
-      };
-    }
-
-    // Check if we're over the limit
-    if (currentCount >= maxRequests) {
-      const resetTime = lastRefill + windowMs;
-      return {
-        allowed: false,
-        limit: maxRequests,
-        remaining: 0,
-        reset: resetTime,
-      };
-    }
-
-    // Increment counter
-    const newCount = currentCount + 1;
-    await db
-      .update(apiKeyTable)
-      .set({
-        requestCount: newCount,
-        remaining: maxRequests - newCount,
-      })
-      .where(eq(apiKeyTable.id, apiKey.id));
-
-    return {
-      allowed: true,
-      limit: maxRequests,
-      remaining: maxRequests - newCount,
-      reset: lastRefill + windowMs,
-    };
-  } catch (error) {
-    logger.error("Failed to check rate limit", error);
-    // On error, allow the request but log it
-    return {
-      allowed: true,
-      limit: apiKey.rateLimitMax,
-      remaining: 0,
-      reset: Date.now(),
-    };
-  }
-}
