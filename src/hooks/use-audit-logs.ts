@@ -72,6 +72,7 @@ export function useAuditLogs(
     },
     staleTime: CACHE_TIME.STALE.SHORT,
     gcTime: CACHE_TIME.GC.MEDIUM,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -86,6 +87,7 @@ export function useAuditLogStats(filters?: AuditLogFilters) {
     },
     staleTime: CACHE_TIME.STALE.SHORT,
     gcTime: CACHE_TIME.GC.MEDIUM,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -102,6 +104,7 @@ export function useAuditLog(id: string) {
     enabled: !!id,
     staleTime: CACHE_TIME.STALE.SHORT,
     gcTime: CACHE_TIME.GC.MEDIUM,
+    placeholderData: (previousData) => previousData,
   });
 }
 

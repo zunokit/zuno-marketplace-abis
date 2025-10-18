@@ -46,6 +46,12 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   useAuditLogs,
@@ -59,8 +65,8 @@ export default function AuditLogsPage() {
   const [limit] = useState(20);
 
   // Filters
-  const [method, setMethod] = useState<string>("");
-  const [statusCode, setStatusCode] = useState<string>("");
+  const [method, setMethod] = useState<string>("all");
+  const [statusCode, setStatusCode] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
@@ -71,8 +77,9 @@ export default function AuditLogsPage() {
 
   // Build filters object
   const filters = {
-    ...(method && { method }),
-    ...(statusCode && { statusCode: parseInt(statusCode) }),
+    ...(method && method !== "all" && { method }),
+    ...(statusCode &&
+      statusCode !== "all" && { statusCode: parseInt(statusCode) }),
     ...(startDate && { startDate }),
     ...(endDate && { endDate }),
   };
@@ -103,8 +110,8 @@ export default function AuditLogsPage() {
   };
 
   const handleClearFilters = () => {
-    setMethod("");
-    setStatusCode("");
+    setMethod("all");
+    setStatusCode("all");
     setStartDate("");
     setEndDate("");
     setPage(1);
@@ -140,7 +147,18 @@ export default function AuditLogsPage() {
       accessorKey: "path",
       header: "Path",
       cell: ({ row }) => (
-        <span className="font-mono text-sm">{row.original.path}</span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="font-mono text-sm truncate block max-w-[200px] cursor-help">
+                {row.original.path}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-md">
+              <p className="font-mono text-xs break-all">{row.original.path}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       ),
     },
     {
@@ -185,13 +203,31 @@ export default function AuditLogsPage() {
       cell: ({ row }) => (
         <span className="text-sm">
           {row.original.userId ? (
-            <span className="font-mono text-xs">
-              {row.original.userId.slice(0, 8)}...
-            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-mono text-xs cursor-help">
+                    {row.original.userId.slice(0, 8)}...
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="font-mono text-xs">{row.original.userId}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : row.original.apiKeyId ? (
-            <Badge variant="outline" className="text-xs">
-              API Key
-            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs cursor-help">
+                    API Key
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="font-mono text-xs">{row.original.apiKeyId}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : (
             <span className="text-muted-foreground">-</span>
           )}
@@ -334,7 +370,7 @@ export default function AuditLogsPage() {
                     <SelectValue placeholder="All methods" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All methods</SelectItem>
+                    <SelectItem value="all">All methods</SelectItem>
                     <SelectItem value="GET">GET</SelectItem>
                     <SelectItem value="POST">POST</SelectItem>
                     <SelectItem value="PUT">PUT</SelectItem>
@@ -351,7 +387,7 @@ export default function AuditLogsPage() {
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
                     <SelectItem value="200">200 (OK)</SelectItem>
                     <SelectItem value="201">201 (Created)</SelectItem>
                     <SelectItem value="400">400 (Bad Request)</SelectItem>
