@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
 import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
 
 export async function middleware(request: NextRequest) {
-  const sessionCookie = getSessionCookie(request);
   const { pathname } = request.nextUrl;
 
   // API Version detection and validation for all /api routes
@@ -44,61 +42,16 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Redirect authenticated users away from auth pages
-  if (sessionCookie && ["/auth/signin", "/auth/signup"].includes(pathname)) {
-    return NextResponse.redirect(new URL("/admin", request.url));
-  }
-
-  // Redirect unauthenticated users trying to access admin to signin
-  if (!sessionCookie && pathname.startsWith("/admin")) {
-    return NextResponse.redirect(new URL("/auth/signin", request.url));
-  }
-
-  // Redirect unauthenticated users to signin
-  if (!sessionCookie && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/auth/signin", request.url));
-  }
-
-  // Admin routes require admin role - need to verify via API call
-  if (sessionCookie && pathname.startsWith("/admin")) {
-    try {
-      const sessionResponse = await fetch(
-        `${request.nextUrl.origin}/api/auth/get-session`,
-        {
-          headers: {
-            cookie: request.headers.get("cookie") || "",
-          },
-        }
-      );
-
-      if (sessionResponse.ok) {
-        const sessionData = (await sessionResponse.json()) as {
-          user?: {
-            role?: string;
-          };
-        };
-
-        if (sessionData.user?.role !== "admin") {
-          return NextResponse.redirect(new URL("/auth/signin", request.url));
-        }
-      }
-    } catch {
-      // If session check fails, redirect to signin
-      return NextResponse.redirect(new URL("/auth/signin", request.url));
-    }
-  }
+  // For protected routes (/admin, /dashboard):
+  // Let the layout server components handle authentication and redirects
+  // This avoids duplicate checks and follows Next.js best practices
 
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    // Match all API routes
+    // Only match API routes for version validation
     "/api/:path*",
-    // Match protected routes
-    "/dashboard/:path*",
-    "/admin/:path*",
-    // Skip static files and images
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
