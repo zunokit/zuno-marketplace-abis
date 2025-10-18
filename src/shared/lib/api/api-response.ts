@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
-import { ApiResponse, ErrorCode, createSuccessResponse, createErrorResponse } from "@/shared/types";
-import { AppError, ErrorHandler } from "../utils/error-handler";
+import {
+  ApiResponse,
+  ErrorCode,
+  createSuccessResponse,
+  createErrorResponse,
+} from "@/shared/types";
+import { AppError, ErrorHandler } from "@/shared/lib/utils/error-handler";
 
 export class ApiResponseBuilder {
   /**
    * Success response with data
    */
-  static success<T>(data: T, status = 200, meta?: Record<string, unknown>): NextResponse {
+  static success<T>(
+    data: T,
+    status = 200,
+    meta?: Record<string, unknown>
+  ): NextResponse {
     const response = createSuccessResponse(data, meta);
     return NextResponse.json(response, { status });
   }
@@ -81,14 +90,19 @@ export class ApiResponseBuilder {
   /**
    * Forbidden error response (403)
    */
-  static forbidden(message = "Forbidden: insufficient permissions"): NextResponse {
+  static forbidden(
+    message = "Forbidden: insufficient permissions"
+  ): NextResponse {
     return this.error(ErrorCode.FORBIDDEN, message, 403);
   }
 
   /**
    * Rate limit error response (429)
    */
-  static rateLimited(message = "Rate limit exceeded", retryAfter?: number): NextResponse {
+  static rateLimited(
+    message = "Rate limit exceeded",
+    retryAfter?: number
+  ): NextResponse {
     const headers: Record<string, string> = {};
     if (retryAfter) {
       headers["Retry-After"] = retryAfter.toString();
@@ -103,7 +117,10 @@ export class ApiResponseBuilder {
   /**
    * Internal server error response (500)
    */
-  static internalError(message = "Internal server error", details?: unknown): NextResponse {
+  static internalError(
+    message = "Internal server error",
+    details?: unknown
+  ): NextResponse {
     return this.error(ErrorCode.INTERNAL_ERROR, message, 500, details);
   }
 
@@ -162,7 +179,10 @@ export class ApiResponseBuilder {
    * Add cache headers to response
    */
   static withCache(response: NextResponse, maxAge: number): NextResponse {
-    response.headers.set("Cache-Control", `public, max-age=${maxAge}, s-maxage=${maxAge}`);
+    response.headers.set(
+      "Cache-Control",
+      `public, max-age=${maxAge}, s-maxage=${maxAge}`
+    );
     return response;
   }
 
@@ -194,8 +214,14 @@ export class ApiResponseBuilder {
    */
   static withCORS(response: NextResponse, origin?: string): NextResponse {
     response.headers.set("Access-Control-Allow-Origin", origin || "*");
-    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-API-Version");
+    response.headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    response.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-API-Key, X-API-Version"
+    );
     response.headers.set("Access-Control-Max-Age", "86400");
     return response;
   }

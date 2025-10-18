@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
-import type { AbiModel } from "@/shared/types/abi.types";
+import type { AbiListItemDto } from "@/shared/dto/abi.dto";
 
 interface AbiFormDialogProps {
-  abi?: AbiModel | null;
+  abi?: AbiListItemDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: { name: string; description: string; abi?: string }) => void;

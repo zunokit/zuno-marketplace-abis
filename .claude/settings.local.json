@@ -30,7 +30,8 @@
       "Bash(psql:*)",
       "Bash(curl:*)",
       "Bash(pnpm tsx:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(Select-String -Pattern \"ContractListParams|ContractSearchFilters\" \"E:\\zuno-marketplace-abis\\src\\core\\domain\\contract\\contract.repository.ts\" -Context 0,5)"
     ],
     "deny": [],
     "ask": []

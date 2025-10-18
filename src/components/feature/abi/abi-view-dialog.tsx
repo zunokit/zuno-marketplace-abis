@@ -8,10 +8,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAbiDetails } from "@/hooks/use-abis";
-import type { AbiModel } from "@/shared/types/abi.types";
+import type { AbiListItemDto } from "@/shared/dto/abi.dto";
 
 interface AbiViewDialogProps {
-  abi: AbiModel | null;
+  abi: AbiListItemDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

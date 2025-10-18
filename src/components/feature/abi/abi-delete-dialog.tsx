@@ -8,10 +8,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { AbiModel } from "@/shared/types/abi.types";
+import type { AbiListItemDto } from "@/shared/dto/abi.dto";
 
 interface AbiDeleteDialogProps {
-  abi: AbiModel | null;
+  abi: AbiListItemDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;

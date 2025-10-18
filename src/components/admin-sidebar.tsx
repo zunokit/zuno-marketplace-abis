@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -43,6 +44,11 @@ const navigation = [
     name: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    name: "Audit Logs",
+    href: "/admin/audit-logs",
+    icon: ScrollText,
   },
 ];
 

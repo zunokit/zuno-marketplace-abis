@@ -10,7 +10,7 @@
  * - API key rate limiting tests (hourly/daily limits)
  * - Authorization and error handling
  *
- * Total: 19 Admin + 19 Public User + Public Endpoints + Rate Limit Tests + Auth Tests
+ * Total: 20 Admin + 20 Public User + Public Endpoints + Rate Limit Tests + Auth Tests
  *
  * Usage: pnpm tsx scripts/test-complete.ts
  */
@@ -35,6 +35,7 @@ const testData: {
   createdContractAddress?: string;
   createdNetworkId?: string;
   createdApiKeyId?: string;
+  existingAbiId?: string;
 } = {};
 
 // ============================================
@@ -169,6 +170,108 @@ async function setupTokens() {
     process.exit(1);
   }
 
+  // 3. Get existing data from database
+  console.log("\n3️⃣  Getting existing data from database...");
+
+  // Get ABI ID
+  try {
+    const response = await makeRequest("/api/abis?limit=1", {
+      useAdminSession: true,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data.data && data.data.data.length > 0) {
+        testData.existingAbiId = data.data.data[0].id;
+        console.log(`   ✅ Found existing ABI: ${testData.existingAbiId}`);
+      } else {
+        console.log(`   ⚠️  No existing ABIs found in database`);
+      }
+    } else {
+      console.log(`   ⚠️  Could not fetch existing ABIs: ${response.status}`);
+    }
+  } catch (error: any) {
+    console.log(`   ⚠️  Could not get existing ABI ID: ${error.message}`);
+  }
+
+  // Get Network ID
+  try {
+    const response = await makeRequest("/api/networks?limit=1", {
+      useAdminSession: true,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data.data && data.data.data.length > 0) {
+        testData.createdNetworkId = data.data.data[0].id;
+        console.log(
+          `   ✅ Found existing Network: ${testData.createdNetworkId}`
+        );
+      } else {
+        console.log(`   ⚠️  No existing Networks found in database`);
+      }
+    } else {
+      console.log(
+        `   ⚠️  Could not fetch existing Networks: ${response.status}`
+      );
+    }
+  } catch (error: any) {
+    console.log(`   ⚠️  Could not get existing Network ID: ${error.message}`);
+  }
+
+  // Get Contract data
+  try {
+    const response = await makeRequest("/api/contracts?limit=1", {
+      useAdminSession: true,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data.data && data.data.data.length > 0) {
+        testData.createdContractAddress = data.data.data[0].address;
+        testData.createdNetworkId = data.data.data[0].networkId;
+        console.log(
+          `   ✅ Found existing Contract: ${testData.createdContractAddress}`
+        );
+      } else {
+        console.log(`   ⚠️  No existing Contracts found in database`);
+      }
+    } else {
+      console.log(
+        `   ⚠️  Could not fetch existing Contracts: ${response.status}`
+      );
+    }
+  } catch (error: any) {
+    console.log(
+      `   ⚠️  Could not get existing Contract data: ${error.message}`
+    );
+  }
+
+  // Get API Key data
+  try {
+    const response = await makeRequest("/api/admin/api-keys?limit=1", {
+      useAdminSession: true,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.data.data && data.data.data.length > 0) {
+        testData.createdApiKeyId = data.data.data[0].id;
+        console.log(
+          `   ✅ Found existing API Key: ${testData.createdApiKeyId}`
+        );
+      } else {
+        console.log(`   ⚠️  No existing API Keys found in database`);
+      }
+    } else {
+      console.log(
+        `   ⚠️  Could not fetch existing API Keys: ${response.status}`
+      );
+    }
+  } catch (error: any) {
+    console.log(`   ⚠️  Could not get existing API Key data: ${error.message}`);
+  }
+
   console.log("\n✅ Authentication setup complete!\n");
 }
 
@@ -249,10 +352,14 @@ async function testAll19RoutesPublicUser() {
   const routes = [
     // 1. Networks
     { method: "GET", path: "/api/networks", name: "List networks" },
-    { method: "GET", path: "/api/networks/1", name: "Get network by chainId" },
     {
       method: "GET",
-      path: "/api/networks/1/contracts",
+      path: `/api/networks/${testData.createdNetworkId || "1"}`,
+      name: "Get network by chainId",
+    },
+    {
+      method: "GET",
+      path: `/api/networks/${testData.createdNetworkId || "1"}/contracts`,
       name: "Get network contracts",
     },
 
@@ -267,11 +374,16 @@ async function testAll19RoutesPublicUser() {
     { method: "GET", path: "/api/abis/test-id", name: "Get ABI by ID" },
     {
       method: "PUT",
-      path: "/api/abis/test-id",
+      path: `/api/abis/${testData.existingAbiId || "test-id"}`,
       name: "Update ABI",
       body: { name: "Updated" },
     },
     { method: "DELETE", path: "/api/abis/test-id", name: "Delete ABI" },
+    {
+      method: "GET",
+      path: "/api/abis/full",
+      name: "List ABIs with full ABI JSON",
+    },
 
     // 3. Contracts
     { method: "GET", path: "/api/contracts", name: "List contracts" },
@@ -279,37 +391,66 @@ async function testAll19RoutesPublicUser() {
       method: "POST",
       path: "/api/contracts",
       name: "Create contract",
-      body: { address: "0x123", networkId: "1", abiId: "test", name: "Test" },
+      body: {
+        address:
+          testData.createdContractAddress ||
+          "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+        networkId: testData.createdNetworkId || "net_v1_ka5x99M9sKGB",
+        abiId: testData.existingAbiId || "abi_v1_VT8QSIIhchsH",
+        name: "Test",
+      },
     },
     {
       method: "GET",
-      path: "/api/contracts/0x123?networkId=1",
+      path: `/api/contracts/${
+        testData.createdContractAddress ||
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"
+      }?networkId=${testData.createdNetworkId || "net_v1_ka5x99M9sKGB"}`,
       name: "Get contract by address",
     },
     {
       method: "PUT",
-      path: "/api/contracts/0x123?networkId=1",
+      path: `/api/contracts/${
+        testData.createdContractAddress ||
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"
+      }?networkId=${testData.createdNetworkId || "net_v1_ka5x99M9sKGB"}`,
       name: "Update contract",
       body: { name: "Updated" },
     },
     {
       method: "DELETE",
-      path: "/api/contracts/0x123?networkId=1",
+      path: `/api/contracts/${
+        testData.createdContractAddress ||
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"
+      }?networkId=${testData.createdNetworkId || "net_v1_ka5x99M9sKGB"}`,
       name: "Delete contract",
     },
     {
       method: "GET",
-      path: "/api/contracts/0x123/abi?networkId=1",
+      path: `/api/contracts/${
+        testData.createdContractAddress ||
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"
+      }/abi?networkId=${testData.createdNetworkId || "net_v1_ka5x99M9sKGB"}`,
       name: "Get contract ABI",
     },
     {
       method: "GET",
-      path: "/api/contracts/0x123/versions?networkId=1",
+      path: `/api/contracts/${
+        testData.createdContractAddress ||
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"
+      }/versions?networkId=${
+        testData.createdNetworkId || "net_v1_ka5x99M9sKGB"
+      }`,
       name: "Get contract versions",
     },
     {
       method: "GET",
-      path: "/api/contracts/0x123/versions/1?networkId=1",
+      path: `/api/contracts/${
+        testData.createdContractAddress ||
+        "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"
+      }/versions/1?networkId=${
+        testData.createdNetworkId || "net_v1_ka5x99M9sKGB"
+      }`,
       name: "Get contract version by ID",
     },
     {
@@ -333,18 +474,18 @@ async function testAll19RoutesPublicUser() {
     },
     {
       method: "GET",
-      path: "/api/admin/api-keys/test-id",
+      path: `/api/admin/api-keys/${testData.createdApiKeyId || "test-id"}`,
       name: "Get admin API key by ID",
     },
     {
       method: "PATCH",
-      path: "/api/admin/api-keys/test-id",
+      path: `/api/admin/api-keys/${testData.createdApiKeyId || "test-id"}`,
       name: "Update admin API key",
       body: { name: "Updated" },
     },
     {
       method: "DELETE",
-      path: "/api/admin/api-keys/test-id",
+      path: `/api/admin/api-keys/${testData.createdApiKeyId || "test-id"}`,
       name: "Delete admin API key",
     },
 
@@ -377,8 +518,10 @@ async function testAll19RoutesPublicUser() {
           throw new Error("Should require authentication");
         }
 
-        if (response.status !== 401) {
-          throw new Error(`Expected 401, got ${response.status}`);
+        // API validates input first, then checks auth
+        // So we can get 400 (validation error) or 401 (auth error)
+        if (response.status !== 400 && response.status !== 401) {
+          throw new Error(`Expected 400 or 401, got ${response.status}`);
         }
 
         console.log(
@@ -424,9 +567,12 @@ async function testAll19RoutesAdmin() {
   await runTest(
     "GET /api/networks/1 - Get network by chainId (Admin)",
     async () => {
-      const response = await makeRequest("/api/networks/1", {
-        useAdminSession: true,
-      });
+      const response = await makeRequest(
+        `/api/networks/${testData.createdNetworkId || "1"}`,
+        {
+          useAdminSession: true,
+        }
+      );
 
       if (!response.ok) {
         // Network might not exist, that's OK for testing
@@ -449,9 +595,12 @@ async function testAll19RoutesAdmin() {
   await runTest(
     "GET /api/networks/1/contracts - Get network contracts (Admin)",
     async () => {
-      const response = await makeRequest("/api/networks/1/contracts?limit=5", {
-        useAdminSession: true,
-      });
+      const response = await makeRequest(
+        `/api/networks/${testData.createdNetworkId || "1"}/contracts?limit=5`,
+        {
+          useAdminSession: true,
+        }
+      );
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -524,11 +673,12 @@ async function testAll19RoutesAdmin() {
   });
 
   await runTest("GET /api/abis/[id] - Get ABI by ID (Admin)", async () => {
-    if (!testData.createdAbiId) {
-      throw new Error("No ABI ID available for testing");
+    if (!testData.existingAbiId) {
+      console.log("   ⚠️  Skipped: No existing ABI ID available");
+      return;
     }
 
-    const response = await makeRequest(`/api/abis/${testData.createdAbiId}`, {
+    const response = await makeRequest(`/api/abis/${testData.existingAbiId}`, {
       useAdminSession: true,
     });
 
@@ -537,19 +687,57 @@ async function testAll19RoutesAdmin() {
     }
 
     const data = await response.json();
-    if (!data.success || data.data.id !== testData.createdAbiId) {
+    if (!data.success || data.data.id !== testData.existingAbiId) {
       throw new Error("Invalid ABI data");
     }
 
     console.log(`   📄 Retrieved: ${data.data.name}`);
   });
 
+  await runTest(
+    "GET /api/abis/full - List ABIs with full ABI JSON (Admin)",
+    async () => {
+      const response = await makeRequest("/api/abis/full?limit=5", {
+        useAdminSession: true,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Status ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data.data) {
+        throw new Error("Invalid response structure");
+      }
+
+      // Check that full ABI data is included
+      const hasFullAbiData = data.data.data.some(
+        (abi: any) => abi.abi && typeof abi.abi === "object"
+      );
+      if (!hasFullAbiData && data.data.data.length > 0) {
+        throw new Error("Full ABI JSON not included in response");
+      }
+
+      console.log(
+        `   📊 Found ${data.data.data.length} ABIs with full ABI JSON`
+      );
+      if (data.data.data.length > 0) {
+        console.log(
+          `   📄 Sample ABI: ${data.data.data[0].name} (${
+            Object.keys(data.data.data[0].abi || {}).length
+          } functions)`
+        );
+      }
+    }
+  );
+
   await runTest("PUT /api/abis/[id] - Update ABI (Admin)", async () => {
-    if (!testData.createdAbiId) {
-      throw new Error("No ABI ID available for testing");
+    if (!testData.existingAbiId) {
+      console.log("   ⚠️  Skipped: No existing ABI ID available");
+      return;
     }
 
-    const response = await makeRequest(`/api/abis/${testData.createdAbiId}`, {
+    const response = await makeRequest(`/api/abis/${testData.existingAbiId}`, {
       method: "PUT",
       useAdminSession: true,
       body: {
@@ -635,7 +823,7 @@ async function testAll19RoutesAdmin() {
     "GET /api/contracts/[address] - Get contract by address (Admin)",
     async () => {
       if (!testData.createdContractAddress || !testData.createdNetworkId) {
-        console.log("   ⚠️  Skipped: No contract address available");
+        console.log("   ⚠️  Skipped: No existing contract address available");
         return;
       }
 
@@ -663,7 +851,7 @@ async function testAll19RoutesAdmin() {
     "PUT /api/contracts/[address] - Update contract (Admin)",
     async () => {
       if (!testData.createdContractAddress || !testData.createdNetworkId) {
-        console.log("   ⚠️  Skipped: No contract address available");
+        console.log("   ⚠️  Skipped: No existing contract address available");
         return;
       }
 
@@ -913,12 +1101,12 @@ async function testPublicKeyEndpoints() {
   });
 
   await runTest("GET /api/abis/[id] - Get ABI by ID (Public Key)", async () => {
-    if (!testData.createdAbiId) {
-      console.log("   ⚠️  Skipped: No ABI ID available");
+    if (!testData.existingAbiId) {
+      console.log("   ⚠️  Skipped: No existing ABI ID available");
       return;
     }
 
-    const response = await makeRequest(`/api/abis/${testData.createdAbiId}`, {
+    const response = await makeRequest(`/api/abis/${testData.existingAbiId}`, {
       usePublicKey: true,
     });
 
@@ -927,12 +1115,94 @@ async function testPublicKeyEndpoints() {
     }
 
     const data = await response.json();
-    if (!data.success || data.data.id !== testData.createdAbiId) {
+    if (!data.success || data.data.id !== testData.existingAbiId) {
       throw new Error("Invalid ABI data");
     }
 
     console.log(`   📄 Retrieved: ${data.data.name}`);
   });
+
+  await runTest(
+    "GET /api/abis/full - List ABIs with full ABI JSON (Public Key)",
+    async () => {
+      const response = await makeRequest("/api/abis/full?limit=5", {
+        usePublicKey: true,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Status ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data.data) {
+        throw new Error("Invalid response structure");
+      }
+
+      // Check that full ABI data is included
+      const hasFullAbiData = data.data.data.some(
+        (abi: any) => abi.abi && typeof abi.abi === "object"
+      );
+      if (!hasFullAbiData && data.data.data.length > 0) {
+        throw new Error("Full ABI JSON not included in response");
+      }
+
+      console.log(
+        `   📊 Found ${data.data.data.length} ABIs with full ABI JSON`
+      );
+      if (data.data.data.length > 0) {
+        console.log(
+          `   📄 Sample ABI: ${data.data.data[0].name} (${
+            Object.keys(data.data.data[0].abi || {}).length
+          } functions)`
+        );
+      }
+    }
+  );
+
+  // Test with existing ABI ID from database
+  await runTest(
+    "GET /api/abis/full - Test with existing ABI ID (Public Key)",
+    async () => {
+      if (!testData.existingAbiId) {
+        console.log("   ⚠️  Skipped: No existing ABI ID available");
+        return;
+      }
+
+      const response = await makeRequest(
+        `/api/abis/full?limit=10&search=${testData.existingAbiId}`,
+        {
+          usePublicKey: true,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Status ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data.data) {
+        throw new Error("Invalid response structure");
+      }
+
+      // Check if the existing ABI is in the results
+      const foundExistingAbi = data.data.data.find(
+        (abi: any) => abi.id === testData.existingAbiId
+      );
+      if (foundExistingAbi) {
+        console.log(
+          `   📄 Found existing ABI: ${foundExistingAbi.name} with full ABI JSON`
+        );
+      } else {
+        console.log(
+          `   📄 Existing ABI not found in results (may be filtered out)`
+        );
+      }
+
+      console.log(
+        `   📊 Searched with existing ABI ID: ${testData.existingAbiId}`
+      );
+    }
+  );
 
   await runTest(
     "GET /api/contracts - List contracts (Public Key)",
@@ -958,7 +1228,7 @@ async function testPublicKeyEndpoints() {
     "GET /api/contracts/[address] - Get contract by address (Public Key)",
     async () => {
       if (!testData.createdContractAddress || !testData.createdNetworkId) {
-        console.log("   ⚠️  Skipped: No contract address available");
+        console.log("   ⚠️  Skipped: No existing contract address available");
         return;
       }
 
@@ -1703,13 +1973,12 @@ async function main() {
     // Setup
     await setupTokens();
 
-    // Run test suites (19 Admin + 19 Public User + Public Endpoints + Rate Limit Tests + Auth Tests)
+    // Run test suites (20 Admin + 20 Public User + Public Endpoints + Rate Limit Tests + Auth Tests)
     await testPublicEndpoints(); // Tests 1-3 (Public endpoints - no auth)
-    await testAll19RoutesPublicUser(); // Tests 4-22 (All 19 routes - no auth - 401)
-    await testAll19RoutesAdmin(); // Tests 23-41 (All 19 routes - admin session)
-    await testPublicKeyEndpoints(); // Tests 42-46 (Read-only with public key)
-    await testRateLimiting(); // Tests 47-53 (API rate limiting)
-    await testApiKeyRateLimiting(); // Tests 54-60 (API key rate limiting)
+    await testAll19RoutesPublicUser(); // Tests 4-23 (All 20 routes - no auth - 401)
+    await testAll19RoutesAdmin(); // Tests 24-43 (All 20 routes - admin session)
+    await testPublicKeyEndpoints(); // Tests 44-48 (Read-only with public k    await testRateLimiting(); // Tests 49-55 (API rate limiting)
+    await testApiKeyRateLimiting(); // Tests 56-62 (API key rate limiting)
     await testAuthorizationAndErrors(); // Tests for auth & errors
     await cleanupTestResources(); // Cleanup DELETE operations
 

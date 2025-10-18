@@ -1,20 +1,24 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Pencil, Trash2, ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Eye, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { AbiModel } from "@/shared/types/abi.types";
 
-interface CreateColumnsProps {
-  onView: (abi: AbiModel) => void;
-  onEdit: (abi: AbiModel) => void;
-  onDelete: (abi: AbiModel) => void;
+// API Key View Model (imported from hook, already transformed)
+import type { ApiKeyViewModel } from "@/hooks/use-api-keys";
+
+export type ApiKey = ApiKeyViewModel;
+
+interface ActionsProps {
+  onView: (key: ApiKey) => void;
+  onDelete: (key: ApiKey) => void;
 }
 
-export function createAbiColumns({
+export function createApiKeyColumns({
   onView,
-  onEdit,
   onDelete,
-}: CreateColumnsProps): ColumnDef<AbiModel>[] {
+}: ActionsProps): ColumnDef<ApiKey>[] {
   return [
     {
       accessorKey: "name",
@@ -29,32 +33,35 @@ export function createAbiColumns({
       ),
     },
     {
-      accessorKey: "description",
-      header: "Description",
+      accessorKey: "id",
+      header: "Key ID",
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {row.original.description || "No description"}
-        </span>
+        <code className="rounded bg-muted px-2 py-1 text-sm font-mono text-xs">
+          {row.original.id.slice(0, 8)}...
+        </code>
       ),
     },
     {
-      accessorKey: "standard",
-      header: "Standard",
-      cell: ({ row }) =>
-        row.original.standard ? (
-          <Badge variant="outline">{row.original.standard}</Badge>
-        ) : (
-          <span className="text-muted-foreground text-xs">-</span>
-        ),
+      accessorKey: "enabled",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge variant={row.original.enabled ? "default" : "secondary"}>
+          {row.original.enabled ? "Active" : "Disabled"}
+        </Badge>
+      ),
     },
     {
-      accessorKey: "version",
-      header: "Version",
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {row.original.version}
-        </span>
-      ),
+      accessorKey: "permissions",
+      header: "Permissions",
+      cell: ({ row }) => {
+        const perms = row.original.permissions;
+        const count = Object.keys(perms).length;
+        return (
+          <span className="text-sm text-muted-foreground">
+            {count} resource{count !== 1 ? "s" : ""}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "createdAt",
@@ -80,13 +87,6 @@ export function createAbiColumns({
             onClick={() => onView(row.original)}
           >
             <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

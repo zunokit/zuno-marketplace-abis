@@ -1,258 +1,111 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DataTable } from "@/components/feature/data-table";
+import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Eye, ArrowUpDown } from "lucide-react";
-import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import type { ColumnDef } from "@tanstack/react-table";
+import { Plus } from "lucide-react";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 
-interface ABI {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import {
+  useAbis,
+  useCreateAbi,
+  useUpdateAbi,
+  useDeleteAbi,
+} from "@/hooks/use-abis";
+import { createAbiColumns } from "@/components/feature/abi/abi-table-columns";
+import { AbiViewDialog } from "@/components/feature/abi/abi-view-dialog";
+import { AbiFormDialog } from "@/components/feature/abi/abi-form-dialog";
+import { AbiDeleteDialog } from "@/components/feature/abi/abi-delete-dialog";
+import { AbiListItemDto } from "@/shared/dto/abi.dto";
 
 export default function ABIsPage() {
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [selectedABI, setSelectedABI] = useState<ABI | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    abi: "",
-  });
+  const [selectedABI, setSelectedABI] = useState<AbiListItemDto | null>(null);
 
-  const queryClient = useQueryClient();
+  const { data: abiData, isLoading, isFetching } = useAbis(page, limit);
+  const createMutation = useCreateAbi();
+  const updateMutation = useUpdateAbi();
+  const deleteMutation = useDeleteAbi();
 
-  // Fetch ABIs
-  const {
-    data: abis = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["admin-abis"],
-    queryFn: async () => {
-      const res = await fetch("/api/abis", {
-        credentials: "include", // Important: include cookies for session auth
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error("ABIs API Error:", errorData);
-        throw new Error(errorData.error?.message || "Failed to fetch ABIs");
-      }
-      const data = await res.json();
-      console.log("ABIs API Response:", data);
-      return data.data || [];
-    },
-  });
+  const abis = abiData?.data || [];
+  const pagination = abiData?.pagination;
 
-  // Show error toast
-  if (error) {
-    toast.error(error.message);
-  }
-
-  // Create ABI mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const res = await fetch("/api/abis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-          abi: JSON.parse(data.abi),
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to create ABI");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-abis"] });
-      toast.success("ABI created successfully");
-      setIsCreateOpen(false);
-      resetForm();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to create ABI");
-    },
-  });
-
-  // Update ABI mutation
-  const updateMutation = useMutation({
-    mutationFn: async (data: typeof formData & { id: string }) => {
-      const res = await fetch(`/api/abis/${data.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to update ABI");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-abis"] });
-      toast.success("ABI updated successfully");
-      setIsEditOpen(false);
-      resetForm();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update ABI");
-    },
-  });
-
-  // Delete ABI mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/abis/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete ABI");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-abis"] });
-      toast.success("ABI deleted successfully");
-      setIsDeleteOpen(false);
-      setSelectedABI(null);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete ABI");
-    },
-  });
-
-  const resetForm = () => {
-    setFormData({ name: "", description: "", abi: "" });
-    setSelectedABI(null);
-  };
-
-  const handleEdit = (abi: ABI) => {
-    setSelectedABI(abi);
-    setFormData({
-      name: abi.name,
-      description: abi.description || "",
-      abi: "",
-    });
-    setIsEditOpen(true);
-  };
-
-  const handleDelete = (abi: ABI) => {
-    setSelectedABI(abi);
-    setIsDeleteOpen(true);
-  };
-
-  const handleView = (abi: ABI) => {
+  const handleView = (abi: AbiListItemDto) => {
     setSelectedABI(abi);
     setIsViewOpen(true);
   };
 
-  const columns: ColumnDef<ABI>[] = [
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {row.original.description || "No description"}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge
-          variant={row.original.status === "active" ? "default" : "secondary"}
-        >
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Created
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleView(row.original)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDelete(row.original)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  const handleEdit = (abi: AbiListItemDto) => {
+    setSelectedABI(abi);
+    setIsEditOpen(true);
+  };
+
+  const handleDelete = (abi: AbiListItemDto) => {
+    setSelectedABI(abi);
+    setIsDeleteOpen(true);
+  };
+
+  const handleCreate = (data: {
+    name: string;
+    description: string;
+    abi?: string;
+  }) => {
+    if (!data.abi) return;
+    try {
+      const parsedAbi = JSON.parse(data.abi) as Record<string, unknown>[];
+      createMutation.mutate(
+        {
+          name: data.name,
+          description: data.description,
+          abi: parsedAbi,
+          tags: []
+        },
+        { onSuccess: () => setIsCreateOpen(false) }
+      );
+    } catch (error) {
+      console.error("Invalid ABI JSON:", error);
+    }
+  };
+
+  const handleUpdate = (data: { name: string; description: string }) => {
+    if (!selectedABI) return;
+    updateMutation.mutate(
+      { id: selectedABI.id, name: data.name, description: data.description },
+      { onSuccess: () => setIsEditOpen(false) }
+    );
+  };
+
+  const handleConfirmDelete = () => {
+    if (!selectedABI) return;
+    deleteMutation.mutate(selectedABI.id, {
+      onSuccess: () => {
+        setIsDeleteOpen(false);
+        setSelectedABI(null);
+      },
+    });
+  };
+
+  const columns = createAbiColumns({
+    onView: handleView,
+    onEdit: handleEdit,
+    onDelete: handleDelete,
+  });
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading ABIs...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -271,68 +124,6 @@ export default function ABIsPage() {
               Create ABI
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New ABI</DialogTitle>
-              <DialogDescription>
-                Add a new application binary interface to the system
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="e.g., ERC20"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Brief description of the ABI"
-                />
-              </div>
-              <div>
-                <Label htmlFor="abi">ABI JSON</Label>
-                <Textarea
-                  id="abi"
-                  value={formData.abi}
-                  onChange={(e) =>
-                    setFormData({ ...formData, abi: e.target.value })
-                  }
-                  placeholder='[{"type":"function","name":"transfer",...}]'
-                  className="font-mono text-sm"
-                  rows={10}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateOpen(false);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => createMutation.mutate(formData)}
-                  disabled={createMutation.isPending}
-                >
-                  {createMutation.isPending ? "Creating..." : "Create"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
         </Dialog>
       </div>
 
@@ -341,118 +132,40 @@ export default function ABIsPage() {
         data={abis}
         searchKey="name"
         searchPlaceholder="Search ABIs..."
+        pagination={pagination}
+        onPaginationChange={(newPage) => setPage(newPage)}
+        isLoading={isFetching}
       />
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit ABI</DialogTitle>
-            <DialogDescription>Update ABI information</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-description">Description</Label>
-              <Input
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsEditOpen(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() =>
-                  updateMutation.mutate({ ...formData, id: selectedABI!.id })
-                }
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Dialogs */}
+      <AbiFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSubmit={handleCreate}
+        isPending={createMutation.isPending}
+      />
 
-      {/* Delete Alert Dialog */}
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the ABI &quot;{selectedABI?.name}
-              &quot;. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                selectedABI && deleteMutation.mutate(selectedABI.id)
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AbiFormDialog
+        abi={selectedABI}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSubmit={handleUpdate}
+        isPending={updateMutation.isPending}
+      />
 
-      {/* View Dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selectedABI?.name}</DialogTitle>
-            <DialogDescription>ABI Details</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Description</Label>
-              <p className="text-sm text-muted-foreground">
-                {selectedABI?.description || "No description"}
-              </p>
-            </div>
-            <div>
-              <Label>Status</Label>
-              <p className="text-sm">{selectedABI?.status}</p>
-            </div>
-            <div>
-              <Label>Created</Label>
-              <p className="text-sm">
-                {selectedABI &&
-                  new Date(selectedABI.createdAt).toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <Label>Last Updated</Label>
-              <p className="text-sm">
-                {selectedABI &&
-                  new Date(selectedABI.updatedAt).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AbiViewDialog
+        abi={selectedABI}
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+      />
+
+      <AbiDeleteDialog
+        abi={selectedABI}
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        onConfirm={handleConfirmDelete}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }

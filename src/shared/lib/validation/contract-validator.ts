@@ -1,5 +1,5 @@
 import { isValidAddress, isValidChainId } from "@/shared/types";
-import { ValidationError } from "../utils/error-handler";
+import { ValidationError } from "@/shared/lib/utils/error-handler";
 
 export class ContractValidator {
   /**
@@ -40,8 +40,14 @@ export class ContractValidator {
 
     // Validate decimals if present
     if (meta.decimals !== undefined) {
-      if (typeof meta.decimals !== "number" || meta.decimals < 0 || meta.decimals > 77) {
-        throw new ValidationError("Contract decimals must be a number between 0 and 77");
+      if (
+        typeof meta.decimals !== "number" ||
+        meta.decimals < 0 ||
+        meta.decimals > 77
+      ) {
+        throw new ValidationError(
+          "Contract decimals must be a number between 0 and 77"
+        );
       }
     }
 
@@ -51,7 +57,10 @@ export class ContractValidator {
     }
 
     // Validate totalSupply if present
-    if (meta.totalSupply !== undefined && typeof meta.totalSupply !== "string") {
+    if (
+      meta.totalSupply !== undefined &&
+      typeof meta.totalSupply !== "string"
+    ) {
       throw new ValidationError("Contract totalSupply must be a string");
     }
 
@@ -84,10 +93,20 @@ export class ContractValidator {
   static validateType(type?: string): void {
     if (!type) return; // Type is optional
 
-    const validTypes = ["token", "nft", "defi", "dao", "bridge", "multisig", "other"];
+    const validTypes = [
+      "token",
+      "nft",
+      "defi",
+      "dao",
+      "bridge",
+      "multisig",
+      "other",
+    ];
     if (!validTypes.includes(type.toLowerCase())) {
       throw new ValidationError(
-        `Invalid contract type: ${type}. Must be one of: ${validTypes.join(", ")}`
+        `Invalid contract type: ${type}. Must be one of: ${validTypes.join(
+          ", "
+        )}`
       );
     }
   }
@@ -101,7 +120,9 @@ export class ContractValidator {
     const validSources = ["etherscan", "sourcify", "manual", "blockscout"];
     if (!validSources.includes(source.toLowerCase())) {
       throw new ValidationError(
-        `Invalid verification source: ${source}. Must be one of: ${validSources.join(", ")}`
+        `Invalid verification source: ${source}. Must be one of: ${validSources.join(
+          ", "
+        )}`
       );
     }
   }
@@ -117,7 +138,9 @@ export class ContractValidator {
     }
 
     if (name.length > 255) {
-      throw new ValidationError("Contract name must be less than 255 characters");
+      throw new ValidationError(
+        "Contract name must be less than 255 characters"
+      );
     }
   }
 

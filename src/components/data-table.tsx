@@ -10,8 +10,9 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
   type SortingState,
+  type PaginationState,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -30,11 +31,28 @@ import {
   Search,
 } from "lucide-react";
 
+/**
+ * Pagination metadata from API response
+ */
+export interface ServerPaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey?: string;
   searchPlaceholder?: string;
+
+  // Server-side pagination support
+  pagination?: ServerPaginationInfo;
+  onPaginationChange?: (page: number, pageSize: number) => void;
+  isLoading?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -42,22 +60,73 @@ export function DataTable<TData, TValue>({
   data,
   searchKey,
   searchPlaceholder = "Search...",
+  pagination: serverPagination,
+  onPaginationChange,
+  isLoading = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  // Server-side pagination mode
+  const isServerPagination = !!serverPagination && !!onPaginationChange;
+
+  // Pagination state (for both client and server mode)
+  const [paginationState, setPaginationState] = useState<PaginationState>({
+    pageIndex: serverPagination ? serverPagination.page - 1 : 0,
+    pageSize: serverPagination?.limit || 10,
+  });
+
+  // Sync server pagination with table state
+  useEffect(() => {
+    if (serverPagination) {
+      setPaginationState({
+        pageIndex: serverPagination.page - 1,
+        pageSize: serverPagination.limit,
+      });
+    }
+  }, [serverPagination]);
+
+  // Handle pagination change
+  const handlePaginationChange = (updater: any) => {
+    const newState =
+      typeof updater === "function" ? updater(paginationState) : updater;
+
+    setPaginationState(newState);
+
+    // Notify parent component (server-side only)
+    if (isServerPagination && onPaginationChange) {
+      onPaginationChange(newState.pageIndex + 1, newState.pageSize);
+    }
+  };
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+
+    // Conditional pagination config
+    ...(isServerPagination
+      ? {
+          // Server-side pagination
+          manualPagination: true,
+          pageCount: serverPagination.totalPages,
+        }
+      : {
+          // Client-side pagination
+          getPaginationRowModel: getPaginationRowModel(),
+        }),
+
+    // Controlled pagination state
+    onPaginationChange: handlePaginationChange,
+
     state: {
       sorting,
       columnFilters,
+      pagination: paginationState,
     },
   });
 
@@ -128,44 +197,77 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
+      {/* Pagination */}
       <div className="flex items-center justify-between">
+        {/* Info */}
         <div className="text-sm text-muted-foreground">
-          Showing {table.getRowModel().rows.length} of {data.length} results
+          {isServerPagination && serverPagination ? (
+            // Server-side: Show total from API
+            <>
+              <span className="font-medium">
+                Page {serverPagination.page} of {serverPagination.totalPages}
+              </span>
+              <span className="mx-1">•</span>
+              <span>
+                {serverPagination.total} {serverPagination.total === 1 ? "item" : "items"} total
+              </span>
+            </>
+          ) : (
+            // Client-side: Show current rows
+            <>
+              Showing {table.getRowModel().rows.length} of {data.length} results
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Controls */}
+        <div className="flex items-center gap-1">
+          {/* First Page */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
+            disabled={!table.getCanPreviousPage() || isLoading}
+            aria-label="Go to first page"
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
+
+          {/* Previous Page */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            disabled={!table.getCanPreviousPage() || isLoading}
+            aria-label="Go to previous page"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm">
+
+          {/* Page Info */}
+          <span className="text-sm px-2">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()}
           </span>
+
+          {/* Next Page */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            disabled={!table.getCanNextPage() || isLoading}
+            aria-label="Go to next page"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+
+          {/* Last Page */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
+            disabled={!table.getCanNextPage() || isLoading}
+            aria-label="Go to last page"
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>

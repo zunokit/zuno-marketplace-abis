@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DataTable } from "@/components/feature/data-table";
+import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ColumnDef } from "@tanstack/react-table";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/infrastructure/auth/auth.client";
 
 interface User {
   id: string;

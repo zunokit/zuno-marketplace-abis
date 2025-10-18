@@ -5,9 +5,11 @@
 import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import type { ContractRepository } from "@/core/domain/contract/contract.repository";
 import type { NetworkRepository } from "@/core/domain/network/network.repository";
+import type { AuditLogRepository } from "@/core/domain/audit-log/audit-log.repository";
 import { AbiRepositoryImpl } from "@/infrastructure/database/repositories/abi.repository.impl";
 import { ContractRepositoryImpl } from "@/infrastructure/database/repositories/contract.repository.impl";
 import { NetworkRepositoryImpl } from "@/infrastructure/database/repositories/network.repository.impl";
+import { AuditLogRepositoryImpl } from "@/infrastructure/database/repositories/audit-log.repository.impl";
 import { PinataStorageAdapter } from "@/infrastructure/storage/ipfs/pinata.adapter";
 import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
 import { logger } from "@/shared/lib/utils/logger";
@@ -53,6 +55,7 @@ type ServiceKey =
   | "abiRepository"
   | "contractRepository"
   | "networkRepository"
+  | "auditLogRepository"
   | "storageService"
   | "cacheService";
 
@@ -60,6 +63,7 @@ type ServiceMap = {
   abiRepository: AbiRepository;
   contractRepository: ContractRepository;
   networkRepository: NetworkRepository;
+  auditLogRepository: AuditLogRepository;
   storageService: IStorageService;
   cacheService: ICacheService;
 };
@@ -100,6 +104,11 @@ class DIContainer {
     this.factories.networkRepository = () => {
       logger.debug("Creating NetworkRepository instance");
       return new NetworkRepositoryImpl();
+    };
+
+    this.factories.auditLogRepository = () => {
+      logger.debug("Creating AuditLogRepository instance");
+      return new AuditLogRepositoryImpl();
     };
 
     // Services
@@ -176,6 +185,10 @@ export function getContractRepository(): ContractRepository {
 
 export function getNetworkRepository(): NetworkRepository {
   return container.get("networkRepository");
+}
+
+export function getAuditLogRepository(): AuditLogRepository {
+  return container.get("auditLogRepository");
 }
 
 export function getStorageService(): IStorageService {
