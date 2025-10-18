@@ -1,0 +1,434 @@
+### ABI Marketplace - Networks Tests
+### Base URL
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+### Variables
+@apiKey = zuno_your_api_key_here
+@sessionToken = your_session_token_here
+
+###############################################################################
+# 1. NETWORK ENDPOINTS (Requires API Key)
+###############################################################################
+
+### 1.1. List All Networks (Paginated)
+GET {{apiUrl}}/networks?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.2. List All Networks (No Pagination)
+GET {{apiUrl}}/networks?all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.3. List Only Active Networks
+GET {{apiUrl}}/networks?isActive=true&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.4. List Inactive Networks
+GET {{apiUrl}}/networks?isActive=false&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 2. FILTER BY NETWORK TYPE
+###############################################################################
+
+### 2.1. Mainnets Only
+GET {{apiUrl}}/networks?isTestnet=false&limit=50
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 2.2. Testnets Only
+GET {{apiUrl}}/networks?isTestnet=true&limit=50
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 2.3. Filter by Type: Mainnet
+GET {{apiUrl}}/networks?type=mainnet&limit=50
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 2.4. Filter by Type: Testnet
+GET {{apiUrl}}/networks?type=testnet&limit=50
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 2.5. Filter by Type: Local
+GET {{apiUrl}}/networks?type=local&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 3. SEARCH NETWORKS
+###############################################################################
+
+### 3.1. Search by Name: Ethereum
+GET {{apiUrl}}/networks?query=ethereum&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 3.2. Search by Name: Polygon
+GET {{apiUrl}}/networks?query=polygon&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 3.3. Search by Chain ID: 1
+GET {{apiUrl}}/networks?query=1&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 3.4. Search by Slug: bsc
+GET {{apiUrl}}/networks?query=bsc&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 4. SORT NETWORKS
+###############################################################################
+
+### 4.1. Sort by Name Ascending
+GET {{apiUrl}}/networks?sortBy=name&sortOrder=asc&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 4.2. Sort by Name Descending
+GET {{apiUrl}}/networks?sortBy=name&sortOrder=desc&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 4.3. Sort by Chain ID Ascending
+GET {{apiUrl}}/networks?sortBy=chainId&sortOrder=asc&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 4.4. Sort by Chain ID Descending
+GET {{apiUrl}}/networks?sortBy=chainId&sortOrder=desc&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 4.5. Sort by Created Date
+GET {{apiUrl}}/networks?sortBy=createdAt&sortOrder=desc&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 5. SPECIFIC NETWORKS BY CHAIN ID
+###############################################################################
+
+### 5.1. Ethereum Mainnet (Chain ID: 1)
+GET {{apiUrl}}/networks?query=1&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.2. Polygon Mainnet (Chain ID: 137)
+GET {{apiUrl}}/networks?query=137&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.3. BNB Smart Chain (Chain ID: 56)
+GET {{apiUrl}}/networks?query=56&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.4. Arbitrum One (Chain ID: 42161)
+GET {{apiUrl}}/networks?query=42161&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.5. Optimism (Chain ID: 10)
+GET {{apiUrl}}/networks?query=10&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.6. Base (Chain ID: 8453)
+GET {{apiUrl}}/networks?query=8453&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.7. Avalanche (Chain ID: 43114)
+GET {{apiUrl}}/networks?query=43114&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 5.8. Sepolia Testnet (Chain ID: 11155111)
+GET {{apiUrl}}/networks?query=11155111&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 6. GET CONTRACTS BY NETWORK
+###############################################################################
+
+### 6.1. Get All Contracts on Ethereum
+GET {{apiUrl}}/networks/1/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 6.2. Get All Contracts on Polygon
+GET {{apiUrl}}/networks/137/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 6.3. Get All Contracts on BSC
+GET {{apiUrl}}/networks/56/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 6.4. Get All Contracts on Arbitrum
+GET {{apiUrl}}/networks/42161/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 6.5. Get All Contracts on Optimism
+GET {{apiUrl}}/networks/10/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 6.6. Get All Contracts on Base
+GET {{apiUrl}}/networks/8453/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 6.7. Get All Contracts on Sepolia Testnet
+GET {{apiUrl}}/networks/11155111/contracts?page=1&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 7. FILTER CONTRACTS BY NETWORK
+###############################################################################
+
+### 7.1. Get Token Contracts on Ethereum
+GET {{apiUrl}}/networks/1/contracts?type=token&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 7.2. Get NFT Contracts on Polygon
+GET {{apiUrl}}/networks/137/contracts?type=nft&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 7.3. Get DeFi Contracts on BSC
+GET {{apiUrl}}/networks/56/contracts?type=defi&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 7.4. Get Verified Contracts on Ethereum
+GET {{apiUrl}}/networks/1/contracts?isVerified=true&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 7.5. Get Unverified Contracts on Polygon
+GET {{apiUrl}}/networks/137/contracts?isVerified=false&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 7.6. Search Contracts on Ethereum by Name
+GET {{apiUrl}}/networks/1/contracts?query=USDC&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 7.7. Filter by Deployer on Ethereum
+GET {{apiUrl}}/networks/1/contracts?deployer=0x1234567890123456789012345678901234567890&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 8. COMPLEX QUERIES
+###############################################################################
+
+### 8.1. Active Mainnets Sorted by Chain ID
+GET {{apiUrl}}/networks?isActive=true&isTestnet=false&sortBy=chainId&sortOrder=asc&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 8.2. Active Testnets Sorted by Name
+GET {{apiUrl}}/networks?isActive=true&isTestnet=true&sortBy=name&sortOrder=asc&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 8.3. Search Active Mainnets
+GET {{apiUrl}}/networks?query=ethereum&isActive=true&isTestnet=false
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 8.4. Ethereum Verified Token Contracts
+GET {{apiUrl}}/networks/1/contracts?type=token&isVerified=true&sortBy=createdAt&sortOrder=desc&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 8.5. Polygon NFT Contracts Sorted by Name
+GET {{apiUrl}}/networks/137/contracts?type=nft&sortBy=name&sortOrder=asc&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 9. PAGINATION TESTS
+###############################################################################
+
+### 9.1. Networks - First Page (10 items)
+GET {{apiUrl}}/networks?page=1&limit=10&sortBy=name&sortOrder=asc
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 9.2. Networks - Second Page
+GET {{apiUrl}}/networks?page=2&limit=10&sortBy=name&sortOrder=asc
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 9.3. Networks - Third Page
+GET {{apiUrl}}/networks?page=3&limit=10&sortBy=name&sortOrder=asc
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 9.4. Contracts on Ethereum - First Page
+GET {{apiUrl}}/networks/1/contracts?page=1&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 9.5. Contracts on Ethereum - Second Page
+GET {{apiUrl}}/networks/1/contracts?page=2&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 10. ERROR CASES
+###############################################################################
+
+### 10.1. Get Contracts for Non-existent Network (Should Fail - 404)
+GET {{apiUrl}}/networks/999999/contracts
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 10.2. Get Contracts for Invalid Chain ID (Should Fail - 400)
+GET {{apiUrl}}/networks/invalid/contracts
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 10.3. Invalid Network Type Filter (Should Fail - 400)
+GET {{apiUrl}}/networks?type=invalid-type
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 10.4. Invalid Boolean Value (Should Fail - 400)
+GET {{apiUrl}}/networks?isActive=invalid
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 10.5. Invalid Sort Field (Should be handled gracefully)
+GET {{apiUrl}}/networks?sortBy=invalidField&sortOrder=asc
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 11. PERFORMANCE TESTS
+###############################################################################
+
+### 11.1. Get All Networks (Should be fast - cached)
+GET {{apiUrl}}/networks?all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 11.2. Get All Active Networks (Should be fast - cached)
+GET {{apiUrl}}/networks?isActive=true&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 11.3. Large Page Size
+GET {{apiUrl}}/networks?page=1&limit=100
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 11.4. Multiple Filters
+GET {{apiUrl}}/networks?isActive=true&isTestnet=false&type=mainnet&query=eth&sortBy=chainId
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 12. INTEGRATION WITH CONTRACTS
+###############################################################################
+
+### 12.1. List Networks → Pick One → Get Contracts
+# Step 1: Get all networks
+GET {{apiUrl}}/networks?all=true
+X-API-Key: {{apiKey}}
+
+# Step 2: Get contracts on selected network (e.g., Ethereum)
+### GET {{apiUrl}}/networks/1/contracts?limit=20
+X-API-Key: {{apiKey}}
+
+# Step 3: Search for specific contract type
+### GET {{apiUrl}}/networks/1/contracts?type=token&query=USDC
+X-API-Key: {{apiKey}}
+
+###############################################################################
+# 13. DATA CONSISTENCY CHECKS
+###############################################################################
+
+### 13.1. Verify Ethereum Mainnet Exists
+GET {{apiUrl}}/networks?query=1&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Should return: chainId=1, name=Ethereum, slug=ethereum
+
+### 13.2. Verify Polygon Mainnet Exists
+GET {{apiUrl}}/networks?query=137&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Should return: chainId=137, name=Polygon, slug=polygon
+
+### 13.3. Verify Sepolia Testnet Exists
+GET {{apiUrl}}/networks?query=11155111&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Should return: chainId=11155111, name=Sepolia, isTestnet=true
+
+### 13.4. Verify Local Networks Exist
+GET {{apiUrl}}/networks?type=local&all=true
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Should return: Hardhat (31337), Ganache (1337)
+
+###############################################################################
+# 14. RATE LIMITING (if applicable)
+###############################################################################
+
+### 14.1. Multiple Rapid Requests - Request 1
+GET {{apiUrl}}/networks?all=true
+X-API-Key: {{apiKey}}
+
+### 14.2. Multiple Rapid Requests - Request 2
+GET {{apiUrl}}/networks?all=true
+X-API-Key: {{apiKey}}
+
+### 14.3. Multiple Rapid Requests - Request 3
+GET {{apiUrl}}/networks?all=true
+X-API-Key: {{apiKey}}
+
+# Note: Networks endpoint is public and should not be rate-limited aggressively
+
+###############################################################################
+# 15. RESPONSE FORMAT VALIDATION
+###############################################################################
+
+### 15.1. Validate Network Object Structure
+GET {{apiUrl}}/networks?query=1&limit=1
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Expected fields: id, chainId, name, slug, type, isTestnet,
+#                  rpcUrls, explorerUrls, nativeCurrency, isActive,
+#                  icon, createdAt, updatedAt
+
+### 15.2. Validate Pagination Structure
+GET {{apiUrl}}/networks?page=1&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Expected: data[], pagination: {page, limit, total, totalPages, hasNext, hasPrev}
+
+### 15.3. Validate Contracts Response Structure
+GET {{apiUrl}}/networks/1/contracts?page=1&limit=5
+X-API-Key: {{apiKey}}
+Accept: application/json
+# Expected: network{}, data[], pagination{}

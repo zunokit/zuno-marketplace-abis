@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(pnpm typecheck:*)",
+      "WebFetch(domain:www.better-auth.com)",
+      "Bash(npx tsc:*)",
+      "Bash(npm test:*)",
+      "Bash(pnpm test:*)",
+      "Bash(npx @better-auth/cli generate:*)",
+      "Bash(pnpm auth:generate:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(pnpm db:migrate:*)",
+      "Bash(pnpm list:*)",
+      "WebSearch",
+      "Bash(Select-String -Pattern \"api-handler.ts\" -Context 0,5)",
+      "Bash(cat:*)",
+      "WebFetch(domain:docs.pinata.cloud)",
+      "Bash(xargs cat:*)",
+      "Bash(if [ -d \"scripts\" ])",
+      "Bash(then echo \"exists\")",
+      "Bash(else echo \"not exists\")",
+      "Bash(fi)",
+      "Bash(pnpm db:seed:*)",
+      "Bash(npm run build)",
+      "Bash(find:*)",
+      "mcp__better-auth__search",
+      "Bash(pnpm add:*)",
+      "Bash(psql:*)",
+      "Bash(curl:*)",
+      "Bash(pnpm tsx:*)",
+      "Bash(python:*)",
+      "Bash(Select-String -Pattern \"ContractListParams|ContractSearchFilters\" \"E:\\zuno-marketplace-abis\\src\\core\\domain\\contract\\contract.repository.ts\" -Context 0,5)",
+      "mcp__better-auth__chat",
+      "Bash(timeout 3 tail -f .next/server/app-paths-manifest.json)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,371 @@
+### ABI Marketplace - ABI Management Tests
+### Base URL
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+### Variables (update after creating resources)
+@apiKey = zuno_NGIiiZuySdjofTicoyHfvnzIvtFuMJHL
+@sessionToken = your_session_token_here
+@abiId = abi_v1_7uRub3tyLJGM
+@userId = 
+
+###############################################################################
+# 1. ABI ENDPOINTS (Requires API Key)
+###############################################################################
+
+### 1.1. List All ABIs (Requires API Key)
+GET {{apiUrl}}/abis?page=1&limit=20&sortBy=createdAt&sortOrder=desc
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.2. Search ABIs by Query
+GET {{apiUrl}}/abis?query=ERC20&page=1&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.3. Filter by Standard
+GET {{apiUrl}}/abis?standard=ERC20&limit=20
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.4. Filter by Tags
+GET {{apiUrl}}/abis?tags=token,defi&limit=10
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+### 1.5. Get Specific ABI by ID (Requires API Key)
+GET {{apiUrl}}/abis/{{abiId}}
+X-API-Key: {{apiKey}}
+Accept: application/json
+
+###############################################################################
+# 2. AUTHENTICATED ENDPOINTS - API KEY
+###############################################################################
+
+### 2.1. Create ABI with API Key
+POST {{apiUrl}}/abis
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "name": "ERC20 Token",
+  "description": "Standard ERC20 token implementation",
+  "contractName": "MyToken",
+  "abi": [
+    {
+      "type": "function",
+      "name": "transfer",
+      "inputs": [
+        {"name": "to", "type": "address"},
+        {"name": "amount", "type": "uint256"}
+      ],
+      "outputs": [{"name": "", "type": "bool"}],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "balanceOf",
+      "inputs": [{"name": "account", "type": "address"}],
+      "outputs": [{"name": "", "type": "uint256"}],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        {"name": "from", "type": "address", "indexed": true},
+        {"name": "to", "type": "address", "indexed": true},
+        {"name": "value", "type": "uint256", "indexed": false}
+      ]
+    }
+  ],
+  "tags": ["ERC20", "Token"],
+  "standard": "ERC20",
+  "metadata": {
+    "originNetwork": "ethereum",
+    "compatibleNetworks": ["ethereum", "polygon", "bsc"],
+    "compiler": "solc",
+    "compilerVersion": "0.8.20",
+    "license": "MIT"
+  }
+}
+
+### 2.2. Create ERC721 NFT ABI
+POST {{apiUrl}}/abis
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "name": "ERC721 NFT",
+  "description": "Non-Fungible Token standard",
+  "contractName": "MyNFT",
+  "abi": [
+    {
+      "type": "function",
+      "name": "ownerOf",
+      "inputs": [{"name": "tokenId", "type": "uint256"}],
+      "outputs": [{"name": "", "type": "address"}],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "safeTransferFrom",
+      "inputs": [
+        {"name": "from", "type": "address"},
+        {"name": "to", "type": "address"},
+        {"name": "tokenId", "type": "uint256"}
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "tags": ["ERC721", "NFT"],
+  "standard": "ERC721",
+  "metadata": {
+    "originNetwork": "ethereum",
+    "license": "MIT"
+  }
+}
+
+### 2.3. List My ABIs
+GET {{apiUrl}}/abis?userId={{userId}}&limit=20
+X-API-Key: {{apiKey}}
+
+### 2.4. Update ABI (Owner Only)
+PUT {{apiUrl}}/abis/{{abiId}}
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "name": "ERC20 Token (Updated)",
+  "description": "Updated description with more details",
+  "tags": ["ERC20", "Token", "DeFi"],
+  "metadata": {
+    "originNetwork": "ethereum",
+    "compatibleNetworks": ["ethereum", "polygon", "bsc", "arbitrum"],
+    "notes": "Added Arbitrum compatibility"
+  }
+}
+
+### 2.5. Update ABI with Version Change
+PUT {{apiUrl}}/abis/{{abiId}}
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "transfer",
+      "inputs": [
+        {"name": "to", "type": "address"},
+        {"name": "amount", "type": "uint256"}
+      ],
+      "outputs": [{"name": "", "type": "bool"}],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "approve",
+      "inputs": [
+        {"name": "spender", "type": "address"},
+        {"name": "amount", "type": "uint256"}
+      ],
+      "outputs": [{"name": "", "type": "bool"}],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "changeLog": "Added approve function for allowance management"
+}
+
+### 2.6. Delete ABI (Soft Delete)
+DELETE {{apiUrl}}/abis/{{abiId}}
+X-API-Key: {{apiKey}}
+
+###############################################################################
+# 3. AUTHENTICATED ENDPOINTS - SESSION
+###############################################################################
+
+### 3.1. Create ABI with Session
+POST {{apiUrl}}/abis
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "Custom Contract",
+  "description": "Custom smart contract ABI",
+  "abi": [
+    {
+      "type": "function",
+      "name": "customFunction",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "tags": ["custom"],
+  "standard": "custom"
+}
+
+### 3.2. Update with Session
+PUT {{apiUrl}}/abis/{{abiId}}
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "Updated Custom Contract",
+  "description": "Updated via session"
+}
+
+### 3.3. Delete with Session
+DELETE {{apiUrl}}/abis/{{abiId}}
+Cookie: better-auth.session_token={{sessionToken}}
+
+###############################################################################
+# 4. ADMIN OPERATIONS
+###############################################################################
+
+### 4.1. Admin: List All ABIs (All Users)
+GET {{apiUrl}}/abis?limit=50
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 4.2. Admin: List Specific User's ABIs
+GET {{apiUrl}}/abis?userId={{userId}}&limit=20
+Cookie: better-auth.session_token={{sessionToken}}
+
+### 4.3. Admin: Update Any User's ABI
+PUT {{apiUrl}}/abis/{{abiId}}
+Content-Type: application/json
+Cookie: better-auth.session_token={{sessionToken}}
+
+{
+  "name": "Admin Updated ABI",
+  "description": "Updated by administrator"
+}
+
+### 4.4. Admin: Delete Any User's ABI
+DELETE {{apiUrl}}/abis/{{abiId}}
+Cookie: better-auth.session_token={{sessionToken}}
+
+###############################################################################
+# 5. ERROR CASES & EDGE CASES
+###############################################################################
+
+### 5.1. Create without Authentication (Should Fail - 401)
+POST {{apiUrl}}/abis
+Content-Type: application/json
+
+{
+  "name": "Unauthorized ABI",
+  "abi": []
+}
+
+### 5.2. Create with Invalid API Key (Should Fail - 401)
+POST {{apiUrl}}/abis
+Content-Type: application/json
+X-API-Key: invalid_key_123
+
+{
+  "name": "Test",
+  "abi": []
+}
+
+### 5.3. Update Someone Else's ABI (Should Fail - 403)
+PUT {{apiUrl}}/abis/other-user-abi-id
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "name": "Trying to update"
+}
+
+### 5.4. Delete Someone Else's ABI (Should Fail - 403)
+DELETE {{apiUrl}}/abis/other-user-abi-id
+X-API-Key: {{apiKey}}
+
+### 5.5. Invalid ABI Structure (Should Fail - 400)
+POST {{apiUrl}}/abis
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "name": "Invalid ABI",
+  "abi": "not-an-array"
+}
+
+### 5.6. Missing Required Fields (Should Fail - 400)
+POST {{apiUrl}}/abis
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "description": "Missing name and abi"
+}
+
+### 5.7. Get Non-Existent ABI (Should Fail - 404)
+GET {{apiUrl}}/abis/00000000-0000-0000-0000-000000000000
+X-API-Key: {{apiKey}}
+
+###############################################################################
+# 6. PAGINATION & FILTERING
+###############################################################################
+
+### 6.1. Pagination - First Page
+GET {{apiUrl}}/abis?page=1&limit=10&sortBy=createdAt&sortOrder=desc
+X-API-Key: {{apiKey}}
+
+### 6.2. Pagination - Second Page
+GET {{apiUrl}}/abis?page=2&limit=10&sortBy=createdAt&sortOrder=desc
+X-API-Key: {{apiKey}}
+
+### 6.3. Sort by Name Ascending
+GET {{apiUrl}}/abis?sortBy=name&sortOrder=asc&limit=20
+X-API-Key: {{apiKey}}
+
+### 6.4. Sort by Updated Date
+GET {{apiUrl}}/abis?sortBy=updatedAt&sortOrder=desc&limit=20
+X-API-Key: {{apiKey}}
+
+### 6.5. Complex Filter
+GET {{apiUrl}}/abis?standard=ERC20&tags=token,defi&query=swap&limit=10
+X-API-Key: {{apiKey}}
+
+### 6.6. Filter by Compatible Networks
+GET {{apiUrl}}/abis?compatibleNetworks=ethereum,polygon&limit=20
+X-API-Key: {{apiKey}}
+
+###############################################################################
+# 7. RATE LIMITING TESTS
+###############################################################################
+
+### 7.1. Test Rate Limit - Request 1
+GET {{apiUrl}}/abis?limit=1
+X-API-Key: {{apiKey}}
+
+### 7.2. Test Rate Limit - Request 2
+GET {{apiUrl}}/abis?limit=1
+X-API-Key: {{apiKey}}
+
+### 7.3. Test Rate Limit - Request 3
+GET {{apiUrl}}/abis?limit=1
+X-API-Key: {{apiKey}}
+
+# Continue making requests until you hit the rate limit
+# Should return 429 with Retry-After header
+
+###############################################################################
+# 8. VERSIONING TESTS
+###############################################################################
+
+### 8.1. Get ABI Versions
+GET {{apiUrl}}/abis/{{abiId}}/versions
+X-API-Key: {{apiKey}}
+
+### 8.2. Get Specific Version
+GET {{apiUrl}}/abis/{{abiId}}/versions/1
+X-API-Key: {{apiKey}}
+
+### 8.3. Compare Versions
+GET {{apiUrl}}/abis/{{abiId}}/versions/compare?from=1&to=2
+X-API-Key: {{apiKey}}
+
