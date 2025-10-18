@@ -145,7 +145,7 @@ export class NetworkSeeder implements Seeder {
   ): Promise<{ created: number; skipped: number; updated: number }> {
     let created = 0;
     let skipped = 0;
-    let updated = 0;
+    const updated = 0;
 
     for (const networkData of batch) {
       try {

@@ -30,7 +30,7 @@ interface TestResult {
 const results: TestResult[] = [];
 let adminSessionToken: string | null = null;
 let publicApiKey: string | null = null;
-let testData: {
+const testData: {
   createdAbiId?: string;
   createdContractAddress?: string;
   createdNetworkId?: string;

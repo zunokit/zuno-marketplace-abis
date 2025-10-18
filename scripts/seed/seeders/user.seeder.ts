@@ -28,7 +28,7 @@ export class UserSeeder implements Seeder {
     const startTime = Date.now();
     let created = 0;
     let skipped = 0;
-    let updated = 0;
+    const updated = 0;
 
     try {
       // Admin user
@@ -178,9 +178,9 @@ export class UserSeeder implements Seeder {
         createdAt: new Date(),
         updatedAt: new Date(),
         role: "user",
-        banned: false,
-        banReason: null,
-        banExpires: null,
+        banned: true, // Prevent login - this user is for API keys only
+        banReason: "System account - API keys only. Direct login is not permitted.",
+        banExpires: null, // Permanent ban
       });
 
       context.logger?.info(`Created public user: ${publicUserId}`);

@@ -46,7 +46,12 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (sessionCookie && ["/auth/signin", "/auth/signup"].includes(pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  // Redirect unauthenticated users trying to access admin to signin
+  if (!sessionCookie && pathname.startsWith("/admin")) {
+    return NextResponse.redirect(new URL("/auth/signin", request.url));
   }
 
   // Redirect unauthenticated users to signin
@@ -74,7 +79,7 @@ export async function middleware(request: NextRequest) {
         };
 
         if (sessionData.user?.role !== "admin") {
-          return NextResponse.redirect(new URL("/dashboard", request.url));
+          return NextResponse.redirect(new URL("/auth/signin", request.url));
         }
       }
     } catch {
