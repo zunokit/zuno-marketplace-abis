@@ -356,7 +356,9 @@ async function testAll19RoutesPublicUser() {
     { method: "GET", path: "/api/networks", name: "List networks" },
     {
       method: "GET",
-      path: `/api/networks/${testData.createdNetworkId || "nonexistent-network-id"}`,
+      path: `/api/networks/${
+        testData.createdNetworkId || "nonexistent-network-id"
+      }`,
       name: "Get network by chainId",
     },
     {
@@ -525,7 +527,11 @@ async function testAll19RoutesPublicUser() {
         // - 400 (validation error)
         // - 401 (auth error)
         // - 404 (resource not found - also valid for unauthenticated users)
-        if (response.status !== 400 && response.status !== 401 && response.status !== 404) {
+        if (
+          response.status !== 400 &&
+          response.status !== 401 &&
+          response.status !== 404
+        ) {
           throw new Error(`Expected 400, 401, or 404, got ${response.status}`);
         }
 
@@ -601,7 +607,9 @@ async function testAll19RoutesAdmin() {
     "GET /api/networks/1/contracts - Get network contracts (Admin)",
     async () => {
       const response = await makeRequest(
-        `/api/networks/${testData.createdNetworkChainId || "1"}/contracts?limit=5`,
+        `/api/networks/${
+          testData.createdNetworkChainId || "1"
+        }/contracts?limit=5`,
         {
           useAdminSession: true,
         }
@@ -739,27 +747,20 @@ async function testAll19RoutesAdmin() {
   );
 
   await runTest("PUT /api/abis/[id] - Update ABI (Admin)", async () => {
-    if (!testData.existingAbiId) {
-      console.log("   ⚠️  Skipped: No existing ABI ID available");
+    if (!testData.createdAbiId) {
+      console.log("   ⚠️  Skipped: No created ABI ID available for update");
       return;
     }
 
-    // Make ABI unique by using a unique function name based on timestamp
-    const uniqueId = Date.now();
-    const response = await makeRequest(`/api/abis/${testData.existingAbiId}`, {
+    // Update the ABI we just created (not existing one to avoid conflicts)
+    // Just update the name and metadata, not the ABI itself to avoid hash conflicts
+    const response = await makeRequest(`/api/abis/${testData.createdAbiId}`, {
       method: "PUT",
       useAdminSession: true,
       body: {
-        name: "UpdatedAdminTestABI_" + uniqueId,
-        abi: JSON.stringify([
-          {
-            type: "function",
-            name: "balanceOf" + uniqueId, // Unique function name to avoid duplicate hash
-            inputs: [{ name: "owner", type: "address" }],
-            outputs: [{ name: "", type: "uint256" }],
-          },
-        ]),
-        version: "1.0.1",
+        name: "UpdatedAdminTestABI_" + Date.now(),
+        description: "Updated description for testing",
+        tags: ["test", "updated"],
       },
     });
 
@@ -801,7 +802,6 @@ async function testAll19RoutesAdmin() {
     }
 
     const testAddress = "0x" + Date.now().toString(16).padStart(40, "0");
-    testData.createdContractAddress = testAddress;
 
     const response = await makeRequest("/api/contracts", {
       method: "POST",
@@ -811,7 +811,7 @@ async function testAll19RoutesAdmin() {
         networkId: testData.createdNetworkId,
         abiId: testData.createdAbiId,
         name: "AdminTestContract_" + Date.now(),
-        type: "ERC20",
+        type: "token", // Valid enum value from schema
       },
     });
 
@@ -821,11 +821,17 @@ async function testAll19RoutesAdmin() {
     }
 
     const data = await response.json();
-    if (!data.success) {
+    if (!data.success || !data.data.address) {
       throw new Error("Contract not created");
     }
 
-    console.log(`   📝 Created: ${data.data.address}`);
+    // Use the exact address returned by the API (normalized)
+    testData.createdContractAddress = data.data.address;
+    testData.createdNetworkId = data.data.networkId; // Ensure we have the correct networkId
+
+    console.log(
+      `   📝 Created: ${data.data.address} on network ${data.data.networkId}`
+    );
   });
 
   await runTest(
@@ -1047,8 +1053,18 @@ async function testAll19RoutesAdmin() {
 
       if (!response.ok) {
         // Backup might not be implemented yet or invalid backup ID
-        if (response.status === 404 || response.status === 501 || response.status === 400) {
-          console.log(`   📦 Restore endpoint: ${response.status === 400 ? 'Invalid backup ID (expected)' : 'Not implemented (expected)'}`);
+        if (
+          response.status === 404 ||
+          response.status === 501 ||
+          response.status === 400
+        ) {
+          console.log(
+            `   📦 Restore endpoint: ${
+              response.status === 400
+                ? "Invalid backup ID (expected)"
+                : "Not implemented (expected)"
+            }`
+          );
           return;
         }
         throw new Error(`Status ${response.status}`);
