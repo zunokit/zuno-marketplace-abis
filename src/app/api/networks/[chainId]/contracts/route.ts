@@ -37,8 +37,18 @@ export const GET = ApiWrapper.create(
     const networkRepository = new NetworkRepositoryImpl();
     const contractRepository = new ContractRepositoryImpl();
 
+    // Parse and validate chain ID
+    const chainIdNum = parseInt(chainId, 10);
+    if (isNaN(chainIdNum)) {
+      throw new ApiError(
+        `Invalid chain ID: ${chainId}`,
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
+    }
+
     // Find network by chain ID
-    const network = await networkRepository.findByChainId(Number(chainId));
+    const network = await networkRepository.findByChainId(chainIdNum);
     if (!network) {
       throw new ApiError(
         `Network with chain ID ${chainId} not found`,

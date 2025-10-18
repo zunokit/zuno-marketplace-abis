@@ -8,6 +8,7 @@ import {
 } from "@/shared/lib/validation/admin.dto";
 import z from "zod";
 import { ApiKeyService } from "@/infrastructure/services/api-key.service";
+import { unwrapOrThrow } from "@/shared/lib/utils/try-catch-wrapper";
 
 // GET /api/admin/api-keys - List API keys (admin only)
 export const GET = ApiWrapper.create<
@@ -24,7 +25,8 @@ export const GET = ApiWrapper.create<
     const params = ApiKeyService.buildListParams(input.query, context);
 
     // Execute query through service layer
-    return await ApiKeyService.list(params);
+    const result = await ApiKeyService.list(params);
+    return unwrapOrThrow(result);
   },
   {
     validation: {
@@ -42,7 +44,8 @@ export const GET = ApiWrapper.create<
 export const POST = ApiWrapper.create(
   async (input: { body: z.infer<typeof CreateApiKeySchema> }, context) => {
     // Delegate all logic to service layer
-    return await ApiKeyService.create(input.body, context, auth.api);
+    const result = await ApiKeyService.create(input.body, context, auth.api);
+    return unwrapOrThrow(result);
   },
   {
     validation: {

@@ -20,6 +20,7 @@ import {
   RateLimitService,
   RateLimitError,
 } from "@/infrastructure/services/rate-limit.service";
+import { unwrapOrThrow } from "@/shared/lib/utils/try-catch-wrapper";
 import { logger } from "@/shared/lib/utils/logger";
 import {
   createFormattedErrorResponse,
@@ -237,10 +238,12 @@ export class ApiWrapper {
           // Check rate limit using Redis-based service
           // This handles: IP whitelist, Origin validation, Tier-based limits
           try {
-            const rateLimit = await RateLimitService.checkLimit(apiKey, {
+            const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
               ip: clientIp,
               origin,
             });
+
+            const rateLimit = unwrapOrThrow(rateLimitResult);
 
             context.rateLimit = {
               limit: rateLimit.limit,
@@ -361,12 +364,23 @@ export class ApiWrapper {
         { issues: error.issues }
       );
     } else if (error instanceof Error) {
-      // Generic error handling
-      apiError = new ApiError(
-        error.message || "Internal server error",
-        ErrorCode.INTERNAL_ERROR,
-        500
-      );
+      // Check if error has custom code and statusCode properties (e.g., ContractError, AbiError)
+      const customError = error as any;
+      if (customError.code && customError.statusCode) {
+        apiError = new ApiError(
+          error.message,
+          customError.code,
+          customError.statusCode,
+          customError.details
+        );
+      } else {
+        // Generic error handling
+        apiError = new ApiError(
+          error.message || "Internal server error",
+          ErrorCode.INTERNAL_ERROR,
+          500
+        );
+      }
     } else {
       // Unknown error type
       apiError = new ApiError(
@@ -518,7 +532,43 @@ export const commonSchemas = {
 
   address: z.string().regex(/^0x[a-fA-F0-9]{40}$/i, "Invalid Ethereum address"),
 
-  abi: z.array(z.record(z.string(), z.unknown())).min(1, "ABI cannot be empty"),
+  // ABI can be either:
+  // 1. Array of ABI items (direct JSON)
+  // 2. String (JSON string that will be parsed)
+  abi: z
+    .union([
+      z.array(z.record(z.string(), z.unknown())).min(1, "ABI cannot be empty"),
+      z
+        .string()
+        .min(1, "ABI cannot be empty")
+        .transform((str, ctx) => {
+          try {
+            const parsed = JSON.parse(str);
+            if (!Array.isArray(parsed)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "ABI must be an array",
+              });
+              return z.NEVER;
+            }
+            if (parsed.length === 0) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "ABI cannot be empty",
+              });
+              return z.NEVER;
+            }
+            return parsed;
+          } catch (error) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Invalid ABI JSON format",
+            });
+            return z.NEVER;
+          }
+        }),
+    ])
+    .describe("Contract ABI (array of ABI items or JSON string)"),
 };
 
 // Helper functions for common operations

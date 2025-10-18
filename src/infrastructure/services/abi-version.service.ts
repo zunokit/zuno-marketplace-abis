@@ -1,7 +1,12 @@
-import { db } from '@/infrastructure/database/drizzle/client';
-import { abis } from '@/infrastructure/database/drizzle/schema/abis.schema';
-import { eq, desc } from 'drizzle-orm';
-import { logger } from '@/shared/lib/utils/logger';
+import { db } from "@/infrastructure/database/drizzle/client";
+import { abis } from "@/infrastructure/database/drizzle/schema/abis.schema";
+import { eq, desc } from "drizzle-orm";
+import { logger } from "@/shared/lib/utils/logger";
+import {
+  tryCatch,
+  type TryCatchResult,
+} from "@/shared/lib/utils/try-catch-wrapper";
+import { ErrorCode } from "@/shared/types";
 
 /**
  * ABI Version Service
@@ -18,9 +23,9 @@ import { logger } from '@/shared/lib/utils/logger';
  */
 
 export enum VersionBump {
-  MAJOR = 'major',
-  MINOR = 'minor',
-  PATCH = 'patch',
+  MAJOR = "major",
+  MINOR = "minor",
+  PATCH = "patch",
 }
 
 export interface SemVer {
@@ -41,7 +46,7 @@ export class AbiVersionService {
    * @throws Error if version format is invalid
    */
   static parseSemVer(version: string): SemVer {
-    const parts = version.split('.');
+    const parts = version.split(".");
 
     if (parts.length !== 3) {
       throw new Error(
@@ -121,29 +126,35 @@ export class AbiVersionService {
    * Get latest version for a specific ABI (by name/contract)
    *
    * @param contractName - Contract name to find latest version
-   * @returns Latest version string or null if not found
+   * @returns TryCatchResult with latest version string or null if not found
    */
-  static async getLatestVersion(contractName: string): Promise<string | null> {
-    try {
-      const [latest] = await db
-        .select({ version: abis.version })
-        .from(abis)
-        .where(eq(abis.contractName, contractName))
-        .orderBy(desc(abis.createdAt))
-        .limit(1);
+  static async getLatestVersion(
+    contractName: string
+  ): Promise<TryCatchResult<string | null>> {
+    return tryCatch(
+      async () => {
+        const [latest] = await db
+          .select({ version: abis.version })
+          .from(abis)
+          .where(eq(abis.contractName, contractName))
+          .orderBy(desc(abis.createdAt))
+          .limit(1);
 
-      return latest?.version || null;
-    } catch (error) {
-      logger.error('Failed to get latest ABI version', error);
-      return null;
-    }
+        return latest?.version || null;
+      },
+      {
+        errorMessage: "Failed to get latest ABI version",
+        errorCode: ErrorCode.INTERNAL_ERROR,
+        context: { contractName },
+      }
+    );
   }
 
   /**
    * Get next version for a new ABI or ABI update
    *
    * @param options - Version generation options
-   * @returns Next version string
+   * @returns TryCatchResult with next version string
    *
    * @example
    * // New ABI (no previous version)
@@ -172,37 +183,51 @@ export class AbiVersionService {
     bump?: VersionBump;
     customVersion?: string;
     isNew?: boolean;
-  }): Promise<string> {
-    const { contractName, bump = VersionBump.PATCH, customVersion, isNew = false } = options || {};
+  }): Promise<TryCatchResult<string>> {
+    return tryCatch(
+      async () => {
+        const {
+          contractName,
+          bump = VersionBump.PATCH,
+          customVersion,
+          isNew = false,
+        } = options || {};
 
-    // Priority 1: Custom version (user override)
-    if (customVersion) {
-      // Validate format
-      this.parseSemVer(customVersion);
-      return customVersion;
-    }
+        // Priority 1: Custom version (user override)
+        if (customVersion) {
+          // Validate format
+          this.parseSemVer(customVersion);
+          return customVersion;
+        }
 
-    // Priority 2: New ABI - start at 1.0.0
-    if (isNew || !contractName) {
-      return '1.0.0';
-    }
+        // Priority 2: New ABI - start at 1.0.0
+        if (isNew || !contractName) {
+          return "1.0.0";
+        }
 
-    // Priority 3: Auto-increment based on latest version
-    try {
-      const latestVersion = await this.getLatestVersion(contractName);
+        // Priority 3: Auto-increment based on latest version
+        const latestVersionResult = await this.getLatestVersion(contractName);
 
-      if (!latestVersion) {
-        // No previous version found, start at 1.0.0
-        return '1.0.0';
+        if (!latestVersionResult.success) {
+          // If we can't get latest version, fallback to 1.0.0
+          return "1.0.0";
+        }
+
+        const latestVersion = latestVersionResult.data;
+        if (!latestVersion) {
+          // No previous version found, start at 1.0.0
+          return "1.0.0";
+        }
+
+        // Bump version
+        return this.bumpVersion(latestVersion, bump);
+      },
+      {
+        errorMessage: "Failed to get next ABI version",
+        errorCode: ErrorCode.INTERNAL_ERROR,
+        context: { options },
       }
-
-      // Bump version
-      return this.bumpVersion(latestVersion, bump);
-    } catch (error) {
-      logger.error('Failed to get next ABI version', error);
-      // Fallback to 1.0.0
-      return '1.0.0';
-    }
+    );
   }
 
   /**
