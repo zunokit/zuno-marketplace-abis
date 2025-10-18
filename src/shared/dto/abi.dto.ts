@@ -162,7 +162,8 @@ export class AbiDtoMapper {
   }
 
   /**
-   * Convert paginated result sang paginated response DTO
+   * Convert paginated result sang paginated response DTO (lightweight)
+   * Without ABI JSON field for performance
    */
   static toPaginatedResponseDto(result: {
     data: AbiEntity[];
@@ -177,6 +178,27 @@ export class AbiDtoMapper {
   }): PaginatedAbiResponseDto {
     return {
       data: this.toListDtos(result.data),
+      pagination: result.pagination,
+    };
+  }
+
+  /**
+   * Convert paginated result to FULL response DTO
+   * Includes ABI JSON field - for Web3 integration
+   */
+  static toFullPaginatedResponseDto(result: {
+    data: AbiEntity[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }): { data: AbiResponseDto[]; pagination: PaginatedAbiResponseDto['pagination'] } {
+    return {
+      data: result.data.map(entity => this.toResponseDto(entity)),
       pagination: result.pagination,
     };
   }

@@ -27,6 +27,8 @@ import {
   logError,
   type FriendlyErrorResponse,
 } from "./error-formatter";
+import { getAuditLogRepository } from "@/infrastructure/di/container";
+import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 
 export interface ApiContext extends AuthContext {
   request: NextRequest;
@@ -71,6 +73,10 @@ export class ApiWrapper {
       request: NextRequest,
       context?: { params?: Promise<Record<string, string>> }
     ) => {
+      const startTime = Date.now();
+      let statusCode = 200;
+      let responseError: Error | unknown = null;
+
       try {
         // 1. Extract request metadata
         const requestId = extractRequestId(request);
@@ -122,8 +128,24 @@ export class ApiWrapper {
           );
         }
 
+        // 7. Log successful request (async, non-blocking)
+        this.logAuditTrail(request, apiContext, statusCode, startTime);
+
         return response;
       } catch (error) {
+        responseError = error;
+        statusCode = this.getStatusCodeFromError(error);
+
+        // Log failed request (async, non-blocking)
+        const requestId = extractRequestId(request);
+        this.logAuditTrail(
+          request,
+          { request, requestId } as ApiContext,
+          statusCode,
+          startTime,
+          error
+        );
+
         return this.handleError(error, request);
       }
     };
@@ -379,6 +401,85 @@ export class ApiWrapper {
     }
 
     return response;
+  }
+
+  /**
+   * Log API request to audit trail (async, non-blocking)
+   */
+  private static logAuditTrail(
+    request: NextRequest,
+    context: ApiContext,
+    statusCode: number,
+    startTime: number,
+    error?: Error | unknown
+  ): void {
+    try {
+      const duration = Date.now() - startTime;
+      const url = new URL(request.url);
+
+      // Initialize audit service
+      const auditRepository = getAuditLogRepository();
+      const auditService = new AuditLogService(auditRepository);
+
+      // Extract client info
+      const ipAddress = this.extractClientIp(request);
+      const userAgent = request.headers.get("user-agent");
+
+      // Log the request
+      auditService.logApiRequest({
+        userId: context.user?.id || null,
+        apiKeyId: context.apiKey?.id || null,
+        method: request.method,
+        path: url.pathname,
+        ipAddress,
+        userAgent,
+        statusCode,
+        duration,
+        error,
+      });
+    } catch (auditError) {
+      // Don't let audit logging errors crash the app
+      logger.error("Failed to log audit trail", { error: auditError });
+    }
+  }
+
+  /**
+   * Extract client IP from request headers
+   */
+  private static extractClientIp(request: NextRequest): string | null {
+    // Check common headers in order of preference
+    const headers = [
+      "x-forwarded-for",
+      "x-real-ip",
+      "cf-connecting-ip", // Cloudflare
+      "x-client-ip",
+    ];
+
+    for (const header of headers) {
+      const value = request.headers.get(header);
+      if (value) {
+        // x-forwarded-for can contain multiple IPs, take the first one
+        return value.split(",")[0].trim();
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get HTTP status code from error
+   */
+  private static getStatusCodeFromError(error: unknown): number {
+    if (error instanceof ApiError) {
+      return error.statusCode;
+    }
+    if (error instanceof z.ZodError) {
+      return 400;
+    }
+    if (error instanceof RateLimitError) {
+      return 429;
+    }
+    return 500;
   }
 }
 
