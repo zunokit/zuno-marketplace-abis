@@ -32,10 +32,7 @@ const UpdateApiKeySchema = z.object({
 /**
  * Get all API keys for current user with pagination
  */
-export async function getApiKeys(options?: {
-  page?: number;
-  limit?: number;
-}) {
+export async function getApiKeys(options?: { page?: number; limit?: number }) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -69,12 +66,17 @@ export async function getApiKeys(options?: {
 
   const result = await ApiKeyService.list(params);
 
+  // Handle TryCatchResult - unwrap or throw
+  if (!result.success) {
+    throw result.error;
+  }
+
   // Return paginated response
-  const total = result.total || result.keys.length;
+  const total = result.data.total || result.data.keys.length;
   const totalPages = Math.ceil(total / limit);
 
   return {
-    data: result.keys,
+    data: result.data.keys,
     pagination: {
       page,
       limit,
@@ -132,9 +134,7 @@ export async function getApiKeyById({ id }: { id: string }) {
 /**
  * Create new API key
  */
-export async function createApiKey(
-  input: z.infer<typeof CreateApiKeySchema>
-) {
+export async function createApiKey(input: z.infer<typeof CreateApiKeySchema>) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -165,9 +165,14 @@ export async function createApiKey(
     auth.api
   );
 
+  // Handle TryCatchResult - unwrap or throw
+  if (!result.success) {
+    throw result.error;
+  }
+
   revalidatePath("/admin/api-keys");
 
-  return result;
+  return result.data;
 }
 
 /**
@@ -313,7 +318,12 @@ export async function regenerateApiKey({ id }: { id: string }) {
     auth.api
   );
 
+  // Handle TryCatchResult - unwrap or throw
+  if (!result.success) {
+    throw result.error;
+  }
+
   revalidatePath("/admin/api-keys");
 
-  return result;
+  return result.data;
 }
