@@ -17,7 +17,6 @@
     "test:e2e": "playwright test",
     "auth:generate": "better-auth generate",
     "auth:migrate": "better-auth migrate",
-    "db:check": "tsx scripts/check-db-data.ts",
     "script:test": "tsx scripts/test-complete.ts"
   },
   "dependencies": {

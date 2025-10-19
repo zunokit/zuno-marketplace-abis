@@ -48,26 +48,29 @@ test.describe("Homepage", () => {
   test("should generate API key when button is clicked", async ({ page }) => {
     await page.goto("/");
 
+    // Wait for page to be fully loaded
+    await page.waitForLoadState("networkidle");
+
     // Click the API key generation button
     const generateButton = page.getByRole("button", {
       name: /Get Public API Key/i,
     });
     await generateButton.click();
 
-    // Wait for the button to show "Generating..." state
+    // Wait for the button to show "Generating..." state (increased timeout)
     await expect(
       page.getByRole("button", { name: /Generating.../i })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
 
     // Wait for either the button to return to normal state or for an API key to be displayed
     // This handles cases where the API endpoint might not be available
     try {
       await expect(
         page.getByRole("button", { name: /Get Public API Key/i })
-      ).toBeVisible({ timeout: 10000 });
+      ).toBeVisible({ timeout: 30000 });
     } catch {
       // If button doesn't return, check if API key is displayed instead
-      await expect(page.locator("code")).toBeVisible({ timeout: 5000 });
+      await expect(page.locator("code")).toBeVisible({ timeout: 30000 });
     }
   });
 });

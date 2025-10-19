@@ -37,6 +37,11 @@ export const appConfig = {
   ipfs: {
     timeout: 60000, // 1 minute
     retries: 3,
+    groups: {
+      abis: 'marketplace-abis', // Group name for all ABIs
+      contracts: 'marketplace-contracts', // Group for contract-related files
+      metadata: 'marketplace-metadata', // Group for metadata files
+    },
   },
 
   // Database

@@ -6,6 +6,7 @@ import { logger } from "@/shared/lib/utils/logger";
 export class IPFSClient {
   private pinata: PinataSDK;
   private static instance: IPFSClient;
+  private groupCache: Map<string, string> = new Map(); // Cache group IDs by name
 
   private constructor() {
     this.pinata = new PinataSDK({
@@ -21,6 +22,39 @@ export class IPFSClient {
     return IPFSClient.instance;
   }
 
+  /**
+   * Get or create a Pinata group by name
+   * Groups help organize files in Pinata dashboard
+   */
+  async getOrCreateGroup(groupName: string): Promise<string | null> {
+    try {
+      // Check cache first
+      if (this.groupCache.has(groupName)) {
+        return this.groupCache.get(groupName)!;
+      }
+
+      // Try to list existing groups and find by name
+      const groups = await this.pinata.groups.public.list();
+      const existingGroup = groups.groups?.find((g: any) => g.name === groupName);
+
+      if (existingGroup) {
+        this.groupCache.set(groupName, existingGroup.id);
+        return existingGroup.id;
+      }
+
+      // Create new group
+      const newGroup = await this.pinata.groups.public.create({
+        name: groupName,
+      });
+
+      this.groupCache.set(groupName, newGroup.id);
+      return newGroup.id;
+    } catch (error) {
+      logger.error(`Failed to get/create Pinata group: ${groupName}`, String(error));
+      return null; // Graceful fallback - continue without group
+    }
+  }
+
   // Upload JSON data to IPFS
   async uploadJSON(
     data: unknown,
@@ -28,24 +62,50 @@ export class IPFSClient {
       name?: string;
       description?: string;
       keyvalues?: Record<string, string>;
+      groupName?: string; // Optional: Pinata group for organization
     }
-  ): Promise<{ hash: string; url: string } | null> {
+  ): Promise<{ hash: string; url: string; groupId?: string } | null> {
     try {
-      const result = await this.pinata.upload.public.json(data as object, {
-        metadata: {
-          name: metadata?.name || "ABI JSON",
-          keyvalues: {
-            type: "abi",
-            format: "json",
-            description: metadata?.description || "Smart Contract ABI",
-            ...metadata?.keyvalues,
-          },
+      // Generate descriptive filename for actual file on IPFS
+      const filename = metadata?.name || "data.json";
+
+      // Get or create group if specified
+      let groupId: string | null = null;
+      if (metadata?.groupName) {
+        groupId = await this.getOrCreateGroup(metadata.groupName);
+      }
+
+      // Convert JSON to File blob to control actual filename
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const file = new File([blob], filename, { type: "application/json" });
+
+      // Prepare metadata
+      const uploadMetadata = {
+        name: filename, // Display name in Pinata dashboard
+        keyvalues: {
+          type: "abi",
+          format: "json",
+          description: metadata?.description || "Smart Contract ABI",
+          ...(metadata?.groupName && { group: metadata.groupName }), // Tag with group name for reference
+          ...metadata?.keyvalues,
         },
-      });
+      };
+
+      // Upload with optional group
+      let result;
+      if (groupId) {
+        result = await this.pinata.upload.public
+          .file(file, { metadata: uploadMetadata })
+          .group(groupId);
+      } else {
+        result = await this.pinata.upload.public.file(file, { metadata: uploadMetadata });
+      }
 
       return {
         hash: result.cid,
         url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.cid}`,
+        groupId: groupId || undefined, // Return actual group ID
       };
     } catch (error) {
       logger.error("IPFS upload error", error);
