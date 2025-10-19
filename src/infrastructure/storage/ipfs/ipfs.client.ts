@@ -31,9 +31,12 @@ export class IPFSClient {
     }
   ): Promise<{ hash: string; url: string } | null> {
     try {
+      // Generate descriptive filename (Pinata will use this as display name)
+      const filename = metadata?.name || "data.json";
+
       const result = await this.pinata.upload.public.json(data as object, {
         metadata: {
-          name: metadata?.name || "ABI JSON",
+          name: filename, // This appears as filename in Pinata dashboard
           keyvalues: {
             type: "abi",
             format: "json",

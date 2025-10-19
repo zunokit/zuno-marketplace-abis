@@ -8,9 +8,11 @@ import { SeedOrchestrator } from './orchestrator';
 import { NetworkSeeder } from './seeders/network.seeder';
 import { UserSeeder } from './seeders/user.seeder';
 import { ApiVersionSeeder } from './seeders/api-version.seeder';
-import { AbiSeeder } from './seeders/abi.seeder';
-import { AbiVersionSeeder } from './seeders/abi-version.seeder';
-import { ContractSeeder } from './seeders/contract.seeder';
+// DISABLED: Mock seeders - using real contract ABIs from Foundry
+// import { AbiSeeder } from './seeders/abi.seeder';
+// import { AbiVersionSeeder } from './seeders/abi-version.seeder';
+// import { ContractSeeder } from './seeders/contract.seeder';
+import { ContractAbiFromArtifactsSeeder } from './seeders/contract-abi-from-artifacts.seeder';
 import { SeedLogger } from './logger';
 import { getSeedConfig, overrideConfig } from './config';
 
@@ -48,12 +50,16 @@ export async function seed(config?: {
     const orchestrator = new SeedOrchestrator(seedConfig);
 
     // Register seeders in dependency order
+    // ACTIVE: Core seeders for local development
     orchestrator.register(new UserSeeder()); // Creates admin + public users
-    orchestrator.register(new ApiVersionSeeder());
-    orchestrator.register(new NetworkSeeder());
-    orchestrator.register(new AbiSeeder());
-    orchestrator.register(new AbiVersionSeeder());
-    orchestrator.register(new ContractSeeder());
+    orchestrator.register(new ApiVersionSeeder()); // Creates v1 API version
+    orchestrator.register(new NetworkSeeder()); // Creates Anvil network only
+    orchestrator.register(new ContractAbiFromArtifactsSeeder()); // Seeds ABIs from Foundry artifacts
+
+    // DISABLED: Mock seeders - using real contract ABIs from Foundry deployment
+    // orchestrator.register(new AbiSeeder());
+    // orchestrator.register(new AbiVersionSeeder());
+    // orchestrator.register(new ContractSeeder());
 
     logger.info(`Registered ${orchestrator.getSeeders().length} seeders`);
 

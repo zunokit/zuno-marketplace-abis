@@ -28,6 +28,10 @@ export const env = createEnv({
     DEFAULT_ADMIN_EMAIL: z.string().email().optional(),
     DEFAULT_ADMIN_PASSWORD: z.string().min(8).optional(),
 
+    // Foundry Contracts (for seeding ABIs)
+    FOUNDRY_OUT_DIR: z.string().default("../zuno-marketplace-contracts/out"),
+    FOUNDRY_BROADCAST_DIR: z.string().default("../zuno-marketplace-contracts/broadcast"),
+
     // Node Environment
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -53,6 +57,9 @@ export const env = createEnv({
     PUBLIC_API_USER_ID: process.env.PUBLIC_API_USER_ID,
     DEFAULT_ADMIN_EMAIL: process.env.DEFAULT_ADMIN_EMAIL,
     DEFAULT_ADMIN_PASSWORD: process.env.DEFAULT_ADMIN_PASSWORD,
+
+    FOUNDRY_OUT_DIR: process.env.FOUNDRY_OUT_DIR,
+    FOUNDRY_BROADCAST_DIR: process.env.FOUNDRY_BROADCAST_DIR,
 
     // Client
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

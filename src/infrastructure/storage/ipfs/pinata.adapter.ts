@@ -70,19 +70,30 @@ export class IPFSStorageService {
       name: string;
       contractName?: string;
       version?: string;
+      abiVersion?: string;
+      apiVersion?: string;
       standard?: string;
       userId: string;
     }
   ): Promise<{ hash: string; url: string } | null> {
+    // Generate descriptive filename: ContractName-v1-1.0.0-random.json
+    const contractName = metadata.contractName || metadata.name;
+    const apiVersion = metadata.apiVersion || "v1";
+    const abiVersion = metadata.abiVersion || metadata.version || "1.0.0";
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const filename = `${contractName}-${apiVersion}-${abiVersion}-${randomSuffix}.json`;
+
     const ipfsMetadata = {
-      name: `${metadata.name} - v${metadata.version || "1.0.0"}`,
-      description: `ABI for ${metadata.contractName || metadata.name}`,
+      name: filename, // Descriptive filename for Pinata dashboard
+      description: `ABI for ${contractName}`,
       keyvalues: {
         type: "abi",
         name: metadata.name,
+        contractName,
+        apiVersion,
+        abiVersion,
         version: metadata.version || "1.0.0",
         standard: metadata.standard || "unknown",
-        contractName: metadata.contractName || "",
         userId: metadata.userId,
         uploadedAt: new Date().toISOString(),
       },
