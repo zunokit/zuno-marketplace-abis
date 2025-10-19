@@ -393,7 +393,7 @@ export class ContractAbiFromArtifactsSeeder implements Seeder {
       return { created: 0, skipped: 1, updated: 0 };
     }
 
-    // Upload to IPFS (with graceful fallback)
+    // Upload to IPFS with File Group organization (with graceful fallback)
     let ipfsHash: string | null = null;
     let ipfsUrl: string | null = null;
     try {
@@ -405,12 +405,14 @@ export class ContractAbiFromArtifactsSeeder implements Seeder {
         apiVersion: 'v1',
         standard: this.detectStandard(abi) || undefined,
         userId: adminUserId,
+        groupName: 'marketplace-abis', // Organize all ABIs in one group
       });
 
       if (ipfsResult) {
         ipfsHash = ipfsResult.hash;
         ipfsUrl = ipfsResult.url;
-        context.logger?.info(`Uploaded ${name} ABI to IPFS: ${ipfsHash}`);
+        const groupInfo = ipfsResult.groupId ? ` (group: ${ipfsResult.groupId})` : '';
+        context.logger?.info(`Uploaded ${name} ABI to IPFS: ${ipfsHash}${groupInfo}`);
       }
     } catch (error: any) {
       context.logger?.warn(`IPFS upload failed for ${name}: ${error.message}`);

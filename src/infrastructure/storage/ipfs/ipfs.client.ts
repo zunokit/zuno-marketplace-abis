@@ -28,19 +28,29 @@ export class IPFSClient {
       name?: string;
       description?: string;
       keyvalues?: Record<string, string>;
+      groupName?: string; // Optional: Pinata group for organization
     }
-  ): Promise<{ hash: string; url: string } | null> {
+  ): Promise<{ hash: string; url: string; groupId?: string } | null> {
     try {
-      // Generate descriptive filename (Pinata will use this as display name)
+      // Generate descriptive filename for actual file on IPFS
       const filename = metadata?.name || "data.json";
 
-      const result = await this.pinata.upload.public.json(data as object, {
+      // Tag with group name in keyvalues for organization
+      const groupName = metadata?.groupName;
+
+      // Convert JSON to File blob to control actual filename
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const file = new File([blob], filename, { type: "application/json" });
+
+      const result = await this.pinata.upload.public.file(file, {
         metadata: {
-          name: filename, // This appears as filename in Pinata dashboard
+          name: filename, // Display name in Pinata dashboard
           keyvalues: {
             type: "abi",
             format: "json",
             description: metadata?.description || "Smart Contract ABI",
+            ...(groupName && { group: groupName }), // Tag with group for filtering
             ...metadata?.keyvalues,
           },
         },
@@ -49,6 +59,7 @@ export class IPFSClient {
       return {
         hash: result.cid,
         url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.cid}`,
+        groupId: groupName, // Return groupName as identifier for logging
       };
     } catch (error) {
       logger.error("IPFS upload error", error);

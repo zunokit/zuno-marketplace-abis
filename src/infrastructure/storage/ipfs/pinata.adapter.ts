@@ -1,7 +1,7 @@
 import { IPFSClient } from "./ipfs.client";
 
 export interface StoragePort {
-  store(data: unknown, metadata?: Record<string, unknown>): Promise<{ hash: string; url: string } | null>;
+  store(data: unknown, metadata?: Record<string, unknown>): Promise<{ hash: string; url: string; groupId?: string } | null>;
   retrieve<T>(hash: string): Promise<T | null>;
   remove(hash: string): Promise<boolean>;
   exists(hash: string): Promise<boolean>;
@@ -18,11 +18,12 @@ export class PinataAdapter implements StoragePort {
   async store(
     data: unknown,
     metadata?: Record<string, unknown>
-  ): Promise<{ hash: string; url: string } | null> {
+  ): Promise<{ hash: string; url: string; groupId?: string } | null> {
     const ipfsMetadata = {
       name: metadata?.name as string,
       description: metadata?.description as string,
       keyvalues: metadata?.keyvalues as Record<string, string>,
+      groupName: metadata?.groupName as string | undefined,
     };
 
     return this.ipfs.uploadJSON(data, ipfsMetadata);
@@ -74,8 +75,9 @@ export class IPFSStorageService {
       apiVersion?: string;
       standard?: string;
       userId: string;
+      groupName?: string; // Optional: organize by group
     }
-  ): Promise<{ hash: string; url: string } | null> {
+  ): Promise<{ hash: string; url: string; groupId?: string } | null> {
     // Generate descriptive filename: ContractName-v1-1.0.0-random.json
     const contractName = metadata.contractName || metadata.name;
     const apiVersion = metadata.apiVersion || "v1";
@@ -86,6 +88,7 @@ export class IPFSStorageService {
     const ipfsMetadata = {
       name: filename, // Descriptive filename for Pinata dashboard
       description: `ABI for ${contractName}`,
+      groupName: metadata.groupName, // Group for organization
       keyvalues: {
         type: "abi",
         name: metadata.name,
