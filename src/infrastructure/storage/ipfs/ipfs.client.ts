@@ -6,6 +6,7 @@ import { logger } from "@/shared/lib/utils/logger";
 export class IPFSClient {
   private pinata: PinataSDK;
   private static instance: IPFSClient;
+  private groupCache: Map<string, string> = new Map(); // Cache group IDs by name
 
   private constructor() {
     this.pinata = new PinataSDK({
@@ -19,6 +20,39 @@ export class IPFSClient {
       IPFSClient.instance = new IPFSClient();
     }
     return IPFSClient.instance;
+  }
+
+  /**
+   * Get or create a Pinata group by name
+   * Groups help organize files in Pinata dashboard
+   */
+  async getOrCreateGroup(groupName: string): Promise<string | null> {
+    try {
+      // Check cache first
+      if (this.groupCache.has(groupName)) {
+        return this.groupCache.get(groupName)!;
+      }
+
+      // Try to list existing groups and find by name
+      const groups = await this.pinata.groups.public.list();
+      const existingGroup = groups.groups?.find((g: any) => g.name === groupName);
+
+      if (existingGroup) {
+        this.groupCache.set(groupName, existingGroup.id);
+        return existingGroup.id;
+      }
+
+      // Create new group
+      const newGroup = await this.pinata.groups.public.create({
+        name: groupName,
+      });
+
+      this.groupCache.set(groupName, newGroup.id);
+      return newGroup.id;
+    } catch (error) {
+      logger.error(`Failed to get/create Pinata group: ${groupName}`, String(error));
+      return null; // Graceful fallback - continue without group
+    }
   }
 
   // Upload JSON data to IPFS
@@ -35,31 +69,43 @@ export class IPFSClient {
       // Generate descriptive filename for actual file on IPFS
       const filename = metadata?.name || "data.json";
 
-      // Tag with group name in keyvalues for organization
-      const groupName = metadata?.groupName;
+      // Get or create group if specified
+      let groupId: string | null = null;
+      if (metadata?.groupName) {
+        groupId = await this.getOrCreateGroup(metadata.groupName);
+      }
 
       // Convert JSON to File blob to control actual filename
       const jsonString = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
       const file = new File([blob], filename, { type: "application/json" });
 
-      const result = await this.pinata.upload.public.file(file, {
-        metadata: {
-          name: filename, // Display name in Pinata dashboard
-          keyvalues: {
-            type: "abi",
-            format: "json",
-            description: metadata?.description || "Smart Contract ABI",
-            ...(groupName && { group: groupName }), // Tag with group for filtering
-            ...metadata?.keyvalues,
-          },
+      // Prepare metadata
+      const uploadMetadata = {
+        name: filename, // Display name in Pinata dashboard
+        keyvalues: {
+          type: "abi",
+          format: "json",
+          description: metadata?.description || "Smart Contract ABI",
+          ...(metadata?.groupName && { group: metadata.groupName }), // Tag with group name for reference
+          ...metadata?.keyvalues,
         },
-      });
+      };
+
+      // Upload with optional group
+      let result;
+      if (groupId) {
+        result = await this.pinata.upload.public
+          .file(file, { metadata: uploadMetadata })
+          .group(groupId);
+      } else {
+        result = await this.pinata.upload.public.file(file, { metadata: uploadMetadata });
+      }
 
       return {
         hash: result.cid,
         url: `${env.PINATA_GATEWAY_URL}/ipfs/${result.cid}`,
-        groupId: groupName, // Return groupName as identifier for logging
+        groupId: groupId || undefined, // Return actual group ID
       };
     } catch (error) {
       logger.error("IPFS upload error", error);
