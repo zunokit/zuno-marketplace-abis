@@ -13,6 +13,7 @@ import { ErrorCode } from "@/shared/types";
 
 export interface AbiListFilters {
   userId?: string;
+  contractName?: string;
   standard?: string;
   tags?: string[];
   compatibleNetworks?: string[];
@@ -36,6 +37,7 @@ export interface ListQueryInput {
   sortBy?: "name" | "createdAt" | "updatedAt" | "version";
   sortOrder?: "asc" | "desc";
   query?: string;
+  contractName?: string;
   standard?: string;
   tags?: string | string[];
   compatibleNetworks?: string | string[];
@@ -74,6 +76,11 @@ export class AbiQueryService {
     context: AuthContext
   ): AbiListFilters {
     const filters: AbiListFilters = {};
+
+    // Contract name filter
+    if (input.contractName) {
+      filters.contractName = input.contractName;
+    }
 
     // Standard filter
     if (input.standard) {
