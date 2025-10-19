@@ -43,6 +43,8 @@ export class NetworkFactory implements SeedFactory<NetworkData> {
 
   private getBaseData(): NetworkData {
     switch (this.currentState) {
+      case 'anvil':
+        return this.getAnvilData();
       case 'ethereum':
         return this.getEthereumData();
       case 'polygon':
@@ -221,6 +223,31 @@ export class NetworkFactory implements SeedFactory<NetworkData> {
       },
       isActive: true,
       icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png'
+    };
+  }
+
+  private getAnvilData(): NetworkData {
+    return {
+      id: IdGenerator.generate({ prefix: EntityPrefix.NETWORK, apiVersion: 'v1' }),
+      chainId: 31337,
+      name: 'Anvil Local',
+      slug: 'anvil',
+      type: 'testnet',
+      isTestnet: true,
+      rpcUrls: [
+        'http://127.0.0.1:8545',
+        'http://localhost:8545'
+      ],
+      explorerUrls: [
+        'http://localhost:8545' // No explorer for local network
+      ],
+      nativeCurrency: {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18
+      },
+      isActive: true,
+      icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png'
     };
   }
 

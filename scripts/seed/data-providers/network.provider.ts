@@ -14,31 +14,25 @@ export class NetworkDataProvider implements SeedDataProvider<NetworkData> {
   }
 
   async getAll(): Promise<NetworkData[]> {
-    // Major networks that should be seeded in production
-    const majorNetworks = [
-      "ethereum",
-      "polygon",
-      "bsc",
-      "arbitrum",
-      "optimism",
-      "base",
-    ];
+    // ACTIVE: Only Anvil (local development)
+    const activeNetworks = ["anvil"];
 
-    // Test networks for development
-    const testNetworks = ["testnet"];
+    // DISABLED: Other networks (commented for future use)
+    // const majorNetworks = [
+    //   "ethereum",
+    //   "polygon",
+    //   "bsc",
+    //   "arbitrum",
+    //   "optimism",
+    //   "base",
+    // ];
+    // const testNetworks = ["testnet"];
 
     const networks: NetworkData[] = [];
 
-    // Add major networks
-    for (const networkType of majorNetworks) {
+    // Add only Anvil network for local development
+    for (const networkType of activeNetworks) {
       networks.push(this.factory.state(networkType).create());
-    }
-
-    // Add test networks for non-production environments
-    if (process.env.NODE_ENV !== "production") {
-      for (const networkType of testNetworks) {
-        networks.push(this.factory.state(networkType).create());
-      }
     }
 
     return networks;
