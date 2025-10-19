@@ -228,6 +228,9 @@ export class AbiRepositoryImpl implements AbiRepository {
         if (params.filters.userId) {
           conditions.push(eq(abis.userId, params.filters.userId));
         }
+        if (params.filters.contractName) {
+          conditions.push(eq(abis.contractName, params.filters.contractName));
+        }
         if (params.filters.standard) {
           conditions.push(eq(abis.standard, params.filters.standard));
         }

@@ -59,6 +59,7 @@ export const ListAbisSchema = withSort(
   withSearch(
     withPagination(
       z.object({
+        contractName: z.string().optional(),
         standard: z.string().optional(),
         tags: z.string().optional(), // Comma-separated tags
         userId: z.string().optional(),
