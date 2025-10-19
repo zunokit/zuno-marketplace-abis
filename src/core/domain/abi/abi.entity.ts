@@ -95,6 +95,7 @@ export interface CreateAbiVersionParams {
 
 export interface AbiSearchFilters {
   userId?: string;
+  contractName?: string;
   standard?: string;
   tags?: string[];
   compatibleNetworks?: string[];
