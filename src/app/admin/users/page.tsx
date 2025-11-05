@@ -4,14 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Ban,
-  ShieldCheck,
-  Eye,
-  ArrowUpDown,
-  UserCog,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -33,7 +26,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -42,20 +34,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { ColumnDef } from "@tanstack/react-table";
 import { authClient } from "@/infrastructure/auth/auth.client";
-
-interface User {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  banned: boolean;
-  banReason: string | null;
-  banExpires: string | null;
-  emailVerified: boolean;
-  createdAt: string;
-}
+import {
+  createUserColumns,
+  type User,
+} from "@/components/feature/user/user-table-columns";
 
 export default function UsersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -201,106 +184,12 @@ export default function UsersPage() {
     setIsViewOpen(true);
   };
 
-  const columns: ColumnDef<User>[] = [
-    {
-      accessorKey: "email",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-    },
-    {
-      accessorKey: "name",
-      header: "Name",
-      cell: ({ row }) => row.original.name || "-",
-    },
-    {
-      accessorKey: "role",
-      header: "Role",
-      cell: ({ row }) => (
-        <Badge
-          variant={row.original.role === "admin" ? "default" : "secondary"}
-        >
-          {row.original.role}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "banned",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge variant={row.original.banned ? "destructive" : "outline"}>
-          {row.original.banned ? "Banned" : "Active"}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "emailVerified",
-      header: "Verified",
-      cell: ({ row }) => (
-        <Badge variant={row.original.emailVerified ? "default" : "secondary"}>
-          {row.original.emailVerified ? "Yes" : "No"}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Created
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleView(row.original)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleChangeRole(row.original)}
-          >
-            <UserCog className="h-4 w-4" />
-          </Button>
-          {row.original.banned ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleUnban(row.original)}
-            >
-              <ShieldCheck className="h-4 w-4 text-green-600" />
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleBan(row.original)}
-            >
-              <Ban className="h-4 w-4 text-destructive" />
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const columns = createUserColumns({
+    onView: handleView,
+    onChangeRole: handleChangeRole,
+    onBan: handleBan,
+    onUnban: handleUnban,
+  });
 
   if (isLoading) {
     return (
