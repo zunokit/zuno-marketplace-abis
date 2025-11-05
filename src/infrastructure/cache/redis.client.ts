@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/shared/config/env";
+import { logger } from "@/shared/lib/utils/logger";
 
 export const redis = new Redis({
   url: env.UPSTASH_REDIS_REST_URL,
@@ -32,7 +33,7 @@ export class RedisClient {
       }
       return true;
     } catch (error) {
-      console.error(`Redis SET error for key ${key}:`, error);
+      logger.error(`Redis SET error for key ${key}`, { error });
       return false;
     }
   }
@@ -55,10 +56,10 @@ export class RedisClient {
       }
 
       // Unexpected type, return null
-      console.warn(`Unexpected Redis value type for key ${key}:`, typeof value);
+      logger.warn(`Unexpected Redis value type for key ${key}`, { valueType: typeof value });
       return null;
     } catch (error) {
-      console.error(`Redis GET error for key ${key}:`, error);
+      logger.error(`Redis GET error for key ${key}`, { error });
       return null;
     }
   }
@@ -69,7 +70,7 @@ export class RedisClient {
       await this.client.del(key);
       return true;
     } catch (error) {
-      console.error(`Redis DEL error for key ${key}:`, error);
+      logger.error(`Redis DEL error for key ${key}`, { error });
       return false;
     }
   }
@@ -80,7 +81,7 @@ export class RedisClient {
       const result = await this.client.exists(key);
       return result === 1;
     } catch (error) {
-      console.error(`Redis EXISTS error for key ${key}:`, error);
+      logger.error(`Redis EXISTS error for key ${key}`, { error });
       return false;
     }
   }
@@ -90,7 +91,7 @@ export class RedisClient {
     try {
       return await this.client.ttl(key);
     } catch (error) {
-      console.error(`Redis TTL error for key ${key}:`, error);
+      logger.error(`Redis TTL error for key ${key}`, { error });
       return -1;
     }
   }
@@ -101,7 +102,7 @@ export class RedisClient {
       await this.client.flushall();
       return true;
     } catch (error) {
-      console.error("Redis FLUSHALL error:", error);
+      logger.error("Redis FLUSHALL error", { error });
       return false;
     }
   }
@@ -115,7 +116,7 @@ export class RedisClient {
       await this.client.del(...keys);
       return keys.length;
     } catch (error) {
-      console.error(`Redis DELETE PATTERN error for pattern ${pattern}:`, error);
+      logger.error(`Redis DELETE PATTERN error for pattern ${pattern}`, { error });
       return 0;
     }
   }
@@ -126,7 +127,7 @@ export class RedisClient {
       const result = await this.client.ping();
       return result === "PONG";
     } catch (error) {
-      console.error("Redis PING error:", error);
+      logger.error("Redis PING error", { error });
       return false;
     }
   }
