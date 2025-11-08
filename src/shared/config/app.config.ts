@@ -25,6 +25,38 @@ export const appConfig = {
     },
   },
 
+  // Request/Response Logging
+  logging: {
+    // Enable request/response logging
+    enabled: env.NODE_ENV !== "test", // Disable in test environment
+
+    // Log request body (may contain sensitive data)
+    includeRequestBody: env.NODE_ENV === "development",
+
+    // Log response body (may be large)
+    includeResponseBody: env.NODE_ENV === "development",
+
+    // Log health check requests (can be noisy)
+    logHealthChecks: false,
+
+    // Log slow requests (requests taking longer than threshold)
+    slowRequestThreshold: 1000, // 1 second in milliseconds
+
+    // Log large responses (responses larger than threshold)
+    largeResponseThreshold: 10000, // 10KB in bytes
+
+    // Exclude paths from logging (regex patterns)
+    excludePaths: [
+      "^/_next/", // Next.js internal routes
+      "^/static/", // Static assets
+      "\\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf)$", // File extensions
+    ],
+
+    // Sample rate for logging (0.0 to 1.0, 1.0 = log all requests)
+    // Useful for high-traffic production environments
+    sampleRate: env.NODE_ENV === "production" ? 0.1 : 1.0, // 10% in prod, 100% in dev
+  },
+
   // Cache TTL (in seconds)
   cache: {
     abi: 3600, // 1 hour
