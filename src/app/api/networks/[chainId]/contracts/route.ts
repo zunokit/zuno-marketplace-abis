@@ -2,8 +2,10 @@ import { z } from "zod";
 import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { ChainContractsParamsSchema } from "@/shared/lib/validation/network.dto";
 import { ListContractsSchema } from "@/shared/lib/validation/contract.dto";
-import { NetworkRepositoryImpl } from "@/infrastructure/database/repositories/network.repository.impl";
-import { ContractRepositoryImpl } from "@/infrastructure/database/repositories/contract.repository.impl";
+import {
+  getNetworkRepository,
+  getContractRepository,
+} from "@/infrastructure/di/container";
 import { ContractQueryService } from "@/core/services/contract/contract-query.service";
 import { ErrorCode } from "@/shared/types";
 
@@ -34,9 +36,9 @@ export const GET = ApiWrapper.create(
       );
     }
 
-    // Initialize repositories
-    const networkRepository = new NetworkRepositoryImpl();
-    const contractRepository = new ContractRepositoryImpl();
+    // Initialize repositories from DI container
+    const networkRepository = getNetworkRepository();
+    const contractRepository = getContractRepository();
 
     // Parse and validate chain ID
     const chainIdNum = parseInt(chainId, 10);
