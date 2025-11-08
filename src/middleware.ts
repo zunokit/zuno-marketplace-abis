@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
+import { appConfig } from "@/shared/config/app.config";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -38,6 +39,10 @@ export async function middleware(request: NextRequest) {
     // Set public headers for client
     response.headers.set("X-API-Version", validatedVersion);
     response.headers.set("X-API-Deprecated", "false");
+
+    // Set timeout information for client
+    response.headers.set("X-Request-Timeout", String(appConfig.api.timeout));
+    response.headers.set("X-Request-Start", String(Date.now()));
 
     return response;
   }

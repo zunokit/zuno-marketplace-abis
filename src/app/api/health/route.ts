@@ -3,6 +3,11 @@ import { db } from "@/infrastructure/database/drizzle/client";
 import { networks } from "@/infrastructure/database/drizzle/schema/networks.schema";
 import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
 import { auth } from "@/infrastructure/auth/better-auth.config";
+import { getMaxDuration } from "@/shared/lib/utils/request-timeout";
+
+// Route segment config - set maximum duration for this route (in seconds)
+export const maxDuration = getMaxDuration(); // 30 seconds from app.config.ts
+export const dynamic = "force-dynamic"; // Disable static optimization for health checks
 
 // GET /api/health - Health check endpoint
 export const GET = ApiWrapper.create(
