@@ -56,6 +56,16 @@ export const appConfig = {
     allowedFormats: ["application/json"],
   },
 
+  // Request Body Size Limits
+  bodySize: {
+    default: 1024 * 1024, // 1MB default
+    api: {
+      "/api/abis": 2 * 1024 * 1024, // 2MB for ABI uploads
+      "/api/contracts": 512 * 1024, // 512KB for contract data
+      "/api/backup/restore": 10 * 1024 * 1024, // 10MB for backup restore
+    },
+  },
+
   // URLs
   urls: {
     app: env.NEXT_PUBLIC_APP_URL,
