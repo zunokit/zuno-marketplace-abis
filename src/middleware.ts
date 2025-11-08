@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
+import { addSecurityHeaders } from "@/shared/lib/middleware/security-headers";
 
+/**
+ * Next.js Middleware
+ *
+ * Handles:
+ * - Security headers
+ * - API version validation
+ *
+ * Protected routes (/admin, /dashboard) are handled by layout server components
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -19,7 +29,7 @@ export async function middleware(request: NextRequest) {
     // If invalid version provided, return error
     if (!isValid && (request.headers.get("X-API-Version") || request.headers.get("Accept-Version"))) {
       const supportedVersions = await getSupportedApiVersions();
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         {
           error: "Unsupported API version",
           message: `API version '${clientVersion}' is not supported. Supported versions: ${supportedVersions.join(", ")}`,
@@ -27,6 +37,10 @@ export async function middleware(request: NextRequest) {
         },
         { status: 400 }
       );
+
+      // Add security headers to error response
+      addSecurityHeaders(errorResponse);
+      return errorResponse;
     }
 
     // Create response with validated version
@@ -39,19 +53,26 @@ export async function middleware(request: NextRequest) {
     response.headers.set("X-API-Version", validatedVersion);
     response.headers.set("X-API-Deprecated", "false");
 
+    // Add security headers
+    addSecurityHeaders(response);
+
     return response;
   }
 
-  // For protected routes (/admin, /dashboard):
-  // Let the layout server components handle authentication and redirects
-  // This avoids duplicate checks and follows Next.js best practices
+  // For other routes, add security headers
+  const response = NextResponse.next();
+  addSecurityHeaders(response);
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
   matcher: [
-    // Only match API routes for version validation
+    // Match API routes for version validation and security headers
     "/api/:path*",
+    // Match docs route for security headers
+    "/docs",
+    // Match admin routes for security headers
+    "/admin/:path*",
   ],
 };
