@@ -231,8 +231,19 @@ export class ContractRepositoryImpl implements ContractRepository {
   ): Promise<PaginatedResult<ContractEntity>> {
     try {
       const page = params.page || 1;
-      const limit = params.limit || 20;
+      const limit = Math.min(
+        params.limit || appConfig.api.defaultPageSize,
+        appConfig.api.maxPageSize
+      );
       const offset = (page - 1) * limit;
+
+      // Validate offset to prevent deep pagination DOS attacks
+      if (offset > appConfig.api.pagination.maxOffset) {
+        throw new Error(
+          `Pagination offset ${offset} exceeds maximum allowed ${appConfig.api.pagination.maxOffset}. Please reduce page number or use filtering instead.`
+        );
+      }
+
       const sortBy = params.sortBy || "createdAt";
       const sortOrder = params.sortOrder || "desc";
 

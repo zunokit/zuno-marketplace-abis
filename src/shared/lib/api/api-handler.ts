@@ -28,6 +28,7 @@ import {
   logError,
   type FriendlyErrorResponse,
 } from "./error-formatter";
+import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 
@@ -188,6 +189,21 @@ export class ApiWrapper {
     // Validate using Zod schemas if provided
     if (validation?.query) {
       query = validation.query.parse(query) as Record<string, string>;
+
+      // Log warning for high pagination limits (DOS protection)
+      if (query.limit && typeof query.limit === 'number') {
+        const limit = Number(query.limit);
+        if (limit >= appConfig.api.pagination.warnThreshold) {
+          logger.warn("High pagination limit requested", {
+            limit,
+            page: query.page || 1,
+            offset: ((Number(query.page) || 1) - 1) * limit,
+            threshold: appConfig.api.pagination.warnThreshold,
+            url: request.url,
+            userAgent: request.headers.get('user-agent'),
+          } as any);
+        }
+      }
     }
 
     if (validation?.body && body !== undefined) {
@@ -518,8 +534,22 @@ export const commonSchemas = {
 
   pagination: z.object({
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
-  }),
+    limit: z.coerce
+      .number()
+      .min(appConfig.api.minPageSize)
+      .max(appConfig.api.maxPageSize)
+      .default(appConfig.api.defaultPageSize),
+  }).refine(
+    (data) => {
+      // Validate that offset (page * limit) doesn't exceed maxOffset
+      const offset = (data.page - 1) * data.limit;
+      return offset <= appConfig.api.pagination.maxOffset;
+    },
+    {
+      message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
+      path: ["page"],
+    }
+  ),
 
   sort: z.object({
     sortBy: z.string().optional(),

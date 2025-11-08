@@ -6,7 +6,14 @@ export const appConfig = {
     version: "v1",
     defaultPageSize: 20,
     maxPageSize: 100,
+    minPageSize: 1,
+    maxTotalResults: 10000, // Maximum total results to prevent memory issues
     timeout: 30000,
+    // Pagination DOS protection
+    pagination: {
+      warnThreshold: 50, // Warn when limit exceeds this value
+      maxOffset: 10000, // Maximum offset to prevent deep pagination attacks
+    },
   },
 
   // Rate Limiting
