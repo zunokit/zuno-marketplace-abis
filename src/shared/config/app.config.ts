@@ -48,6 +48,12 @@ export const appConfig = {
   database: {
     connectionTimeout: 30000,
     queryTimeout: 60000,
+    pool: {
+      connectionTimeout: 10000, // 10 seconds for connection acquisition
+      idleTimeout: 10000, // 10 seconds for idle connections
+      statementCacheSize: 100, // Number of prepared statements to cache
+      enableQueryLogging: env.NODE_ENV === "development", // Log queries in development
+    },
   },
 
   // File Upload
