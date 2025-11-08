@@ -254,8 +254,9 @@ export function hasPermission(
 
   // Check API key permissions
   if (context.apiKey) {
-    // Check each required permission
-    const hasAllPermissions = requiredPermissions.some((perm) => {
+    // Check that ALL required permissions are satisfied
+    // SECURITY: Must use .every() to ensure all permissions match, not .some()
+    const hasAllPermissions = requiredPermissions.every((perm) => {
       // Check scopes first (format: "write:abis", "read:contracts")
       if (context.apiKey!.scopes.includes(perm)) {
         return true;

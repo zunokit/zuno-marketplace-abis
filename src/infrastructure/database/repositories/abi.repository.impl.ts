@@ -255,6 +255,13 @@ export class AbiRepositoryImpl implements AbiRepository {
     const limit = Math.min(params.limit || 20, appConfig.api.maxPageSize);
     const offset = (page - 1) * limit;
 
+    // Validate offset to prevent deep pagination DOS attacks
+    if (offset > appConfig.api.pagination.maxOffset) {
+      throw new Error(
+        `Pagination offset ${offset} exceeds maximum allowed ${appConfig.api.pagination.maxOffset}. Please reduce page number or use filtering instead.`
+      );
+    }
+
     // Try cache first
     const cacheKey = this.getListCacheKey(params);
     const cached = await this.cache.get<PaginatedResult<AbiEntity>>(cacheKey);
