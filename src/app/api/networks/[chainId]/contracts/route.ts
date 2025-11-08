@@ -6,6 +6,7 @@ import {
   getNetworkRepository,
   getContractRepository,
 } from "@/infrastructure/di/container";
+import { ContractQueryService } from "@/core/services/contract/contract-query.service";
 import { ErrorCode } from "@/shared/types";
 
 /**
@@ -59,36 +60,14 @@ export const GET = ApiWrapper.create(
       );
     }
 
-    // Build filters
-    const filters: any = {
+    // Build list params using service
+    const listParams = ContractQueryService.buildListParams({
+      ...input,
       networkId: network.id,
-    };
-
-    if (input.abiId) {
-      filters.abiId = input.abiId;
-    }
-
-    if (input.type) {
-      filters.type = input.type;
-    }
-
-    if (input.isVerified !== undefined) {
-      filters.isVerified = input.isVerified === "true";
-    }
-
-    if (input.deployer) {
-      filters.deployer = input.deployer;
-    }
+    });
 
     // List contracts for this network
-    const result = await contractRepository.list({
-      page: input.page as number,
-      limit: input.limit as number,
-      sortBy: input.sortBy as any,
-      sortOrder: input.sortOrder as "asc" | "desc",
-      query: input.query as string | undefined,
-      filters,
-    });
+    const result = await contractRepository.list(listParams);
 
     return {
       network: {

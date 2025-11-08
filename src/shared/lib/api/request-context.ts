@@ -11,6 +11,7 @@
 import { randomUUID } from "crypto";
 import type { NextRequest } from "next/server";
 import type { AuthContext } from "@/infrastructure/auth/auth-helpers";
+import { logger } from "@/shared/lib/utils/logger";
 
 // ============ Request Context Types ============
 
@@ -164,60 +165,40 @@ export class ContextLogger {
   }
 
   info(message: string, data?: Record<string, unknown>) {
-    console.log(
-      JSON.stringify({
-        level: "info",
-        message,
-        ...this.getLogMeta(),
-        ...data,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    logger.info(message, {
+      ...this.getLogMeta(),
+      ...data,
+    });
   }
 
   warn(message: string, data?: Record<string, unknown>) {
-    console.warn(
-      JSON.stringify({
-        level: "warn",
-        message,
-        ...this.getLogMeta(),
-        ...data,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    logger.warn(message, {
+      ...this.getLogMeta(),
+      ...data,
+    });
   }
 
   error(message: string, error?: unknown, data?: Record<string, unknown>) {
-    console.error(
-      JSON.stringify({
-        level: "error",
-        message,
-        error:
-          error instanceof Error
-            ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
-            : error,
-        ...this.getLogMeta(),
-        ...data,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    logger.error(message, {
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+      ...this.getLogMeta(),
+      ...data,
+    });
   }
 
   debug(message: string, data?: Record<string, unknown>) {
     if (process.env.NODE_ENV === "development") {
-      console.debug(
-        JSON.stringify({
-          level: "debug",
-          message,
-          ...this.getLogMeta(),
-          ...data,
-          timestamp: new Date().toISOString(),
-        })
-      );
+      logger.debug(message, {
+        ...this.getLogMeta(),
+        ...data,
+      });
     }
   }
 }

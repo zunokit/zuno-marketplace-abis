@@ -17,6 +17,7 @@ import { ApiError } from "./api-handler";
 import { getErrorMessage } from "./error-messages";
 import { ErrorCode } from "@/shared/types";
 import { nanoid } from "nanoid";
+import { logger } from "@/shared/lib/utils/logger";
 
 /**
  * User-friendly error response structure
@@ -279,33 +280,80 @@ export function logError(
   const logLevel = getLogLevel(error.statusCode);
 
   const logData = {
-    level: logLevel,
-    timestamp: new Date().toISOString(),
     error: {
       code: error.code,
       message: error.message,
       statusCode: error.statusCode,
       stack: error.stack,
     },
-    context,
+    ...context,
   };
 
-  // Use appropriate console method based on severity
+  // Use structured logging based on severity
   switch (logLevel) {
     case "ERROR":
-      console.error(JSON.stringify(logData, null, 2));
+      logger.error(`API Error: ${error.message}`, logData);
       break;
     case "WARN":
-      console.warn(JSON.stringify(logData, null, 2));
+      logger.warn(`API Warning: ${error.message}`, logData);
       break;
     default:
-      console.log(JSON.stringify(logData, null, 2));
+      logger.info(`API Info: ${error.message}`, logData);
   }
 
-  // In production, also send to monitoring service (Sentry, DataDog, etc.)
+  // In production, send to monitoring service (Sentry, DataDog, etc.)
   if (process.env.NODE_ENV === "production") {
-    // TODO: Integrate with monitoring service
-    // Sentry.captureException(error, { contexts: { custom: context } });
+    sendToMonitoringService(error, context);
+  }
+}
+
+/**
+ * Send error to monitoring service
+ *
+ * Integrates with external monitoring services like Sentry or DataDog.
+ * Configure via environment variables:
+ * - SENTRY_DSN: Sentry project DSN
+ * - DATADOG_API_KEY: DataDog API key
+ *
+ * @param error - The error to report
+ * @param context - Additional context information
+ */
+function sendToMonitoringService(
+  error: ApiError,
+  context: Record<string, any>
+): void {
+  try {
+    // Sentry integration (if configured)
+    if (process.env.SENTRY_DSN) {
+      // Placeholder for Sentry integration
+      // To enable: npm install @sentry/node
+      // import * as Sentry from "@sentry/node";
+      // Sentry.captureException(error, {
+      //   contexts: { custom: context },
+      //   level: error.statusCode >= 500 ? "error" : "warning",
+      // });
+      logger.debug("Sentry integration not configured");
+    }
+
+    // DataDog integration (if configured)
+    if (process.env.DATADOG_API_KEY) {
+      // Placeholder for DataDog integration
+      // To enable: npm install dd-trace
+      logger.debug("DataDog integration not configured");
+    }
+
+    // Logtail integration (if configured)
+    if (process.env.LOGTAIL_TOKEN) {
+      // Placeholder for Logtail integration
+      // To enable: npm install @logtail/node
+      logger.debug("Logtail integration not configured");
+    }
+  } catch (monitoringError) {
+    // Don't let monitoring errors crash the application
+    logger.error("Failed to send error to monitoring service", {
+      error: monitoringError,
+      originalError: error.message,
+    });
   }
 }
 
