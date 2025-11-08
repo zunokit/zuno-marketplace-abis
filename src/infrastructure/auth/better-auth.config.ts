@@ -73,6 +73,20 @@ export const auth = betterAuth({
 
     // API Key plugin for programmatic access
     apiKey({
+      // Security: API Key Hashing - ENABLED (explicit for security audit)
+      // ⚠️ CRITICAL: Never set disableKeyHashing to true in production!
+      // Better Auth uses SHA-256 hashing to securely store API keys in the database.
+      // Keys are hashed before storage and verified via constant-time comparison.
+      // This protects against database breaches - even if DB is compromised,
+      // attackers cannot retrieve original API keys.
+      //
+      // Technical details:
+      // - Algorithm: SHA-256 (via Web Crypto API)
+      // - Storage: Only hash stored in 'api_key.key' column
+      // - Verification: auth.api.verifyApiKey() hashes input and compares
+      // - Display: First 8 chars stored in 'api_key.start' for UI identification
+      disableKeyHashing: false, // Explicit: hashing ENABLED (default, but explicit for clarity)
+
       // Rate limiting - DISABLED
       // We use custom Redis-based RateLimitService in api-handler.ts instead
       // This provides tier-based limits and distributed rate limiting via Upstash
@@ -95,7 +109,7 @@ export const auth = betterAuth({
 
       // Default key configuration
       defaultPrefix: "zuno_",
-      defaultKeyLength: 32,
+      defaultKeyLength: 32, // 256-bit entropy for cryptographic security
     }),
 
     openAPI(),
