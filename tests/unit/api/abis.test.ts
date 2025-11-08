@@ -151,7 +151,7 @@ describe('POST /api/abis', () => {
 
     const mockApiKey = createMockApiKey({
       scopes: ['abis:write'],
-      permissions: ['write:abis'],
+      permissions: { abis: ['write'] },
     });
     mockVerifyApiKey.mockResolvedValue(mockApiKey);
     mockVerifySessionFromHeaders.mockResolvedValue(null);
@@ -363,7 +363,7 @@ describe('PUT /api/abis/[id]', () => {
     const mockApiKey = createMockApiKey({
       userId: 'user_v1_test',
       scopes: ['abis:write'],
-      permissions: ['write:abis'],
+      permissions: { abis: ['write'] },
     });
     mockVerifyApiKey.mockResolvedValue(mockApiKey);
     mockVerifySessionFromHeaders.mockResolvedValue(null);
@@ -457,7 +457,7 @@ describe('DELETE /api/abis/[id]', () => {
     const mockApiKey = createMockApiKey({
       userId: 'user_v1_test',
       scopes: ['abis:delete'],
-      permissions: ['delete:abis'],
+      permissions: { abis: ['delete'] },
     });
     mockVerifyApiKey.mockResolvedValue(mockApiKey);
     mockVerifySessionFromHeaders.mockResolvedValue(null);

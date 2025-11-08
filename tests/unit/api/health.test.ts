@@ -11,6 +11,7 @@ import * as betterAuthConfig from '@/infrastructure/auth/better-auth.config';
 jest.mock('@/infrastructure/database/drizzle/client', () => ({
   db: {
     select: jest.fn(),
+    execute: jest.fn(),
   },
 }));
 
@@ -59,6 +60,7 @@ describe('GET /api/health', () => {
     jest.clearAllMocks();
 
     // Default mocks for healthy state
+    mockDb.execute.mockResolvedValue(undefined);
     mockDb.select.mockReturnValue({
       from: jest.fn().mockReturnValue({
         limit: jest.fn().mockResolvedValue([{ id: 'network_1' }]),
@@ -73,6 +75,13 @@ describe('GET /api/health', () => {
         user: null,
       }),
     };
+
+    // Mock fetch for IPFS health check
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({}),
+    });
   });
 
   it('should return healthy status when all systems are operational', async () => {
@@ -101,6 +110,7 @@ describe('GET /api/health', () => {
   });
 
   it('should return degraded status when database is unhealthy', async () => {
+    mockDb.execute.mockRejectedValue(new Error('Database connection failed'));
     mockDb.select.mockReturnValue({
       from: jest.fn().mockReturnValue({
         limit: jest.fn().mockRejectedValue(new Error('Database connection failed')),
@@ -138,7 +148,7 @@ describe('GET /api/health', () => {
     expect(data.success).toBe(true);
     expect(data.data.status).toBe('degraded');
     expect(data.data.checks.database).toBe('healthy');
-    expect(data.data.checks.cache).toBe('unhealthy');
+    expect(data.data.checks.cache).toBe('degraded');
     expect(data.data.checks.auth).toBe('healthy');
   });
 
@@ -161,7 +171,8 @@ describe('GET /api/health', () => {
     expect(data.data.checks.auth).toBe('unhealthy');
   });
 
-  it('should return degraded status when all systems are unhealthy', async () => {
+  it('should return unhealthy status when all systems are unhealthy', async () => {
+    mockDb.execute.mockRejectedValue(new Error('DB error'));
     mockDb.select.mockReturnValue({
       from: jest.fn().mockReturnValue({
         limit: jest.fn().mockRejectedValue(new Error('DB error')),
@@ -180,7 +191,7 @@ describe('GET /api/health', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.status).toBe('degraded');
+    expect(data.data.status).toBe('unhealthy');
     expect(data.data.checks.database).toBe('unhealthy');
     expect(data.data.checks.cache).toBe('unhealthy');
     expect(data.data.checks.auth).toBe('unhealthy');
