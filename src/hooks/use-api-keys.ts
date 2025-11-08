@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { CACHE_TIME } from "@/shared/constants/cache-config";
+import { logger } from "@/shared/lib/utils/logger";
 import {
   getApiKeys,
   getApiKeyById,
@@ -48,7 +49,7 @@ function transformApiKeyDto(dto: ApiKeyDto): ApiKeyViewModel {
     try {
       parsedPermissions = JSON.parse(dto.permissions);
     } catch (error) {
-      console.error('Failed to parse API key permissions:', error);
+      logger.error('Failed to parse API key permissions', { error, permissions: dto.permissions });
       // Return empty permissions on parse error instead of crashing
     }
   }
