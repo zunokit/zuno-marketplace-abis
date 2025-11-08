@@ -1,7 +1,9 @@
 import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { ContractAddressParamsSchema as ParamsSchema } from "@/shared/lib/validation/contract.dto";
-import { ContractRepositoryImpl } from "@/infrastructure/database/repositories/contract.repository.impl";
-import { AbiRepositoryImpl } from "@/infrastructure/database/repositories/abi.repository.impl";
+import {
+  getContractRepository,
+  getAbiRepository,
+} from "@/infrastructure/di/container";
 import { ErrorCode } from "@/shared/types";
 
 /**
@@ -32,9 +34,9 @@ export const GET = ApiWrapper.create(
       );
     }
 
-    // Initialize repositories
-    const contractRepository = new ContractRepositoryImpl();
-    const abiRepository = new AbiRepositoryImpl();
+    // Initialize repositories from DI container
+    const contractRepository = getContractRepository();
+    const abiRepository = getAbiRepository();
 
     // Find contract
     const contract = await contractRepository.findByAddress(address, networkId);

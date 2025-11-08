@@ -31,6 +31,16 @@ export interface IStorageService {
       userId: string;
     }
   ): Promise<{ hash: string; url: string } | null>;
+  storeAbiVersion(
+    abi: unknown,
+    metadata: {
+      name: string;
+      version: string;
+      changeLog?: string;
+      previousHash?: string;
+      userId: string;
+    }
+  ): Promise<{ hash: string; url: string } | null>;
   getAbi<T = unknown>(hash: string): Promise<T | null>;
   removeAbi(hash: string): Promise<boolean>;
   health(): Promise<boolean>;
