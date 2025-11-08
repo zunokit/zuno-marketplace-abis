@@ -8,7 +8,6 @@
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
-import { initProcessErrorHandler } from "./shared/lib/errors/process-error-handler";
 import { logger } from "./shared/lib/utils/logger";
 
 /**
@@ -17,9 +16,14 @@ import { logger } from "./shared/lib/utils/logger";
  * Called once when the server starts (both dev and production)
  */
 export async function register() {
-  // Only run on server side
+  // Only run on server side (Node.js runtime)
   if (process.env.NEXT_RUNTIME === "nodejs") {
     logger.info("Initializing server instrumentation...");
+
+    // Dynamically import Node.js-specific modules to avoid Edge Runtime compatibility issues
+    const { initProcessErrorHandler } = await import(
+      "./shared/lib/errors/process-error-handler"
+    );
 
     // Initialize process-level error handlers
     initProcessErrorHandler({
