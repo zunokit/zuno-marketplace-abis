@@ -1,24 +1,21 @@
-import { GET, POST } from '@/app/api/contracts/route';
+import { GET, POST } from "@/app/api/contracts/route";
 import {
   createMockRequest,
   extractJsonFromResponse,
   createMockApiKey,
   createMockContractAddress,
-} from './helpers/test-utils';
+} from "./helpers/test-utils";
 import {
   mockContractRepository,
   mockAbiRepository,
   mockCacheService,
   resetAllMocks,
-} from './helpers/mocks';
-import * as authHelpers from '@/infrastructure/auth/auth-helpers';
+} from "./helpers/mocks";
+import * as authHelpers from "@/infrastructure/auth/auth-helpers";
 
-// Mock auth helpers - declare after jest.mock to access them
-let mockVerifyApiKey: jest.Mock;
-let mockVerifySessionFromHeaders: jest.Mock;
-let mockHasPermission: jest.Mock;
+// Mock auth helpers - will be assigned after jest.mock calls
 
-jest.mock('@/infrastructure/auth/auth-helpers', () => ({
+jest.mock("@/infrastructure/auth/auth-helpers", () => ({
   verifyApiKey: jest.fn(),
   verifySession: jest.fn(),
   verifySessionFromHeaders: jest.fn(),
@@ -27,7 +24,7 @@ jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   canAccessResource: jest.fn(() => true),
 }));
 
-jest.mock('@/infrastructure/di/container', () => ({
+jest.mock("@/infrastructure/di/container", () => ({
   getContractRepository: jest.fn(() => mockContractRepository),
   getAbiRepository: jest.fn(() => mockAbiRepository),
   getCacheService: jest.fn(() => mockCacheService),
@@ -37,7 +34,7 @@ jest.mock('@/infrastructure/di/container', () => ({
   })),
 }));
 
-jest.mock('@/infrastructure/services/rate-limit.service', () => ({
+jest.mock("@/infrastructure/services/rate-limit.service", () => ({
   RateLimitService: {
     checkLimit: jest.fn().mockResolvedValue({
       success: true,
@@ -46,7 +43,7 @@ jest.mock('@/infrastructure/services/rate-limit.service', () => ({
         limit: 100,
         remaining: 99,
         reset: Date.now() + 3600000,
-        tier: 'free',
+        tier: "free",
       },
       error: null,
     }),
@@ -55,11 +52,12 @@ jest.mock('@/infrastructure/services/rate-limit.service', () => ({
 }));
 
 // Assign mocked functions after imports
-mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
-mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
-mockHasPermission = authHelpers.hasPermission as jest.Mock;
+const mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
+const mockVerifySessionFromHeaders =
+  authHelpers.verifySessionFromHeaders as jest.Mock;
+const mockHasPermission = authHelpers.hasPermission as jest.Mock;
 
-describe('GET /api/contracts', () => {
+describe("GET /api/contracts", () => {
   beforeEach(() => {
     resetAllMocks();
     jest.clearAllMocks();
@@ -70,16 +68,16 @@ describe('GET /api/contracts', () => {
     mockHasPermission.mockReturnValue(true);
   });
 
-  it('should return paginated contracts', async () => {
+  it("should return paginated contracts", async () => {
     const mockContracts = [
       {
-        id: 'contract_v1_test1',
+        id: "contract_v1_test1",
         address: createMockContractAddress(),
-        networkId: 'network_v1_ethereum',
-        abiId: 'abi_v1_test',
-        name: 'Test Contract',
-        type: 'token',
-        userId: 'user_v1_test',
+        networkId: "network_v1_ethereum",
+        abiId: "abi_v1_test",
+        name: "Test Contract",
+        type: "token",
+        userId: "user_v1_test",
         isDeleted: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -99,10 +97,10 @@ describe('GET /api/contracts', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'GET',
+      url: "http://localhost:3000/api/contracts",
+      method: "GET",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
     });
 
@@ -119,13 +117,13 @@ describe('GET /api/contracts', () => {
     });
   });
 
-  it('should require authentication', async () => {
+  it("should require authentication", async () => {
     mockVerifyApiKey.mockResolvedValue(null);
     mockVerifySessionFromHeaders.mockResolvedValue(null);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'GET',
+      url: "http://localhost:3000/api/contracts",
+      method: "GET",
     });
 
     const response = await GET(request);
@@ -133,10 +131,10 @@ describe('GET /api/contracts', () => {
 
     expect(response.status).toBe(401);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('UNAUTHORIZED');
+    expect(data.error.code).toBe("UNAUTHORIZED");
   });
 
-  it('should support filtering by network', async () => {
+  it("should support filtering by network", async () => {
     mockContractRepository.list.mockResolvedValue({
       data: [],
       pagination: {
@@ -150,13 +148,13 @@ describe('GET /api/contracts', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'GET',
+      url: "http://localhost:3000/api/contracts",
+      method: "GET",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       searchParams: {
-        networkId: 'network_v1_ethereum',
+        networkId: "network_v1_ethereum",
       },
     });
 
@@ -167,7 +165,7 @@ describe('GET /api/contracts', () => {
     expect(data.success).toBe(true);
   });
 
-  it('should support filtering by contract type', async () => {
+  it("should support filtering by contract type", async () => {
     mockContractRepository.list.mockResolvedValue({
       data: [],
       pagination: {
@@ -181,13 +179,13 @@ describe('GET /api/contracts', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'GET',
+      url: "http://localhost:3000/api/contracts",
+      method: "GET",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       searchParams: {
-        type: 'token',
+        type: "token",
       },
     });
 
@@ -198,7 +196,7 @@ describe('GET /api/contracts', () => {
     expect(data.success).toBe(true);
   });
 
-  it('should support search by contract name', async () => {
+  it("should support search by contract name", async () => {
     mockContractRepository.list.mockResolvedValue({
       data: [],
       pagination: {
@@ -212,13 +210,13 @@ describe('GET /api/contracts', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'GET',
+      url: "http://localhost:3000/api/contracts",
+      method: "GET",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       searchParams: {
-        query: 'MyToken',
+        query: "MyToken",
       },
     });
 
@@ -230,39 +228,39 @@ describe('GET /api/contracts', () => {
   });
 });
 
-describe('POST /api/contracts', () => {
+describe("POST /api/contracts", () => {
   beforeEach(() => {
     resetAllMocks();
     jest.clearAllMocks();
 
     const mockApiKey = createMockApiKey({
-      scopes: ['contracts:write'],
-      permissions: ['write:contracts'],
+      scopes: ["contracts:write"],
+      permissions: { contracts: ["write"] },
     });
     mockVerifyApiKey.mockResolvedValue(mockApiKey);
     mockVerifySessionFromHeaders.mockResolvedValue(null);
     mockHasPermission.mockReturnValue(true);
   });
 
-  it('should create a new contract successfully', async () => {
+  it("should create a new contract successfully", async () => {
     const mockAbi = {
-      id: 'abi_v1_test',
-      name: 'ERC20 ABI',
+      id: "abi_v1_test",
+      name: "ERC20 ABI",
       abi: [],
-      userId: 'user_v1_test',
+      userId: "user_v1_test",
       isDeleted: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const newContract = {
-      id: 'contract_v1_new',
+      id: "contract_v1_new",
       address: createMockContractAddress(),
-      networkId: 'network_v1_ethereum',
-      abiId: 'abi_v1_test',
-      name: 'Test Contract',
-      type: 'token',
-      userId: 'user_v1_test',
+      networkId: "network_v1_ethereum",
+      abiId: "abi_v1_test",
+      name: "Test Contract",
+      type: "token",
+      userId: "user_v1_test",
       isDeleted: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -271,19 +269,20 @@ describe('POST /api/contracts', () => {
     mockAbiRepository.findById.mockResolvedValue(mockAbi);
     mockContractRepository.create.mockResolvedValue(newContract);
     mockContractRepository.findByAddress.mockResolvedValue(null);
+    mockContractRepository.existsByAddress.mockResolvedValue(false);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'POST',
+      url: "http://localhost:3000/api/contracts",
+      method: "POST",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       body: {
         address: createMockContractAddress(),
-        networkId: 'network_v1_ethereum',
-        abiId: 'abi_v1_test',
-        name: 'Test Contract',
-        type: 'token', // Valid contract type
+        networkId: "network_v1_ethereum",
+        abiId: "abi_v1_test",
+        name: "Test Contract",
+        type: "token", // Valid contract type
       },
     });
 
@@ -291,31 +290,31 @@ describe('POST /api/contracts', () => {
     const data = await extractJsonFromResponse(response);
 
     if (response.status !== 200) {
-      console.log('Error response:', JSON.stringify(data, null, 2));
+      console.log("Error response:", JSON.stringify(data, null, 2));
     } else {
-      console.log('Success response:', JSON.stringify(data, null, 2));
+      console.log("Success response:", JSON.stringify(data, null, 2));
     }
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data).toBeDefined();
-    expect(data.data.name).toBe('Test Contract');
+    expect(data.data.name).toBe("Test Contract");
   });
 
-  it('should require write permissions', async () => {
+  it("should require write permissions", async () => {
     mockHasPermission.mockReturnValue(false);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'POST',
+      url: "http://localhost:3000/api/contracts",
+      method: "POST",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       body: {
         address: createMockContractAddress(),
-        networkId: 'network_v1_ethereum',
-        abiId: 'abi_v1_test',
-        name: 'Test Contract',
+        networkId: "network_v1_ethereum",
+        abiId: "abi_v1_test",
+        name: "Test Contract",
       },
     });
 
@@ -324,19 +323,19 @@ describe('POST /api/contracts', () => {
 
     expect(response.status).toBe(403);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('FORBIDDEN');
+    expect(data.error.code).toBe("FORBIDDEN");
   });
 
-  it('should validate required fields', async () => {
+  it("should validate required fields", async () => {
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'POST',
+      url: "http://localhost:3000/api/contracts",
+      method: "POST",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       body: {
         // Missing required fields
-        name: 'Test Contract',
+        name: "Test Contract",
       },
     });
 
@@ -345,21 +344,21 @@ describe('POST /api/contracts', () => {
 
     expect(response.status).toBe(400);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('VALIDATION_ERROR');
+    expect(data.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it('should validate Ethereum address format', async () => {
+  it("should validate Ethereum address format", async () => {
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'POST',
+      url: "http://localhost:3000/api/contracts",
+      method: "POST",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       body: {
-        address: 'invalid_address',
-        networkId: 'network_v1_ethereum',
-        abiId: 'abi_v1_test',
-        name: 'Test Contract',
+        address: "invalid_address",
+        networkId: "network_v1_ethereum",
+        abiId: "abi_v1_test",
+        name: "Test Contract",
       },
     });
 
@@ -368,31 +367,31 @@ describe('POST /api/contracts', () => {
 
     expect(response.status).toBe(400);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('VALIDATION_ERROR');
+    expect(data.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it('should handle optional metadata field', async () => {
+  it("should handle optional metadata field", async () => {
     const mockAbi = {
-      id: 'abi_v1_test',
-      name: 'ERC20 ABI',
+      id: "abi_v1_test",
+      name: "ERC20 ABI",
       abi: [],
-      userId: 'user_v1_test',
+      userId: "user_v1_test",
       isDeleted: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const newContract = {
-      id: 'contract_v1_new',
+      id: "contract_v1_new",
       address: createMockContractAddress(),
-      networkId: 'network_v1_ethereum',
-      abiId: 'abi_v1_test',
-      name: 'Test Contract',
-      type: 'token', // Valid contract type
-      userId: 'user_v1_test',
+      networkId: "network_v1_ethereum",
+      abiId: "abi_v1_test",
+      name: "Test Contract",
+      type: "token", // Valid contract type
+      userId: "user_v1_test",
       metadata: {
         verified: true,
-        compiler: 'solc',
+        compiler: "solc",
       },
       isDeleted: false,
       createdAt: new Date(),
@@ -402,22 +401,23 @@ describe('POST /api/contracts', () => {
     mockAbiRepository.findById.mockResolvedValue(mockAbi);
     mockContractRepository.create.mockResolvedValue(newContract);
     mockContractRepository.findByAddress.mockResolvedValue(null);
+    mockContractRepository.existsByAddress.mockResolvedValue(false);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'POST',
+      url: "http://localhost:3000/api/contracts",
+      method: "POST",
       headers: {
-        'x-api-key': 'zuno_test_key',
+        "x-api-key": "zuno_test_key",
       },
       body: {
         address: createMockContractAddress(),
-        networkId: 'network_v1_ethereum',
-        abiId: 'abi_v1_test',
-        name: 'Test Contract',
-        type: 'token', // Valid contract type
+        networkId: "network_v1_ethereum",
+        abiId: "abi_v1_test",
+        name: "Test Contract",
+        type: "token", // Valid contract type
         metadata: {
           verified: true,
-          compiler: 'solc',
+          compiler: "solc",
         },
       },
     });
@@ -429,18 +429,18 @@ describe('POST /api/contracts', () => {
     expect(data.success).toBe(true);
   });
 
-  it('should require authentication', async () => {
+  it("should require authentication", async () => {
     mockVerifyApiKey.mockResolvedValue(null);
     mockVerifySessionFromHeaders.mockResolvedValue(null);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/contracts',
-      method: 'POST',
+      url: "http://localhost:3000/api/contracts",
+      method: "POST",
       body: {
         address: createMockContractAddress(),
-        networkId: 'network_v1_ethereum',
-        abiId: 'abi_v1_test',
-        name: 'Test Contract',
+        networkId: "network_v1_ethereum",
+        abiId: "abi_v1_test",
+        name: "Test Contract",
       },
     });
 
@@ -449,6 +449,6 @@ describe('POST /api/contracts', () => {
 
     expect(response.status).toBe(401);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('UNAUTHORIZED');
+    expect(data.error.code).toBe("UNAUTHORIZED");
   });
 });

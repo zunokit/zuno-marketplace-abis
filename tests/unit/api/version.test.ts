@@ -3,8 +3,7 @@ import { createMockRequest, extractJsonFromResponse } from './helpers/test-utils
 import { resetAllMocks } from './helpers/mocks';
 import * as drizzleClient from '@/infrastructure/database/drizzle/client';
 
-// Declare mocks
-let mockDb: any;
+// Mock will be assigned after jest.mock calls
 
 // Mock external dependencies
 jest.mock('@/infrastructure/database/drizzle/client', () => ({
@@ -30,12 +29,20 @@ jest.mock('@/infrastructure/di/container', () => ({
 }));
 
 // Assign mocked functions after imports
-mockDb = (drizzleClient as any).db;
+const mockDb = (drizzleClient as any).db;
 
 describe('GET /api/version', () => {
   beforeEach(() => {
     resetAllMocks();
     jest.clearAllMocks();
+    // Ensure select mock is always available after reset
+    // The version test uses its own mockDb, not the one from mocks.ts
+    if (!mockDb || !mockDb.select || typeof mockDb.select !== 'function') {
+      // Update the drizzle client mock directly
+      (drizzleClient as any).db = {
+        select: jest.fn(),
+      };
+    }
   });
 
   it('should return current version and supported versions', async () => {

@@ -1,5 +1,6 @@
-import { NextRequest } from 'next/server';
-import type { AuthApiKey, AuthUser, Session } from '@/infrastructure/auth/auth-helpers';
+import { NextRequest } from "next/server";
+import type { AuthApiKey, AuthUser } from "@/infrastructure/auth/auth-helpers";
+import type { Session } from "@/infrastructure/database/drizzle/schema/auth.schema";
 
 /**
  * Test utilities for API testing
@@ -16,8 +17,8 @@ export function createMockRequest(options: {
   searchParams?: Record<string, string>;
 }): NextRequest {
   const {
-    method = 'GET',
-    url = 'http://localhost:3000/api/test',
+    method = "GET",
+    url = "http://localhost:3000/api/test",
     headers = {},
     body,
     searchParams = {},
@@ -29,15 +30,20 @@ export function createMockRequest(options: {
     urlObj.searchParams.set(key, value);
   });
 
-  const requestInit: RequestInit = {
+  // Create request init object compatible with Next.js RequestInit
+  const requestInit: {
+    method: string;
+    headers: Headers;
+    body?: string;
+  } = {
     method,
     headers: new Headers(headers),
   };
 
-  if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+  if (body && ["POST", "PUT", "PATCH"].includes(method)) {
     requestInit.body = JSON.stringify(body);
     requestInit.headers = new Headers({
-      'content-type': 'application/json',
+      "content-type": "application/json",
       ...headers,
     });
   }
@@ -50,14 +56,10 @@ export function createMockRequest(options: {
  */
 export function createMockUser(overrides?: Partial<AuthUser>): AuthUser {
   return {
-    id: 'user_v1_test123',
-    email: 'test@example.com',
-    name: 'Test User',
-    role: 'user',
-    emailVerified: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    image: null,
+    id: "user_v1_test123",
+    email: "test@example.com",
+    name: "Test User",
+    role: "user",
     ...overrides,
   };
 }
@@ -67,10 +69,10 @@ export function createMockUser(overrides?: Partial<AuthUser>): AuthUser {
  */
 export function createMockAdmin(overrides?: Partial<AuthUser>): AuthUser {
   return createMockUser({
-    id: 'user_v1_admin123',
-    email: 'admin@example.com',
-    name: 'Admin User',
-    role: 'admin',
+    id: "user_v1_admin123",
+    email: "admin@example.com",
+    name: "Admin User",
+    role: "admin",
     ...overrides,
   });
 }
@@ -78,16 +80,20 @@ export function createMockAdmin(overrides?: Partial<AuthUser>): AuthUser {
 /**
  * Create a mock session
  */
-export function createMockSession(user: AuthUser, overrides?: Partial<Session>): Session {
+export function createMockSession(
+  user: AuthUser,
+  overrides?: Partial<Session>
+): Session {
   return {
-    id: 'session_test123',
+    id: "session_test123",
     userId: user.id,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-    token: 'test_session_token',
+    token: "test_session_token",
     ipAddress: null,
     userAgent: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    impersonatedBy: null,
     ...overrides,
   };
 }
@@ -97,22 +103,13 @@ export function createMockSession(user: AuthUser, overrides?: Partial<Session>):
  */
 export function createMockApiKey(overrides?: Partial<AuthApiKey>): AuthApiKey {
   return {
-    id: 'apiKey_v1_test123',
-    userId: 'user_v1_test123',
-    name: 'Test API Key',
-    key: 'zuno_test_api_key_123456',
-    tier: 'free',
-    scopes: ['abis:read', 'abis:write'],
-    permissions: ['read:abis', 'write:abis'],
+    id: "apiKey_v1_test123",
+    userId: "user_v1_test123",
+    name: "Test API Key",
+    scopes: ["abis:read", "abis:write"],
+    permissions: { abis: ["read", "write"] },
     enabled: true,
-    rateLimit: 100,
     expiresAt: null,
-    lastUsedAt: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    allowedOrigins: null,
-    allowedIps: null,
-    metadata: null,
     ...overrides,
   };
 }
@@ -120,16 +117,15 @@ export function createMockApiKey(overrides?: Partial<AuthApiKey>): AuthApiKey {
 /**
  * Create a mock public API key
  */
-export function createMockPublicApiKey(overrides?: Partial<AuthApiKey>): AuthApiKey {
+export function createMockPublicApiKey(
+  overrides?: Partial<AuthApiKey>
+): AuthApiKey {
   return createMockApiKey({
-    id: 'apiKey_v1_public',
-    userId: 'user_v1_public',
-    name: 'Public API Key',
-    key: 'zuno_public_api_key',
-    tier: 'public',
-    scopes: ['abis:read'],
-    permissions: ['read:abis'],
-    rateLimit: 100,
+    id: "apiKey_v1_public",
+    userId: "user_v1_public",
+    name: "Public API Key",
+    scopes: ["abis:read"],
+    permissions: { abis: ["read"] },
     ...overrides,
   });
 }
@@ -148,29 +144,29 @@ export async function extractJsonFromResponse(response: Response) {
 export function createMockAbi() {
   return [
     {
-      type: 'function',
-      name: 'transfer',
+      type: "function",
+      name: "transfer",
       inputs: [
-        { name: 'to', type: 'address' },
-        { name: 'amount', type: 'uint256' },
+        { name: "to", type: "address" },
+        { name: "amount", type: "uint256" },
       ],
-      outputs: [{ name: '', type: 'bool' }],
-      stateMutability: 'nonpayable',
+      outputs: [{ name: "", type: "bool" }],
+      stateMutability: "nonpayable",
     },
     {
-      type: 'function',
-      name: 'balanceOf',
-      inputs: [{ name: 'account', type: 'address' }],
-      outputs: [{ name: '', type: 'uint256' }],
-      stateMutability: 'view',
+      type: "function",
+      name: "balanceOf",
+      inputs: [{ name: "account", type: "address" }],
+      outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
     },
     {
-      type: 'event',
-      name: 'Transfer',
+      type: "event",
+      name: "Transfer",
       inputs: [
-        { name: 'from', type: 'address', indexed: true },
-        { name: 'to', type: 'address', indexed: true },
-        { name: 'value', type: 'uint256', indexed: false },
+        { name: "from", type: "address", indexed: true },
+        { name: "to", type: "address", indexed: true },
+        { name: "value", type: "uint256", indexed: false },
       ],
     },
   ];
@@ -182,76 +178,76 @@ export function createMockAbi() {
 export function createMockERC20Abi() {
   return [
     {
-      type: 'function',
-      name: 'totalSupply',
+      type: "function",
+      name: "totalSupply",
       inputs: [],
-      outputs: [{ name: '', type: 'uint256' }],
-      stateMutability: 'view',
+      outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
     },
     {
-      type: 'function',
-      name: 'balanceOf',
-      inputs: [{ name: 'account', type: 'address' }],
-      outputs: [{ name: '', type: 'uint256' }],
-      stateMutability: 'view',
+      type: "function",
+      name: "balanceOf",
+      inputs: [{ name: "account", type: "address" }],
+      outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
     },
     {
-      type: 'function',
-      name: 'transfer',
+      type: "function",
+      name: "transfer",
       inputs: [
-        { name: 'to', type: 'address' },
-        { name: 'amount', type: 'uint256' },
+        { name: "to", type: "address" },
+        { name: "amount", type: "uint256" },
       ],
-      outputs: [{ name: '', type: 'bool' }],
-      stateMutability: 'nonpayable',
+      outputs: [{ name: "", type: "bool" }],
+      stateMutability: "nonpayable",
     },
     {
-      type: 'function',
-      name: 'transferFrom',
+      type: "function",
+      name: "transferFrom",
       inputs: [
-        { name: 'from', type: 'address' },
-        { name: 'to', type: 'address' },
-        { name: 'amount', type: 'uint256' },
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "amount", type: "uint256" },
       ],
-      outputs: [{ name: '', type: 'bool' }],
-      stateMutability: 'nonpayable',
+      outputs: [{ name: "", type: "bool" }],
+      stateMutability: "nonpayable",
     },
     {
-      type: 'function',
-      name: 'approve',
+      type: "function",
+      name: "approve",
       inputs: [
-        { name: 'spender', type: 'address' },
-        { name: 'amount', type: 'uint256' },
+        { name: "spender", type: "address" },
+        { name: "amount", type: "uint256" },
       ],
-      outputs: [{ name: '', type: 'bool' }],
-      stateMutability: 'nonpayable',
+      outputs: [{ name: "", type: "bool" }],
+      stateMutability: "nonpayable",
     },
     {
-      type: 'function',
-      name: 'allowance',
+      type: "function",
+      name: "allowance",
       inputs: [
-        { name: 'owner', type: 'address' },
-        { name: 'spender', type: 'address' },
+        { name: "owner", type: "address" },
+        { name: "spender", type: "address" },
       ],
-      outputs: [{ name: '', type: 'uint256' }],
-      stateMutability: 'view',
+      outputs: [{ name: "", type: "uint256" }],
+      stateMutability: "view",
     },
     {
-      type: 'event',
-      name: 'Transfer',
+      type: "event",
+      name: "Transfer",
       inputs: [
-        { name: 'from', type: 'address', indexed: true },
-        { name: 'to', type: 'address', indexed: true },
-        { name: 'value', type: 'uint256', indexed: false },
+        { name: "from", type: "address", indexed: true },
+        { name: "to", type: "address", indexed: true },
+        { name: "value", type: "uint256", indexed: false },
       ],
     },
     {
-      type: 'event',
-      name: 'Approval',
+      type: "event",
+      name: "Approval",
       inputs: [
-        { name: 'owner', type: 'address', indexed: true },
-        { name: 'spender', type: 'address', indexed: true },
-        { name: 'value', type: 'uint256', indexed: false },
+        { name: "owner", type: "address", indexed: true },
+        { name: "spender", type: "address", indexed: true },
+        { name: "value", type: "uint256", indexed: false },
       ],
     },
   ];
@@ -261,7 +257,7 @@ export function createMockERC20Abi() {
  * Create mock contract address
  */
 export function createMockContractAddress(): string {
-  return '0x' + '1'.repeat(40);
+  return "0x" + "1".repeat(40);
 }
 
 /**

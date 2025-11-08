@@ -8,9 +8,7 @@ import {
 import { mockNetworkRepository, resetAllMocks } from './helpers/mocks';
 import * as authHelpers from '@/infrastructure/auth/auth-helpers';
 
-// Mock auth helpers - declare after jest.mock to access them
-let mockVerifyApiKey: jest.Mock;
-let mockVerifySessionFromHeaders: jest.Mock;
+// Mock auth helpers - will be assigned after jest.mock calls
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   verifyApiKey: jest.fn(),
@@ -21,16 +19,13 @@ jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   canAccessResource: jest.fn(),
 }));
 
-jest.mock('@/infrastructure/di/container', () => {
-  const { mockNetworkRepository: repo } = require('./helpers/mocks');
-  return {
-    getNetworkRepository: jest.fn(() => repo),
-    getAuditLogRepository: jest.fn(() => ({
-      create: jest.fn(),
-      findAll: jest.fn(),
-    })),
-  };
-});
+jest.mock('@/infrastructure/di/container', () => ({
+  getNetworkRepository: jest.fn(() => mockNetworkRepository),
+  getAuditLogRepository: jest.fn(() => ({
+    create: jest.fn(),
+    findAll: jest.fn(),
+  })),
+}));
 
 jest.mock('@/infrastructure/services/rate-limit.service', () => ({
   RateLimitService: {
@@ -53,8 +48,8 @@ jest.mock('@/infrastructure/services/rate-limit.service', () => ({
 import { GET } from '@/app/api/networks/route';
 
 // Assign mocked functions after imports
-mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
-mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
+const mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
+const mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
 
 describe('GET /api/networks', () => {
   const mockNetworks = [

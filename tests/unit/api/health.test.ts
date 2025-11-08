@@ -5,10 +5,7 @@ import * as drizzleClient from '@/infrastructure/database/drizzle/client';
 import { CacheAdapter } from '@/infrastructure/cache/cache.adapter';
 import * as betterAuthConfig from '@/infrastructure/auth/better-auth.config';
 
-// Declare mocks
-let mockDb: any;
-let mockCacheService: any;
-let mockAuth: any;
+// Mocks will be assigned after jest.mock calls
 
 // Mock external dependencies
 jest.mock('@/infrastructure/database/drizzle/client', () => ({
@@ -47,11 +44,11 @@ jest.mock('@/infrastructure/di/container', () => ({
 }));
 
 // Assign mocked functions after imports
-mockDb = (drizzleClient as any).db;
-mockCacheService = {
+const mockDb = (drizzleClient as any).db;
+const mockCacheService = {
   health: jest.fn(),
 };
-mockAuth = (betterAuthConfig as any).auth;
+const mockAuth = (betterAuthConfig as any).auth;
 
 // Set up CacheAdapter.getInstance to return our mock
 (CacheAdapter.getInstance as jest.Mock).mockReturnValue(mockCacheService);

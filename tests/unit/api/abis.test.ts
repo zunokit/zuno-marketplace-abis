@@ -21,10 +21,7 @@ import {
 } from './helpers/mocks';
 import * as authHelpers from '@/infrastructure/auth/auth-helpers';
 
-// Mock auth helpers - declare after jest.mock to access them
-let mockVerifyApiKey: jest.Mock;
-let mockVerifySessionFromHeaders: jest.Mock;
-let mockHasPermission: jest.Mock;
+// Mock auth helpers - will be assigned after jest.mock calls
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   verifyApiKey: jest.fn(),
@@ -63,9 +60,9 @@ jest.mock('@/infrastructure/services/rate-limit.service', () => ({
 }));
 
 // Assign mocked functions after imports
-mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
-mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
-mockHasPermission = authHelpers.hasPermission as jest.Mock;
+const mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
+const mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
+const mockHasPermission = authHelpers.hasPermission as jest.Mock;
 
 describe('GET /api/abis', () => {
   beforeEach(() => {

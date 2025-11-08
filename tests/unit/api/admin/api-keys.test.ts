@@ -1,24 +1,19 @@
-import { GET, POST } from '@/app/api/admin/api-keys/route';
+import { GET, POST } from "@/app/api/admin/api-keys/route";
 import {
   createMockRequest,
   extractJsonFromResponse,
   createMockAdmin,
   createMockUser,
   createMockSession,
-} from '../helpers/test-utils';
-import { resetAllMocks } from '../helpers/mocks';
-import * as authHelpers from '@/infrastructure/auth/auth-helpers';
-import * as betterAuthConfig from '@/infrastructure/auth/better-auth.config';
-import * as apiKeyService from '@/infrastructure/services/api-key.service';
+} from "../helpers/test-utils";
+import { resetAllMocks } from "../helpers/mocks";
+import * as authHelpers from "@/infrastructure/auth/auth-helpers";
+import * as betterAuthConfig from "@/infrastructure/auth/better-auth.config";
+import * as apiKeyService from "@/infrastructure/services/api-key.service";
 
-// Mock auth helpers - declare after jest.mock to access them
-let mockVerifySessionFromHeaders: jest.Mock;
-let mockIsAdmin: jest.Mock;
-let mockHasPermission: jest.Mock;
-let mockAuth: any;
-let mockApiKeyService: any;
+// Mock auth helpers - will be assigned after jest.mock calls
 
-jest.mock('@/infrastructure/auth/auth-helpers', () => ({
+jest.mock("@/infrastructure/auth/auth-helpers", () => ({
   verifyApiKey: jest.fn(),
   verifySession: jest.fn(),
   verifySessionFromHeaders: jest.fn(),
@@ -27,7 +22,7 @@ jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   canAccessResource: jest.fn(() => true),
 }));
 
-jest.mock('@/infrastructure/auth/better-auth.config', () => ({
+jest.mock("@/infrastructure/auth/better-auth.config", () => ({
   auth: {
     api: {
       createApiKey: jest.fn(),
@@ -36,7 +31,7 @@ jest.mock('@/infrastructure/auth/better-auth.config', () => ({
   },
 }));
 
-jest.mock('@/infrastructure/services/api-key.service', () => ({
+jest.mock("@/infrastructure/services/api-key.service", () => ({
   ApiKeyService: {
     buildListParams: jest.fn(),
     list: jest.fn(),
@@ -44,14 +39,14 @@ jest.mock('@/infrastructure/services/api-key.service', () => ({
   },
 }));
 
-jest.mock('@/infrastructure/di/container', () => ({
+jest.mock("@/infrastructure/di/container", () => ({
   getAuditLogRepository: jest.fn(() => ({
     create: jest.fn(),
     findAll: jest.fn(),
   })),
 }));
 
-jest.mock('@/shared/lib/utils/try-catch-wrapper', () => ({
+jest.mock("@/shared/lib/utils/try-catch-wrapper", () => ({
   unwrapOrThrow: jest.fn((result) => {
     if (result.success) return result.data;
     throw result.error;
@@ -59,13 +54,14 @@ jest.mock('@/shared/lib/utils/try-catch-wrapper', () => ({
 }));
 
 // Assign mocked functions after imports
-mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
-mockIsAdmin = authHelpers.isAdmin as jest.Mock;
-mockHasPermission = authHelpers.hasPermission as jest.Mock;
-mockAuth = (betterAuthConfig as any).auth;
-mockApiKeyService = (apiKeyService as any).ApiKeyService;
+const mockVerifySessionFromHeaders =
+  authHelpers.verifySessionFromHeaders as jest.Mock;
+const mockIsAdmin = authHelpers.isAdmin as jest.Mock;
+const mockHasPermission = authHelpers.hasPermission as jest.Mock;
+const mockAuth = (betterAuthConfig as any).auth;
+const mockApiKeyService = (apiKeyService as any).ApiKeyService;
 
-describe('GET /api/admin/api-keys', () => {
+describe("GET /api/admin/api-keys", () => {
   beforeEach(() => {
     resetAllMocks();
     jest.clearAllMocks();
@@ -82,21 +78,21 @@ describe('GET /api/admin/api-keys', () => {
     mockHasPermission.mockReturnValue(true);
   });
 
-  it('should return list of API keys for admin users', async () => {
+  it("should return list of API keys for admin users", async () => {
     const mockApiKeys = [
       {
-        id: 'apiKey_v1_test1',
-        userId: 'user_v1_test',
-        name: 'Production Key',
-        tier: 'pro',
+        id: "apiKey_v1_test1",
+        userId: "user_v1_test",
+        name: "Production Key",
+        tier: "pro",
         enabled: true,
         createdAt: new Date(),
       },
       {
-        id: 'apiKey_v1_test2',
-        userId: 'user_v1_test2',
-        name: 'Development Key',
-        tier: 'free',
+        id: "apiKey_v1_test2",
+        userId: "user_v1_test2",
+        name: "Development Key",
+        tier: "free",
         enabled: true,
         createdAt: new Date(),
       },
@@ -124,10 +120,10 @@ describe('GET /api/admin/api-keys', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'GET',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "GET",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
     });
 
@@ -144,7 +140,7 @@ describe('GET /api/admin/api-keys', () => {
     });
   });
 
-  it('should reject non-admin users', async () => {
+  it("should reject non-admin users", async () => {
     const mockUser = createMockUser(); // Regular user
     const mockSession = createMockSession(mockUser);
 
@@ -155,10 +151,10 @@ describe('GET /api/admin/api-keys', () => {
     mockIsAdmin.mockReturnValue(false);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'GET',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "GET",
       headers: {
-        authorization: 'Bearer user_session_token',
+        authorization: "Bearer user_session_token",
       },
     });
 
@@ -167,15 +163,15 @@ describe('GET /api/admin/api-keys', () => {
 
     expect(response.status).toBe(403);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('FORBIDDEN');
+    expect(data.error.code).toBe("FORBIDDEN");
   });
 
-  it('should require authentication', async () => {
+  it("should require authentication", async () => {
     mockVerifySessionFromHeaders.mockResolvedValue(null);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'GET',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "GET",
       headers: {}, // No auth
     });
 
@@ -184,10 +180,10 @@ describe('GET /api/admin/api-keys', () => {
 
     expect(response.status).toBe(401);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('UNAUTHORIZED');
+    expect(data.error.code).toBe("UNAUTHORIZED");
   });
 
-  it('should support pagination parameters', async () => {
+  it("should support pagination parameters", async () => {
     mockApiKeyService.buildListParams.mockReturnValue({
       page: 2,
       limit: 10,
@@ -210,14 +206,14 @@ describe('GET /api/admin/api-keys', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'GET',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "GET",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
       searchParams: {
-        page: '2',
-        limit: '10',
+        page: "2",
+        limit: "10",
       },
     });
 
@@ -230,11 +226,11 @@ describe('GET /api/admin/api-keys', () => {
     expect(data.data.pagination.hasPrev).toBe(true);
   });
 
-  it('should support filtering by user ID', async () => {
+  it("should support filtering by user ID", async () => {
     mockApiKeyService.buildListParams.mockReturnValue({
       page: 1,
       limit: 20,
-      userId: 'user_v1_specific',
+      userId: "user_v1_specific",
     });
 
     mockApiKeyService.list.mockResolvedValue({
@@ -254,13 +250,13 @@ describe('GET /api/admin/api-keys', () => {
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'GET',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "GET",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
       searchParams: {
-        userId: 'user_v1_specific',
+        userId: "user_v1_specific",
       },
     });
 
@@ -272,7 +268,7 @@ describe('GET /api/admin/api-keys', () => {
   });
 });
 
-describe('POST /api/admin/api-keys', () => {
+describe("POST /api/admin/api-keys", () => {
   beforeEach(() => {
     resetAllMocks();
     jest.clearAllMocks();
@@ -288,13 +284,13 @@ describe('POST /api/admin/api-keys', () => {
     mockHasPermission.mockReturnValue(true);
   });
 
-  it('should create a new API key successfully', async () => {
+  it("should create a new API key successfully", async () => {
     const newApiKey = {
-      id: 'apiKey_v1_new',
-      userId: 'user_v1_test',
-      name: 'New API Key',
-      key: 'zuno_new_key_123456',
-      tier: 'free',
+      id: "apiKey_v1_new",
+      userId: "user_v1_test",
+      name: "New API Key",
+      key: "zuno_new_key_123456",
+      tier: "free",
       enabled: true,
       createdAt: new Date(),
     };
@@ -303,22 +299,22 @@ describe('POST /api/admin/api-keys', () => {
       success: true,
       data: {
         apiKey: newApiKey,
-        plainKey: 'zuno_new_key_123456',
+        plainKey: "zuno_new_key_123456",
       },
       error: null,
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'POST',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "POST",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
       body: {
-        userId: 'user_v1_test',
-        name: 'New API Key',
-        tier: 'free',
-        scopes: ['abis:read', 'abis:write'],
+        userId: "user_v1_test",
+        name: "New API Key",
+        tier: "free",
+        scopes: ["abis:read", "abis:write"],
       },
     });
 
@@ -328,23 +324,23 @@ describe('POST /api/admin/api-keys', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data.apiKey).toBeDefined();
-    expect(data.data.plainKey).toBe('zuno_new_key_123456');
+    expect(data.data.plainKey).toBe("zuno_new_key_123456");
   });
 
-  it('should require session authentication (not API key)', async () => {
+  it("should require session authentication (not API key)", async () => {
     mockVerifySessionFromHeaders.mockResolvedValue(null);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'POST',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "POST",
       headers: {
-        'x-api-key': 'zuno_api_key', // API keys not allowed for this endpoint
+        "x-api-key": "zuno_api_key", // API keys not allowed for this endpoint
       },
       body: {
-        userId: 'user_v1_test',
-        name: 'New API Key',
-        tier: 'free',
-        scopes: ['abis:read'],
+        userId: "user_v1_test",
+        name: "New API Key",
+        tier: "free",
+        scopes: ["abis:read"],
       },
     });
 
@@ -355,16 +351,15 @@ describe('POST /api/admin/api-keys', () => {
     expect(data.success).toBe(false);
   });
 
-  it('should validate required fields', async () => {
+  it("should validate required fields", async () => {
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'POST',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "POST",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
       body: {
-        // Missing required fields
-        name: 'Incomplete Key',
+        // Missing required field: name
       },
     });
 
@@ -373,16 +368,16 @@ describe('POST /api/admin/api-keys', () => {
 
     expect(response.status).toBe(400);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('VALIDATION_ERROR');
+    expect(data.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it('should support optional tier parameter', async () => {
+  it("should support optional tier parameter", async () => {
     const newApiKey = {
-      id: 'apiKey_v1_new',
-      userId: 'user_v1_test',
-      name: 'Pro Key',
-      key: 'zuno_pro_key_123456',
-      tier: 'pro',
+      id: "apiKey_v1_new",
+      userId: "user_v1_test",
+      name: "Pro Key",
+      key: "zuno_pro_key_123456",
+      tier: "pro",
       enabled: true,
       createdAt: new Date(),
     };
@@ -391,22 +386,22 @@ describe('POST /api/admin/api-keys', () => {
       success: true,
       data: {
         apiKey: newApiKey,
-        plainKey: 'zuno_pro_key_123456',
+        plainKey: "zuno_pro_key_123456",
       },
       error: null,
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'POST',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "POST",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
       body: {
-        userId: 'user_v1_test',
-        name: 'Pro Key',
-        tier: 'pro',
-        scopes: ['abis:read', 'abis:write', 'contracts:write'],
+        userId: "user_v1_test",
+        name: "Pro Key",
+        tier: "pro",
+        scopes: ["abis:read", "abis:write", "contracts:write"],
       },
     });
 
@@ -417,18 +412,18 @@ describe('POST /api/admin/api-keys', () => {
     expect(data.success).toBe(true);
   });
 
-  it('should support optional metadata', async () => {
+  it("should support optional metadata", async () => {
     const newApiKey = {
-      id: 'apiKey_v1_new',
-      userId: 'user_v1_test',
-      name: 'Production Key',
-      key: 'zuno_prod_key_123456',
-      tier: 'enterprise',
+      id: "apiKey_v1_new",
+      userId: "user_v1_test",
+      name: "Production Key",
+      key: "zuno_prod_key_123456",
+      tier: "enterprise",
       enabled: true,
       metadata: {
-        allowedOrigins: ['https://example.com'],
-        ipWhitelist: ['192.168.1.1'],
-        notes: 'Production use only',
+        allowedOrigins: ["https://example.com"],
+        ipWhitelist: ["192.168.1.1"],
+        notes: "Production use only",
       },
       createdAt: new Date(),
     };
@@ -437,29 +432,28 @@ describe('POST /api/admin/api-keys', () => {
       success: true,
       data: {
         apiKey: newApiKey,
-        plainKey: 'zuno_prod_key_123456',
+        plainKey: "zuno_prod_key_123456",
       },
       error: null,
     });
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'POST',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "POST",
       headers: {
-        authorization: 'Bearer admin_session_token',
+        authorization: "Bearer admin_session_token",
       },
       body: {
-        userId: 'user_v1_test',
-        name: 'Production Key',
-        tier: 'enterprise',
-        scopes: ['abis:read', 'abis:write'],
+        userId: "user_v1_test",
+        name: "Production Key",
+        tier: "enterprise",
+        scopes: ["abis:read", "abis:write"],
         metadata: {
-          allowedOrigins: ['https://example.com'],
-          ipWhitelist: ['192.168.1.1'],
-          notes: 'Production use only',
+          allowedOrigins: ["https://example.com"],
+          ipWhitelist: ["192.168.1.1"],
+          notes: "Production use only",
         },
       },
-      error: null,
     });
 
     const response = await POST(request);
@@ -469,18 +463,18 @@ describe('POST /api/admin/api-keys', () => {
     expect(data.success).toBe(true);
   });
 
-  it('should require authentication', async () => {
+  it("should require authentication", async () => {
     mockVerifySessionFromHeaders.mockResolvedValue(null);
 
     const request = createMockRequest({
-      url: 'http://localhost:3000/api/admin/api-keys',
-      method: 'POST',
+      url: "http://localhost:3000/api/admin/api-keys",
+      method: "POST",
       headers: {}, // No auth
       body: {
-        userId: 'user_v1_test',
-        name: 'New Key',
-        tier: 'free',
-        scopes: ['abis:read'],
+        userId: "user_v1_test",
+        name: "New Key",
+        tier: "free",
+        scopes: ["abis:read"],
       },
     });
 
@@ -489,6 +483,6 @@ describe('POST /api/admin/api-keys', () => {
 
     expect(response.status).toBe(401);
     expect(data.success).toBe(false);
-    expect(data.error.code).toBe('UNAUTHORIZED');
+    expect(data.error.code).toBe("UNAUTHORIZED");
   });
 });

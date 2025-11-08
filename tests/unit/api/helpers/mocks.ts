@@ -60,8 +60,8 @@ export const mockCacheService = {
  */
 export const mockStorageService = {
   upload: jest.fn().mockResolvedValue({
-    hash: 'QmTest123',
-    url: 'https://test-gateway.pinata.cloud/ipfs/QmTest123',
+    hash: "QmTest123",
+    url: "https://test-gateway.pinata.cloud/ipfs/QmTest123",
   }),
   get: jest.fn(),
   delete: jest.fn(),
@@ -96,7 +96,7 @@ export const mockRateLimitService = {
       limit: 100,
       remaining: 99,
       reset: Date.now() + 3600000,
-      tier: 'free',
+      tier: "free",
     },
     error: null,
   }),
@@ -141,6 +141,7 @@ export const mockContractRepository = {
   findByName: jest.fn(),
   findByNetwork: jest.fn(),
   findByChainId: jest.fn(),
+  existsByAddress: jest.fn(),
 };
 
 /**
@@ -174,7 +175,7 @@ export function resetAllMocks() {
 
   // Reset DB mocks
   Object.values(mockDb.query).forEach((queryMock) => {
-    if (typeof queryMock === 'object') {
+    if (typeof queryMock === "object") {
       Object.values(queryMock).forEach((fn) => {
         if (jest.isMockFunction(fn)) {
           fn.mockReset();
@@ -198,7 +199,7 @@ export function resetAllMocks() {
     Object.values(mock).forEach((fn) => {
       if (jest.isMockFunction(fn)) {
         fn.mockReset();
-      } else if (typeof fn === 'object' && fn !== null) {
+      } else if (typeof fn === "object" && fn !== null) {
         Object.values(fn).forEach((nestedFn) => {
           if (jest.isMockFunction(nestedFn)) {
             nestedFn.mockReset();
@@ -214,12 +215,12 @@ export function resetAllMocks() {
  */
 export function setupModuleMocks() {
   // Mock database client
-  jest.mock('@/infrastructure/database/drizzle/client', () => ({
+  jest.mock("@/infrastructure/database/drizzle/client", () => ({
     db: mockDb,
   }));
 
   // Mock DI container
-  jest.mock('@/infrastructure/di/container', () => ({
+  jest.mock("@/infrastructure/di/container", () => ({
     getAbiRepository: jest.fn(() => mockAbiRepository),
     getContractRepository: jest.fn(() => mockContractRepository),
     getNetworkRepository: jest.fn(() => mockNetworkRepository),
@@ -230,23 +231,23 @@ export function setupModuleMocks() {
   }));
 
   // Mock Better Auth
-  jest.mock('@/infrastructure/auth/better-auth.config', () => ({
+  jest.mock("@/infrastructure/auth/better-auth.config", () => ({
     auth: mockAuth,
   }));
 
   // Mock Rate Limit Service
-  jest.mock('@/infrastructure/services/rate-limit.service', () => ({
+  jest.mock("@/infrastructure/services/rate-limit.service", () => ({
     RateLimitService: mockRateLimitService,
     RateLimitError: class RateLimitError extends Error {
       constructor(message: string, public result: any) {
         super(message);
-        this.name = 'RateLimitError';
+        this.name = "RateLimitError";
       }
     },
   }));
 
   // Mock Cache Adapter
-  jest.mock('@/infrastructure/cache/cache.adapter', () => ({
+  jest.mock("@/infrastructure/cache/cache.adapter", () => ({
     CacheAdapter: {
       getInstance: jest.fn(() => mockCacheService),
     },
