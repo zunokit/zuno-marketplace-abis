@@ -1,7 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
+import { withCORS } from "@/shared/lib/middleware/cors";
 
+/**
+ * Next.js Middleware
+ *
+ * Handles:
+ * - CORS for API routes
+ * - API version validation
+ *
+ * Protected routes (/admin, /dashboard) are handled by layout server components
+ */
 export async function middleware(request: NextRequest) {
+  // Apply CORS to all matched routes
+  return withCORS(request, async (req) => {
+    return middlewareHandler(req);
+  });
+}
+
+/**
+ * Main middleware handler logic
+ */
+async function middlewareHandler(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // API Version detection and validation for all /api routes
@@ -51,7 +71,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Only match API routes for version validation
+    // Match API routes for version validation and CORS
     "/api/:path*",
+    // Match docs route for CORS
+    "/docs",
   ],
 };
