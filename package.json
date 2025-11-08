@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "auth:generate": "better-auth generate",
     "auth:migrate": "better-auth migrate",
-    "script:test": "tsx scripts/test-complete.ts"
+    "script:test": "tsx scripts/test-complete.ts",
+    "security:verify-api-keys": "tsx scripts/security/verify-api-key-hashing.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
