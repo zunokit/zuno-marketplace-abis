@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, ilike, count, inArray } from "drizzle-orm";
+import { eq, and, or, desc, asc, ilike, count, inArray, gte, lte } from "drizzle-orm";
 import type { ContractRepository } from "@/core/domain/contract/contract.repository";
 import {
   ContractEntity,
@@ -8,12 +8,13 @@ import {
   ContractNotFoundError,
   ContractDuplicateError,
 } from "@/core/domain/contract/contract.entity";
-import { PaginatedResult } from "@/shared/types";
+import { PaginatedResult, isValidAddress } from "@/shared/types";
 import { db } from "@/infrastructure/database/drizzle";
 import { contracts } from "@/infrastructure/database/drizzle/schema/contracts.schema";
 import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
 import { logger } from "@/shared/lib/utils/logger";
 import { appConfig } from "@/shared/config/app.config";
+import { ValidationError } from "@/shared/lib/utils/error-handler";
 
 export class ContractRepositoryImpl implements ContractRepository {
   private cache: CacheAdapter;
@@ -45,6 +46,27 @@ export class ContractRepositoryImpl implements ContractRepository {
 
   async create(contract: ContractEntity): Promise<ContractEntity> {
     try {
+      // Validate contract address format (defensive programming - validate at repository boundary)
+      if (!isValidAddress(contract.address)) {
+        throw new ValidationError(
+          `Invalid contract address format: ${contract.address}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
+      // Validate deployer address if provided
+      if (contract.deployer && !isValidAddress(contract.deployer)) {
+        throw new ValidationError(
+          `Invalid deployer address format: ${contract.deployer}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
+      // Validate implementation address in metadata if provided
+      if (contract.metadata?.implementation && !isValidAddress(contract.metadata.implementation)) {
+        throw new ValidationError(
+          `Invalid implementation address format: ${contract.metadata.implementation}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
       // Check for duplicate
       const existing = await this.existsByAddress(
         contract.address,
@@ -127,6 +149,13 @@ export class ContractRepositoryImpl implements ContractRepository {
     networkId: string
   ): Promise<ContractEntity | null> {
     try {
+      // Validate address format before query (defensive programming)
+      if (!isValidAddress(address)) {
+        throw new ValidationError(
+          `Invalid contract address format: ${address}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
       const cacheKey = `contract:${address}:${networkId}`;
       const cached = await this.cache.get<ContractEntity>(cacheKey);
       if (cached) {
@@ -169,6 +198,20 @@ export class ContractRepositoryImpl implements ContractRepository {
     params: UpdateContractParams
   ): Promise<ContractEntity | null> {
     try {
+      // Validate deployer address if provided in update
+      if (params.deployer && !isValidAddress(params.deployer)) {
+        throw new ValidationError(
+          `Invalid deployer address format: ${params.deployer}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
+      // Validate implementation address in metadata if provided in update
+      if (params.metadata?.implementation && !isValidAddress(params.metadata.implementation)) {
+        throw new ValidationError(
+          `Invalid implementation address format: ${params.metadata.implementation}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
       const updateData: any = {
         ...params,
         updatedAt: new Date(),
@@ -231,8 +274,19 @@ export class ContractRepositoryImpl implements ContractRepository {
   ): Promise<PaginatedResult<ContractEntity>> {
     try {
       const page = params.page || 1;
-      const limit = params.limit || 20;
+      const limit = Math.min(
+        params.limit || appConfig.api.defaultPageSize,
+        appConfig.api.maxPageSize
+      );
       const offset = (page - 1) * limit;
+
+      // Validate offset to prevent deep pagination DOS attacks
+      if (offset > appConfig.api.pagination.maxOffset) {
+        throw new Error(
+          `Pagination offset ${offset} exceeds maximum allowed ${appConfig.api.pagination.maxOffset}. Please reduce page number or use filtering instead.`
+        );
+      }
+
       const sortBy = params.sortBy || "createdAt";
       const sortOrder = params.sortOrder || "desc";
 
@@ -257,28 +311,33 @@ export class ContractRepositoryImpl implements ContractRepository {
           );
         }
         if (params.filters.deployer) {
+          // Validate deployer address format before querying
+          if (!isValidAddress(params.filters.deployer)) {
+            throw new ValidationError(
+              `Invalid deployer address format: ${params.filters.deployer}. Expected format: 0x followed by 40 hexadecimal characters.`
+            );
+          }
           whereConditions.push(
             eq(contracts.deployer, params.filters.deployer.toLowerCase())
           );
         }
+        // Date range filters with proper Drizzle helpers (better than raw SQL)
         if (params.filters.createdAfter) {
-          whereConditions.push(
-            sql`${contracts.createdAt} >= ${params.filters.createdAfter}`
-          );
+          whereConditions.push(gte(contracts.createdAt, params.filters.createdAfter));
         }
         if (params.filters.createdBefore) {
-          whereConditions.push(
-            sql`${contracts.createdAt} <= ${params.filters.createdBefore}`
-          );
+          whereConditions.push(lte(contracts.createdAt, params.filters.createdBefore));
         }
       }
 
+      // Search query with proper Drizzle helpers (better than raw SQL)
       if (params.query) {
+        const searchTerm = `%${params.query}%`;
         whereConditions.push(
-          sql`(
-            ${contracts.name} ILIKE ${`%${params.query}%`} OR
-            ${contracts.address} ILIKE ${`%${params.query}%`}
-          )`
+          or(
+            ilike(contracts.name, searchTerm),
+            ilike(contracts.address, searchTerm)
+          )!
         );
       }
 
@@ -405,6 +464,13 @@ export class ContractRepositoryImpl implements ContractRepository {
 
   async existsByAddress(address: string, networkId: string): Promise<boolean> {
     try {
+      // Validate address format before query (defensive programming)
+      if (!isValidAddress(address)) {
+        throw new ValidationError(
+          `Invalid contract address format: ${address}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
       const [result] = await db
         .select({ id: contracts.id })
         .from(contracts)
