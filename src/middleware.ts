@@ -1,7 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
+import { withRequestLogging } from "@/shared/lib/middleware/request-logging";
+import { addSecurityHeaders } from "@/shared/lib/middleware/security-headers";
+import { withCORS } from "@/shared/lib/middleware/cors";
+import { appConfig } from "@/shared/config/app.config";
 
+/**
+ * Next.js Middleware
+ *
+ * Handles:
+ * - CORS for API routes
+ * - Request/Response logging
+ * - Security headers
+ * - API version validation
+ *
+ * Protected routes (/admin, /dashboard) are handled by layout server components
+ */
 export async function middleware(request: NextRequest) {
+  // Apply CORS to all matched routes
+  return withCORS(request, async (req) => {
+    // Wrap with request/response logging if enabled
+    if (appConfig.logging.enabled) {
+      return withRequestLogging(req, async (loggedReq, requestId) => {
+        return middlewareHandler(loggedReq, requestId);
+      });
+    }
+
+    // Skip logging if disabled
+    return middlewareHandler(req, "logging-disabled");
+  });
+}
+
+/**
+ * Core middleware logic
+ */
+async function middlewareHandler(
+  request: NextRequest,
+  requestId: string
+): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   // API Version detection and validation for all /api routes
@@ -19,7 +55,7 @@ export async function middleware(request: NextRequest) {
     // If invalid version provided, return error
     if (!isValid && (request.headers.get("X-API-Version") || request.headers.get("Accept-Version"))) {
       const supportedVersions = await getSupportedApiVersions();
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         {
           error: "Unsupported API version",
           message: `API version '${clientVersion}' is not supported. Supported versions: ${supportedVersions.join(", ")}`,
@@ -27,6 +63,14 @@ export async function middleware(request: NextRequest) {
         },
         { status: 400 }
       );
+
+      // Add request ID to error response
+      errorResponse.headers.set("X-Request-ID", requestId);
+
+      // Add security headers to error response
+      addSecurityHeaders(errorResponse);
+
+      return errorResponse;
     }
 
     // Create response with validated version
@@ -39,19 +83,42 @@ export async function middleware(request: NextRequest) {
     response.headers.set("X-API-Version", validatedVersion);
     response.headers.set("X-API-Deprecated", "false");
 
+    // Set timeout information for client
+    response.headers.set("X-Request-Timeout", String(appConfig.api.timeout));
+    response.headers.set("X-Request-Start", String(Date.now()));
+
+    // Request ID already set by withRequestLogging, but ensure it's there
+    if (!response.headers.has("X-Request-ID")) {
+      response.headers.set("X-Request-ID", requestId);
+    }
+
+    // Add security headers
+    addSecurityHeaders(response);
+
     return response;
   }
 
-  // For protected routes (/admin, /dashboard):
-  // Let the layout server components handle authentication and redirects
-  // This avoids duplicate checks and follows Next.js best practices
+  // For other routes, add security headers and request ID
+  const response = NextResponse.next();
 
-  return NextResponse.next();
+  // Ensure request ID is set
+  if (!response.headers.has("X-Request-ID")) {
+    response.headers.set("X-Request-ID", requestId);
+  }
+
+  // Add security headers
+  addSecurityHeaders(response);
+
+  return response;
 }
 
 export const config = {
   matcher: [
-    // Only match API routes for version validation
+    // Match API routes for version validation, logging, and security headers
     "/api/:path*",
+    // Match docs route for security headers
+    "/docs",
+    // Match admin routes for security headers and logging (auth handled by layout)
+    "/admin/:path*",
   ],
 };
