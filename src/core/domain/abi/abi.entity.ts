@@ -1,4 +1,5 @@
 import { ContractAbi } from "@/shared/types";
+import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
 
 export interface AbiEntity {
   id: string;
@@ -204,20 +205,44 @@ export class AbiVersion {
   }
 }
 
-// Factory for creating ABI entities
+/**
+ * Factory for creating ABI entities with proper ID generation
+ *
+ * IMPORTANT: All factory methods now require apiVersion parameter
+ * to integrate with the API versioning system.
+ *
+ * Usage:
+ * ```typescript
+ * const apiVersion = await getCurrentApiVersion();
+ * const abi = AbiFactory.createAbi(params, hash, apiVersion);
+ * ```
+ */
 export class AbiFactory {
-  static createAbi(params: CreateAbiParams, hash: string): AbiEntity {
+  /**
+   * Create a new ABI entity
+   *
+   * @param params - ABI creation parameters
+   * @param hash - ABI hash (from AbiHasher.hashAbi)
+   * @param apiVersion - API version from request context (e.g., "v1")
+   * @returns New ABI entity with versioned ID
+   */
+  static createAbi(params: CreateAbiParams, hash: string, apiVersion: string): AbiEntity {
     const now = new Date();
+    const version = "1.0.0"; // Default first version
 
     return {
-      id: crypto.randomUUID(),
+      id: IdGenerator.generate({
+        prefix: EntityPrefix.ABI,
+        apiVersion,
+        entityVersion: version,
+      }),
       userId: params.userId,
       name: params.name,
       description: params.description,
       contractName: params.contractName,
       abi: params.abi,
       abiHash: hash,
-      version: "1.0.0", // Default first version
+      version,
       tags: params.tags || [],
       standard: params.standard,
       metadata: params.metadata,
@@ -227,14 +252,29 @@ export class AbiFactory {
     };
   }
 
+  /**
+   * Create a new ABI version entity
+   *
+   * @param params - ABI version creation parameters
+   * @param version - Version string (e.g., "1.1.0")
+   * @param versionNumber - Numeric version for ordering
+   * @param hash - ABI hash for this version
+   * @param apiVersion - API version from request context
+   * @returns New ABI version entity with versioned ID
+   */
   static createAbiVersion(
     params: CreateAbiVersionParams,
     version: string,
     versionNumber: number,
-    hash: string
+    hash: string,
+    apiVersion: string
   ): AbiVersionEntity {
     return {
-      id: crypto.randomUUID(),
+      id: IdGenerator.generate({
+        prefix: EntityPrefix.ABI_VERSION,
+        apiVersion,
+        entityVersion: version,
+      }),
       abiId: params.abiId,
       version,
       versionNumber,

@@ -1,22 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
-import { logger } from "@/shared/lib/utils/logger";
-
 /**
- * Global Error Boundary
+ * Global Error Page (Next.js 15 App Router)
  *
- * Catches errors at the root level of the application.
- * This is the last line of defense for error handling.
+ * Catches errors in the root layout.tsx file.
+ * This is a special fallback for when the root layout itself fails.
  *
- * Features:
- * - Error logging to monitoring service
- * - User-friendly error display
- * - Error reporting capability
- * - Reset/retry functionality
+ * IMPORTANT: This file MUST include its own <html> and <body> tags
+ * because it replaces the root layout when an error occurs.
  *
- * @see https://nextjs.org/docs/app/api-reference/file-conventions/error
+ * Reference: https://nextjs.org/docs/app/building-your-application/routing/error-handling
  */
+
+import { useEffect } from "react";
+
 export default function GlobalError({
   error,
   reset,
@@ -25,172 +22,162 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to monitoring service
-    logger.error("Global error boundary caught error", error, {
-      digest: error.digest,
+    // Log to console in case logger is also broken
+    console.error("Global error boundary caught an error:", {
       name: error.name,
+      message: error.message,
+      digest: error.digest,
       stack: error.stack,
     });
-
-    // Send to external monitoring (Sentry, DataDog, etc.)
-    if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-      // Placeholder for error reporting
-      // Example with Sentry:
-      // import * as Sentry from "@sentry/nextjs";
-      // Sentry.captureException(error);
-      console.error("[Global Error]", error);
-    }
   }, [error]);
 
   return (
     <html>
-      <body>
+      <head>
+        <title>Application Error</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body
+        style={{
+          margin: 0,
+          padding: 0,
+          fontFamily:
+            'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          backgroundColor: "#f9fafb",
+        }}
+      >
         <div
           style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            backgroundColor: "#0a0a0a",
-            color: "#ffffff",
-            fontFamily: "system-ui, sans-serif",
+            maxWidth: "500px",
+            padding: "2rem",
+            backgroundColor: "white",
+            borderRadius: "0.5rem",
+            boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
           }}
         >
           <div
             style={{
-              maxWidth: "600px",
-              textAlign: "center",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1rem",
             }}
           >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: "#ef4444" }}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="8" y2="12" />
+              <line x1="12" x2="12.01" y1="16" y2="16" />
+            </svg>
             <h1
               style={{
-                fontSize: "3rem",
+                fontSize: "1.5rem",
                 fontWeight: "bold",
-                marginBottom: "1rem",
-                color: "#ef4444",
+                margin: 0,
               }}
             >
-              Something went wrong!
+              Application Error
             </h1>
+          </div>
 
+          <p
+            style={{
+              color: "#6b7280",
+              marginBottom: "1.5rem",
+            }}
+          >
+            A critical error occurred in the application. Please refresh the
+            page or contact support if the problem persists.
+          </p>
+
+          <div
+            style={{
+              padding: "1rem",
+              backgroundColor: "#f9fafb",
+              borderRadius: "0.375rem",
+              marginBottom: "1.5rem",
+            }}
+          >
             <p
               style={{
-                fontSize: "1.125rem",
-                marginBottom: "2rem",
-                color: "#a1a1aa",
-                lineHeight: "1.75",
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                margin: "0 0 0.5rem 0",
               }}
             >
-              We apologize for the inconvenience. Our team has been notified and is
-              working to resolve the issue.
+              Error Details:
             </p>
-
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#6b7280",
+                margin: 0,
+                wordBreak: "break-word",
+              }}
+            >
+              {error.message || "An unknown error occurred"}
+            </p>
             {error.digest && (
               <p
                 style={{
-                  fontSize: "0.875rem",
-                  marginBottom: "2rem",
-                  color: "#71717a",
-                  fontFamily: "monospace",
+                  fontSize: "0.75rem",
+                  color: "#9ca3af",
+                  marginTop: "0.5rem",
+                  margin: 0,
                 }}
               >
                 Error ID: {error.digest}
               </p>
             )}
+          </div>
 
-            <div
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              onClick={reset}
               style={{
-                display: "flex",
-                gap: "1rem",
-                justifyContent: "center",
-                flexWrap: "wrap",
+                flex: 1,
+                padding: "0.5rem 1rem",
+                backgroundColor: "#3b82f6",
+                color: "white",
+                border: "none",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                cursor: "pointer",
               }}
             >
-              <button
-                onClick={reset}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: "#6366f1",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.5rem",
-                  fontSize: "1rem",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "background-color 0.2s",
-                }}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#4f46e5")
-                }
-                onMouseOut={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#6366f1")
-                }
-              >
-                Try Again
-              </button>
-
-              <a
-                href="/"
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: "#27272a",
-                  color: "white",
-                  border: "1px solid #3f3f46",
-                  borderRadius: "0.5rem",
-                  fontSize: "1rem",
-                  fontWeight: "600",
-                  textDecoration: "none",
-                  display: "inline-block",
-                  cursor: "pointer",
-                  transition: "background-color 0.2s",
-                }}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#3f3f46")
-                }
-                onMouseOut={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#27272a")
-                }
-              >
-                Go Home
-              </a>
-            </div>
-
-            {process.env.NODE_ENV === "development" && (
-              <details
-                style={{
-                  marginTop: "2rem",
-                  textAlign: "left",
-                  backgroundColor: "#18181b",
-                  padding: "1rem",
-                  borderRadius: "0.5rem",
-                  border: "1px solid #27272a",
-                }}
-              >
-                <summary
-                  style={{
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  Error Details (Development Only)
-                </summary>
-                <pre
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#ef4444",
-                    overflow: "auto",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  {error.name}: {error.message}
-                  {"\n\n"}
-                  {error.stack}
-                </pre>
-              </details>
-            )}
+              Try Again
+            </button>
+            <button
+              onClick={() => (window.location.href = "/")}
+              style={{
+                flex: 1,
+                padding: "0.5rem 1rem",
+                backgroundColor: "white",
+                color: "#374151",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                cursor: "pointer",
+              }}
+            >
+              Go Home
+            </button>
           </div>
         </div>
       </body>

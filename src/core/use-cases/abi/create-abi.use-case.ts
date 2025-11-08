@@ -28,6 +28,11 @@ export interface CreateAbiUseCaseInput {
     sourceUrl?: string;
     bytecode?: string;
   };
+  /**
+   * API version from request context
+   * Should be extracted from X-API-Version header or default to "v1"
+   */
+  apiVersion?: string;
 }
 
 export interface CreateAbiUseCaseOutput {
@@ -107,7 +112,9 @@ export class CreateAbiUseCase {
       metadata: input.metadata,
     };
 
-    const abiEntity = AbiFactory.createAbi(createParams, abiHash);
+    // Use provided apiVersion or default to "v1" for backward compatibility
+    const apiVersion = input.apiVersion || "v1";
+    const abiEntity = AbiFactory.createAbi(createParams, abiHash, apiVersion);
     abiEntity.ipfsHash = ipfsHash;
     abiEntity.ipfsUrl = ipfsUrl;
 

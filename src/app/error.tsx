@@ -1,25 +1,28 @@
 "use client";
 
+/**
+ * Root Error Page (Next.js 15 App Router)
+ *
+ * Automatically catches errors in the root layout and pages.
+ * This is a special file that Next.js uses for error handling.
+ *
+ * Reference: https://nextjs.org/docs/app/building-your-application/routing/error-handling
+ */
+
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { logger } from "@/shared/lib/utils/logger";
 
-/**
- * Root Error Boundary
- *
- * Catches errors in the root layout and pages.
- * Provides a user-friendly error display with recovery options.
- *
- * Features:
- * - Automatic error logging
- * - Retry functionality
- * - Navigation to home
- * - Development error details
- *
- * @see https://nextjs.org/docs/app/api-reference/file-conventions/error
- */
-export default function RootError({
+export default function Error({
   error,
   reset,
 }: {
@@ -27,68 +30,65 @@ export default function RootError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to console and monitoring service
-    logger.error("Root error boundary caught error", error, {
-      digest: error.digest,
-      name: error.name,
-      stack: error.stack,
-    });
+    // Log error to monitoring service
+    logger.error("Root error boundary caught an error", {
+      error: {
+        name: error.name,
+        message: error.message,
+        digest: error.digest,
+        stack: error.stack,
+      },
+      timestamp: new Date().toISOString(),
+      url: typeof window !== "undefined" ? window.location.href : "unknown",
+    } as any);
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md space-y-6 text-center">
-        <div className="flex justify-center">
-          <div className="rounded-full bg-destructive/10 p-3">
-            <AlertCircle className="h-10 w-10 text-destructive" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Oops! Something went wrong
-          </h1>
-          <p className="text-muted-foreground">
-            We encountered an unexpected error. Please try again or contact support
-            if the problem persists.
-          </p>
-        </div>
-
-        {error.digest && (
-          <p className="text-sm text-muted-foreground font-mono">
-            Error ID: {error.digest}
-          </p>
-        )}
-
-        <div className="flex gap-3 justify-center flex-wrap">
-          <Button onClick={reset} variant="default">
-            Try Again
-          </Button>
-          <Button onClick={() => (window.location.href = "/")} variant="outline">
-            Go Home
-          </Button>
-        </div>
-
-        {process.env.NODE_ENV === "development" && (
-          <details className="mt-6 text-left rounded-lg border border-border bg-card p-4">
-            <summary className="cursor-pointer font-semibold text-sm mb-2">
-              Error Details (Development Only)
-            </summary>
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-mono text-destructive">
-                  {error.name}: {error.message}
-                </p>
+    <html>
+      <body>
+        <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+                <CardTitle>Something went wrong</CardTitle>
               </div>
-              {error.stack && (
-                <pre className="text-xs font-mono overflow-auto max-h-64 text-muted-foreground">
-                  {error.stack}
-                </pre>
-              )}
-            </div>
-          </details>
-        )}
-      </div>
-    </div>
+              <CardDescription>
+                An unexpected error occurred. Please try again.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm font-medium">Error Details:</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {error.message || "An unknown error occurred"}
+                </p>
+                {error.digest && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Error ID: {error.digest}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex gap-2">
+              <Button onClick={reset} className="flex-1">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try Again
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => (window.location.href = "/")}
+                className="flex-1"
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Go Home
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </body>
+    </html>
   );
 }

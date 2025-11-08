@@ -11,6 +11,7 @@ import {
 } from "@/core/domain/abi/abi.entity";
 import { PaginatedResult } from "@/shared/types";
 import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
+import { TransactionService } from "@/infrastructure/database/services/transaction.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { appConfig } from "@/shared/config/app.config";
 
@@ -39,6 +40,7 @@ export class AbiRepositoryImpl implements AbiRepository {
   // Basic CRUD operations
   async create(abi: AbiEntity): Promise<AbiEntity> {
     try {
+      // Database operation - single insert, no transaction needed
       const [created] = await db
         .insert(abis)
         .values({
@@ -61,9 +63,20 @@ export class AbiRepositoryImpl implements AbiRepository {
 
       const entity = this.mapToEntity(created);
 
-      // Cache the created ABI
-      await this.cache.set(this.getCacheKey(entity.id), entity, this.cacheTTL);
-      await this.cache.set(this.getHashCacheKey(entity.abiHash), entity, this.cacheTTL);
+      // Cache operations - intentionally outside DB transaction
+      // Cache failures should NOT rollback database changes
+      try {
+        await Promise.all([
+          this.cache.set(this.getCacheKey(entity.id), entity, this.cacheTTL),
+          this.cache.set(this.getHashCacheKey(entity.abiHash), entity, this.cacheTTL),
+        ]);
+      } catch (cacheError) {
+        // Log cache errors but don't fail the operation
+        logger.warn("Cache write failed after ABI creation", {
+          error: cacheError,
+          abiId: entity.id,
+        });
+      }
 
       logger.info("ABI created", { id: entity.id, userId: entity.userId });
       return entity;
@@ -137,6 +150,7 @@ export class AbiRepositoryImpl implements AbiRepository {
 
   async update(id: string, params: UpdateAbiParams): Promise<AbiEntity | null> {
     try {
+      // Database operation - single update, no transaction needed
       const [updated] = await db
         .update(abis)
         .set({
@@ -156,9 +170,20 @@ export class AbiRepositoryImpl implements AbiRepository {
 
       const entity = this.mapToEntity(updated);
 
-      // Invalidate cache
-      await this.cache.del(this.getCacheKey(id));
-      await this.cache.del(this.getHashCacheKey(entity.abiHash));
+      // Cache invalidation - intentionally outside DB transaction
+      // Cache failures should NOT affect the update operation
+      try {
+        await Promise.all([
+          this.cache.del(this.getCacheKey(id)),
+          this.cache.del(this.getHashCacheKey(entity.abiHash)),
+        ]);
+      } catch (cacheError) {
+        // Log cache errors but don't fail the operation
+        logger.warn("Cache invalidation failed after ABI update", {
+          error: cacheError,
+          abiId: id,
+        });
+      }
 
       logger.info("ABI updated", { id });
       return entity;
@@ -170,10 +195,20 @@ export class AbiRepositoryImpl implements AbiRepository {
 
   async delete(id: string): Promise<boolean> {
     try {
-      const result = await db.delete(abis).where(eq(abis.id, id));
+      // Database operation - single delete, no transaction needed
+      await db.delete(abis).where(eq(abis.id, id));
 
-      // Invalidate cache
-      await this.cache.del(this.getCacheKey(id));
+      // Cache invalidation - intentionally outside DB transaction
+      // Cache failures should NOT affect the delete operation
+      try {
+        await this.cache.del(this.getCacheKey(id));
+      } catch (cacheError) {
+        // Log cache errors but don't fail the operation
+        logger.warn("Cache invalidation failed after ABI deletion", {
+          error: cacheError,
+          abiId: id,
+        });
+      }
 
       logger.info("ABI deleted", { id });
       return true;
@@ -185,6 +220,7 @@ export class AbiRepositoryImpl implements AbiRepository {
 
   async softDelete(id: string): Promise<boolean> {
     try {
+      // Database operation - single update, no transaction needed
       await db
         .update(abis)
         .set({
@@ -193,8 +229,17 @@ export class AbiRepositoryImpl implements AbiRepository {
         })
         .where(eq(abis.id, id));
 
-      // Invalidate cache
-      await this.cache.del(this.getCacheKey(id));
+      // Cache invalidation - intentionally outside DB transaction
+      // Cache failures should NOT affect the soft delete operation
+      try {
+        await this.cache.del(this.getCacheKey(id));
+      } catch (cacheError) {
+        // Log cache errors but don't fail the operation
+        logger.warn("Cache invalidation failed after ABI soft deletion", {
+          error: cacheError,
+          abiId: id,
+        });
+      }
 
       logger.info("ABI soft deleted", { id });
       return true;
@@ -209,6 +254,13 @@ export class AbiRepositoryImpl implements AbiRepository {
     const page = params.page || 1;
     const limit = Math.min(params.limit || 20, appConfig.api.maxPageSize);
     const offset = (page - 1) * limit;
+
+    // Validate offset to prevent deep pagination DOS attacks
+    if (offset > appConfig.api.pagination.maxOffset) {
+      throw new Error(
+        `Pagination offset ${offset} exceeds maximum allowed ${appConfig.api.pagination.maxOffset}. Please reduce page number or use filtering instead.`
+      );
+    }
 
     // Try cache first
     const cacheKey = this.getListCacheKey(params);
@@ -492,7 +544,7 @@ export class AbiRepositoryImpl implements AbiRepository {
 
   async updateMany(ids: string[], params: Partial<UpdateAbiParams>): Promise<number> {
     try {
-      const result = await db
+      await db
         .update(abis)
         .set({
           ...(params.name && { name: params.name }),
@@ -503,7 +555,15 @@ export class AbiRepositoryImpl implements AbiRepository {
         .where(inArray(abis.id, ids));
 
       // Invalidate cache for all updated ABIs
-      await Promise.all(ids.map((id) => this.cache.del(this.getCacheKey(id))));
+      // Cache failures should NOT affect the update operation
+      try {
+        await Promise.all(ids.map((id) => this.cache.del(this.getCacheKey(id))));
+      } catch (cacheError) {
+        logger.warn("Cache invalidation failed after bulk update", {
+          error: cacheError,
+          count: ids.length,
+        });
+      }
 
       logger.info("Multiple ABIs updated", { count: ids.length });
       return ids.length;
@@ -518,13 +578,120 @@ export class AbiRepositoryImpl implements AbiRepository {
       await db.delete(abis).where(inArray(abis.id, ids));
 
       // Invalidate cache for all deleted ABIs
-      await Promise.all(ids.map((id) => this.cache.del(this.getCacheKey(id))));
+      // Cache failures should NOT affect the delete operation
+      try {
+        await Promise.all(ids.map((id) => this.cache.del(this.getCacheKey(id))));
+      } catch (cacheError) {
+        logger.warn("Cache invalidation failed after bulk delete", {
+          error: cacheError,
+          count: ids.length,
+        });
+      }
 
       logger.info("Multiple ABIs deleted", { count: ids.length });
       return ids.length;
     } catch (error) {
       logger.error("Failed to delete multiple ABIs", error);
       return 0;
+    }
+  }
+
+  /**
+   * Create ABI with initial version in a transaction
+   *
+   * This demonstrates when transactions are NEEDED:
+   * - Multiple related database operations that must succeed/fail together
+   * - Creating ABI + version record atomically
+   * - If version creation fails, ABI creation should rollback
+   *
+   * @example
+   * ```typescript
+   * const result = await abiRepository.createAbiWithVersion(
+   *   abiEntity,
+   *   { version: '1.0.0', changeLog: 'Initial version' }
+   * );
+   * ```
+   */
+  async createAbiWithVersion(
+    abi: AbiEntity,
+    versionInfo: { version: string; versionNumber?: number; changeLog?: string }
+  ): Promise<{ abi: AbiEntity; version: AbiVersionEntity }> {
+    try {
+      // Use transaction for multi-step database operations
+      // This ensures atomicity: both ABI and version are created, or neither is
+      const result = await TransactionService.execute(async (tx) => {
+        // Step 1: Create ABI
+        const [createdAbi] = await tx
+          .insert(abis)
+          .values({
+            id: abi.id,
+            userId: abi.userId,
+            name: abi.name,
+            description: abi.description,
+            contractName: abi.contractName,
+            abi: abi.abi as any,
+            abiHash: abi.abiHash,
+            ipfsHash: abi.ipfsHash,
+            ipfsUrl: abi.ipfsUrl,
+            version: abi.version,
+            tags: abi.tags,
+            standard: abi.standard,
+            metadata: abi.metadata as any,
+            isDeleted: abi.isDeleted,
+          })
+          .returning();
+
+        // Step 2: Create ABI version record
+        // If this fails, step 1 will be rolled back automatically
+        const [createdVersion] = await tx
+          .insert(abiVersions)
+          .values({
+            id: crypto.randomUUID(),
+            abiId: createdAbi.id,
+            version: versionInfo.version,
+            versionNumber: versionInfo.versionNumber || 1,
+            abi: abi.abi as any,
+            abiHash: abi.abiHash,
+            ipfsHash: abi.ipfsHash,
+            ipfsUrl: abi.ipfsUrl,
+            changeLog: versionInfo.changeLog,
+            metadata: {},
+          })
+          .returning();
+
+        return {
+          abi: this.mapToEntity(createdAbi),
+          version: this.mapVersionToEntity(createdVersion),
+        };
+      });
+
+      // Cache operations AFTER successful transaction
+      // Cache failures should NOT rollback the transaction
+      try {
+        await Promise.all([
+          this.cache.set(this.getCacheKey(result.abi.id), result.abi, this.cacheTTL),
+          this.cache.set(
+            this.getHashCacheKey(result.abi.abiHash),
+            result.abi,
+            this.cacheTTL
+          ),
+        ]);
+      } catch (cacheError) {
+        logger.warn("Cache write failed after ABI creation with version", {
+          error: cacheError,
+          abiId: result.abi.id,
+        });
+      }
+
+      logger.info("ABI created with version in transaction", {
+        abiId: result.abi.id,
+        version: versionInfo.version,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error("Failed to create ABI with version", error);
+      throw error;
     }
   }
 

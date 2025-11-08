@@ -1,3 +1,6 @@
+import { isValidAddress } from "@/shared/types";
+import { ValidationError } from "@/shared/lib/utils/error-handler";
+
 export interface ContractEntity {
   id: string;
   address: string;
@@ -105,6 +108,27 @@ export class ContractDuplicateError extends ContractError {
 
 export class ContractFactory {
   static createContract(params: CreateContractParams): ContractEntity {
+    // Validate contract address format (defensive programming at domain boundary)
+    if (!isValidAddress(params.address)) {
+      throw new ValidationError(
+        `Invalid contract address format: ${params.address}. Expected format: 0x followed by 40 hexadecimal characters.`
+      );
+    }
+
+    // Validate deployer address if provided
+    if (params.deployer && !isValidAddress(params.deployer)) {
+      throw new ValidationError(
+        `Invalid deployer address format: ${params.deployer}. Expected format: 0x followed by 40 hexadecimal characters.`
+      );
+    }
+
+    // Validate implementation address in metadata if provided
+    if (params.metadata?.implementation && !isValidAddress(params.metadata.implementation)) {
+      throw new ValidationError(
+        `Invalid implementation address format: ${params.metadata.implementation}. Expected format: 0x followed by 40 hexadecimal characters.`
+      );
+    }
+
     const now = new Date();
 
     return {
