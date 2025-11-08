@@ -16,7 +16,9 @@ const mockAuditLog: AuditLogEntity = {
   apiKeyId: null,
   ipAddress: "192.168.1.1",
   userAgent: "Mozilla/5.0...",
-  metadata: { page: 1, limit: 20 },
+  resourceType: null,
+  resourceId: null,
+  metadata: { responseSize: 1024 },
   createdAt: new Date("2024-01-15T10:30:00Z"),
 };
 

@@ -15,7 +15,6 @@ const mockAbi: AbiListItemDto = {
   tags: ["token", "erc20"],
   abiHash: "0xabc123",
   ipfsHash: "QmTest123",
-  ipfsUrl: "https://ipfs.io/ipfs/QmTest123",
   createdAt: "2024-01-15T10:30:00Z",
   updatedAt: "2024-01-15T10:30:00Z",
 };
