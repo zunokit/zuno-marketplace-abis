@@ -10,6 +10,13 @@ process.env.PINATA_JWT = 'test-jwt'
 process.env.PINATA_GATEWAY_URL = 'https://test-gateway.pinata.cloud'
 process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
 process.env.NODE_ENV = 'test'
+process.env.SKIP_ENV_VALIDATION = '1' // Skip env validation in tests
+
+// Mock nanoid to avoid ESM issues
+jest.mock('nanoid', () => ({
+  customAlphabet: () => () => 'mockNanoId123',
+  nanoid: () => 'mockNanoId123',
+}))
 
 // Mock fetch globally
 global.fetch = jest.fn()

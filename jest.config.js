@@ -26,7 +26,7 @@ const customJestConfig = {
     "^@/hooks/(.*)$": "<rootDir>/src/hooks/$1",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!(.*\\.mjs$|@upstash/redis|better-auth))",
+    "node_modules/(?!(.*\\.mjs$|@upstash/redis|better-auth|nanoid|@t3-oss/env-nextjs|@t3-oss/env-core))",
   ],
   testMatch: [
     "<rootDir>/tests/unit/**/*.{test,spec}.{js,jsx,ts,tsx}",
