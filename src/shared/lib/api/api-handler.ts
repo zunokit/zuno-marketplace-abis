@@ -28,6 +28,7 @@ import {
   logError,
   type FriendlyErrorResponse,
 } from "./error-formatter";
+import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 
@@ -63,6 +64,9 @@ export interface ApiRouteConfig {
     max: number;
     window: number;
   };
+  bodySize?: {
+    maxBytes?: number; // Max body size in bytes
+  };
 }
 
 export class ApiWrapper {
@@ -87,7 +91,8 @@ export class ApiWrapper {
         const parsedData = await this.parseRequest(
           request,
           config.validation,
-          params
+          params,
+          config.bodySize
         );
 
         // 3. Create API context
@@ -155,7 +160,8 @@ export class ApiWrapper {
   private static async parseRequest(
     request: NextRequest,
     validation?: ApiRouteConfig["validation"],
-    routeParams: Record<string, string> = {}
+    routeParams: Record<string, string> = {},
+    bodySizeConfig?: ApiRouteConfig["bodySize"]
   ) {
     const url = new URL(request.url);
     const method = request.method;
@@ -171,14 +177,56 @@ export class ApiWrapper {
 
     // Parse body for POST/PUT/PATCH requests
     if (["POST", "PUT", "PATCH"].includes(method)) {
+      // Check body size limit
+      const contentLength = request.headers.get("content-length");
+      const maxBytes = bodySizeConfig?.maxBytes || 1024 * 1024; // 1MB default
+
+      if (contentLength) {
+        const size = parseInt(contentLength, 10);
+        if (size > maxBytes) {
+          throw new ApiError(
+            `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(maxBytes / 1024)}KB)`,
+            ErrorCode.VALIDATION_ERROR,
+            413,
+            {
+              maxSize: maxBytes,
+              actualSize: size,
+              maxSizeFormatted: `${Math.round(maxBytes / 1024)}KB`,
+              actualSizeFormatted: `${Math.round(size / 1024)}KB`,
+            }
+          );
+        }
+      }
+
       const contentType = request.headers.get("content-type");
       if (contentType?.includes("application/json")) {
         try {
           const text = await request.text();
+
+          // Double-check actual size after reading
+          const actualSize = new TextEncoder().encode(text).length;
+          if (actualSize > maxBytes) {
+            throw new ApiError(
+              `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(maxBytes / 1024)}KB)`,
+              ErrorCode.VALIDATION_ERROR,
+              413,
+              {
+                maxSize: maxBytes,
+                actualSize,
+                maxSizeFormatted: `${Math.round(maxBytes / 1024)}KB`,
+                actualSizeFormatted: `${Math.round(actualSize / 1024)}KB`,
+              }
+            );
+          }
+
           if (text.trim()) {
             body = JSON.parse(text);
           }
         } catch (error) {
+          // If it's our ApiError, re-throw it
+          if (error instanceof ApiError) {
+            throw error;
+          }
           // If parsing fails, leave body as undefined
           logger.debug("Failed to parse request body as JSON", { error });
         }
@@ -188,6 +236,21 @@ export class ApiWrapper {
     // Validate using Zod schemas if provided
     if (validation?.query) {
       query = validation.query.parse(query) as Record<string, string>;
+
+      // Log warning for high pagination limits (DOS protection)
+      if (query.limit && typeof query.limit === 'number') {
+        const limit = Number(query.limit);
+        if (limit >= appConfig.api.pagination.warnThreshold) {
+          logger.warn("High pagination limit requested", {
+            limit,
+            page: query.page || 1,
+            offset: ((Number(query.page) || 1) - 1) * limit,
+            threshold: appConfig.api.pagination.warnThreshold,
+            url: request.url,
+            userAgent: request.headers.get('user-agent'),
+          } as any);
+        }
+      }
     }
 
     if (validation?.body && body !== undefined) {
@@ -518,8 +581,22 @@ export const commonSchemas = {
 
   pagination: z.object({
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
-  }),
+    limit: z.coerce
+      .number()
+      .min(appConfig.api.minPageSize)
+      .max(appConfig.api.maxPageSize)
+      .default(appConfig.api.defaultPageSize),
+  }).refine(
+    (data) => {
+      // Validate that offset (page * limit) doesn't exceed maxOffset
+      const offset = (data.page - 1) * data.limit;
+      return offset <= appConfig.api.pagination.maxOffset;
+    },
+    {
+      message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
+      path: ["page"],
+    }
+  ),
 
   sort: z.object({
     sortBy: z.string().optional(),

@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
     },
   },
 
+  // Server component external packages
+  serverExternalPackages: [],
+
   // Headers for timeout control
   async headers() {
     return [
