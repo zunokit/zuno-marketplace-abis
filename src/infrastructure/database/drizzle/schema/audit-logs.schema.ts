@@ -43,10 +43,29 @@ export const auditLogs = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
+    // Single column indexes for filtering
     userIdIdx: index("audit_logs_user_id_idx").on(table.userId),
     apiKeyIdIdx: index("audit_logs_api_key_id_idx").on(table.apiKeyId),
     actionIdx: index("audit_logs_action_idx").on(table.action),
     createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
+
+    // Composite index for API analytics and monitoring
+    // Use case: GROUP BY method, path to see API usage patterns
+    // Query: SELECT method, path, COUNT(*) FROM audit_logs GROUP BY method, path
+    methodPathIdx: index("audit_logs_method_path_idx").on(table.method, table.path),
+
+    // Composite index for date-range queries with user filtering
+    // Use case: Get user's recent actions (common in admin UI)
+    // Query: SELECT * FROM audit_logs WHERE userId = ? AND createdAt > ? ORDER BY createdAt DESC
+    userCreatedAtIdx: index("audit_logs_user_created_at_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+
+    // Index for resource tracking
+    // Use case: Get all actions for a specific resource (e.g., audit trail for an ABI)
+    // Query: SELECT * FROM audit_logs WHERE resourceType = 'abi' AND resourceId = ?
+    resourceIdx: index("audit_logs_resource_idx").on(table.resourceType, table.resourceId),
   })
 );
 
