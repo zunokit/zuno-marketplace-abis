@@ -33,9 +33,13 @@
       "Bash(python:*)",
       "Bash(Select-String -Pattern \"ContractListParams|ContractSearchFilters\" \"E:\\zuno-marketplace-abis\\src\\core\\domain\\contract\\contract.repository.ts\" -Context 0,5)",
       "mcp__better-auth__chat",
-      "Bash(timeout 3 tail -f .next/server/app-paths-manifest.json)"
+      "Bash(timeout 3 tail -f .next/server/app-paths-manifest.json)",
+      "Bash(node -e:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "Explanatory"
 }

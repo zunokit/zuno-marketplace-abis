@@ -49,7 +49,13 @@ interface HealthCheckResponse {
     };
     nodeVersion: string;
   };
-  responseTime: number;
+  responseTime: number | string;
+  checks?: {
+    database: ServiceStatus;
+    cache: ServiceStatus;
+    auth: ServiceStatus;
+    ipfs: ServiceStatus;
+  };
 }
 
 /**
@@ -86,7 +92,8 @@ async function checkDatabaseHealth(): Promise<ServiceHealthCheck> {
     return {
       status: "unhealthy",
       latency,
-      message: error instanceof Error ? error.message : "Database connection failed",
+      message:
+        error instanceof Error ? error.message : "Database connection failed",
     };
   }
 }
@@ -124,7 +131,8 @@ async function checkCacheHealth(): Promise<ServiceHealthCheck> {
     return {
       status: "unhealthy",
       latency,
-      message: error instanceof Error ? error.message : "Cache connection failed",
+      message:
+        error instanceof Error ? error.message : "Cache connection failed",
     };
   }
 }
@@ -176,13 +184,16 @@ async function checkIpfsHealth(): Promise<ServiceHealthCheck> {
     }
 
     // Test Pinata connection with authentication endpoint
-    const response = await fetch("https://api.pinata.cloud/data/testAuthentication", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${env.PINATA_JWT}`,
-      },
-      signal: AbortSignal.timeout(5000), // 5 second timeout
-    });
+    const response = await fetch(
+      "https://api.pinata.cloud/data/testAuthentication",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${env.PINATA_JWT}`,
+        },
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      }
+    );
 
     const latency = Date.now() - start;
 
@@ -216,7 +227,8 @@ async function checkIpfsHealth(): Promise<ServiceHealthCheck> {
     return {
       status: "unhealthy",
       latency,
-      message: error instanceof Error ? error.message : "IPFS connection failed",
+      message:
+        error instanceof Error ? error.message : "IPFS connection failed",
     };
   }
 }
@@ -233,13 +245,19 @@ function calculateOverallStatus(
   // Critical services: database, cache, auth
   // Non-critical: ipfs (degraded is acceptable)
 
-  // If any critical service is unhealthy, system is unhealthy
-  if (
-    database.status === "unhealthy" ||
-    cache.status === "unhealthy" ||
-    auth.status === "unhealthy"
-  ) {
+  const criticalServices = [database, cache, auth];
+  const unhealthyCount = criticalServices.filter(
+    (service) => service.status === "unhealthy"
+  ).length;
+
+  // If ALL critical services are unhealthy, system is unhealthy
+  if (unhealthyCount === criticalServices.length) {
     return "unhealthy";
+  }
+
+  // If SOME (but not all) critical services are unhealthy, system is degraded
+  if (unhealthyCount > 0) {
+    return "degraded";
   }
 
   // If any service is degraded, system is degraded
@@ -282,12 +300,13 @@ export const GET = ApiWrapper.create(
     const requestStart = Date.now();
 
     // Run all health checks in parallel for better performance
-    const [databaseHealth, cacheHealth, authHealth, ipfsHealth] = await Promise.all([
-      checkDatabaseHealth(),
-      checkCacheHealth(),
-      checkAuthHealth(),
-      checkIpfsHealth(),
-    ]);
+    const [databaseHealth, cacheHealth, authHealth, ipfsHealth] =
+      await Promise.all([
+        checkDatabaseHealth(),
+        checkCacheHealth(),
+        checkAuthHealth(),
+        checkIpfsHealth(),
+      ]);
 
     // Calculate overall status
     const overallStatus = calculateOverallStatus(
@@ -301,6 +320,7 @@ export const GET = ApiWrapper.create(
     const uptime = Math.floor((Date.now() - startTime) / 1000);
 
     // Build response
+    const responseTimeMs = Date.now() - requestStart;
     const response: HealthCheckResponse = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
@@ -314,10 +334,23 @@ export const GET = ApiWrapper.create(
         ipfs: ipfsHealth,
       },
       system: getSystemMetrics(),
-      responseTime: Date.now() - requestStart,
+      responseTime: responseTimeMs,
+      // Add simplified checks structure for backward compatibility
+      checks: {
+        database: databaseHealth.status,
+        cache: cacheHealth.status,
+        auth: authHealth.status,
+        ipfs: ipfsHealth.status,
+      },
     };
 
-    return response;
+    // Format responseTime as string for API response
+    const formattedResponse = {
+      ...response,
+      responseTime: `${responseTimeMs}ms`,
+    };
+
+    return formattedResponse;
   },
   {
     auth: {
