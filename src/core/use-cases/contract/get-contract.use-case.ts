@@ -6,6 +6,8 @@ import {
 import { AbiEntity } from "@/core/domain/abi/abi.entity";
 import { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { logger } from "@/shared/lib/utils/logger";
+import { isValidAddress } from "@/shared/types";
+import { ValidationError } from "@/shared/lib/utils/error-handler";
 
 /**
  * Input parameters for retrieving a contract
@@ -84,6 +86,14 @@ export class GetContractUseCase {
           "networkId is required when fetching contract by address"
         );
       }
+
+      // Validate address format (fail-fast at use case layer)
+      if (!isValidAddress(input.identifier)) {
+        throw new ValidationError(
+          `Invalid contract address format: ${input.identifier}. Expected format: 0x followed by 40 hexadecimal characters.`
+        );
+      }
+
       contract = await this.contractRepository.findByAddress(
         input.identifier,
         input.networkId

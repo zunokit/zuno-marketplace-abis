@@ -31,6 +31,11 @@ export interface UpdateAbiUseCaseInput {
     bytecode?: string;
   };
   changeLog?: string;
+  /**
+   * API version from request context
+   * Should be extracted from X-API-Version header or default to "v1"
+   */
+  apiVersion?: string;
 }
 
 export interface UpdateAbiUseCaseOutput {
@@ -121,6 +126,8 @@ export class UpdateAbiUseCase {
         }
 
         // Create version record
+        // Use provided apiVersion or default to "v1" for backward compatibility
+        const apiVersion = input.apiVersion || "v1";
         newVersion = AbiFactory.createAbiVersion(
           {
             abiId: input.abiId,
@@ -129,7 +136,8 @@ export class UpdateAbiUseCase {
           },
           nextVersion,
           nextVersionNumber,
-          newAbiHash
+          newAbiHash,
+          apiVersion
         );
 
         newVersion.ipfsHash = ipfsHash;

@@ -64,11 +64,34 @@ export const abis = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
+    // Single column indexes for filtering
     userIdIdx: index("abis_user_id_idx").on(table.userId),
     abiHashIdx: index("abis_abi_hash_idx").on(table.abiHash),
     nameIdx: index("abis_name_idx").on(table.name),
     standardIdx: index("abis_standard_idx").on(table.standard),
     createdAtIdx: index("abis_created_at_idx").on(table.createdAt),
+
+    // Index for soft delete filtering (very common query pattern)
+    // Use case: WHERE isDeleted = false (99% of queries exclude deleted records)
+    // Without this index, every query does full table scan to filter deleted records
+    isDeletedIdx: index("abis_is_deleted_idx").on(table.isDeleted),
+
+    // Composite index for user's active ABIs
+    // Use case: Get user's non-deleted ABIs (common in list/search operations)
+    // Query: SELECT * FROM abis WHERE userId = ? AND isDeleted = false
+    userNotDeletedIdx: index("abis_user_not_deleted_idx").on(table.userId, table.isDeleted),
+
+    // Index for contract name search
+    // Use case: Search ABIs by contract name (case-insensitive search support)
+    contractNameIdx: index("abis_contract_name_idx").on(table.contractName),
+
+    // Composite index for standard filtering with soft delete
+    // Use case: Get all ERC20 ABIs that aren't deleted
+    // Query: SELECT * FROM abis WHERE standard = 'ERC20' AND isDeleted = false
+    standardNotDeletedIdx: index("abis_standard_not_deleted_idx").on(
+      table.standard,
+      table.isDeleted
+    ),
   })
 );
 
