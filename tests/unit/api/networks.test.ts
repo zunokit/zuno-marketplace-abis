@@ -1,4 +1,3 @@
-import { GET } from '@/app/api/networks/route';
 import {
   createMockRequest,
   extractJsonFromResponse,
@@ -7,43 +6,55 @@ import {
   createMockSession,
 } from './helpers/test-utils';
 import { mockNetworkRepository, resetAllMocks } from './helpers/mocks';
+import * as authHelpers from '@/infrastructure/auth/auth-helpers';
 
-// Mock auth helpers
-const mockVerifyApiKey = jest.fn();
-const mockVerifySessionFromHeaders = jest.fn();
+// Mock auth helpers - declare after jest.mock to access them
+let mockVerifyApiKey: jest.Mock;
+let mockVerifySessionFromHeaders: jest.Mock;
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
-  verifyApiKey: mockVerifyApiKey,
+  verifyApiKey: jest.fn(),
   verifySession: jest.fn(),
-  verifySessionFromHeaders: mockVerifySessionFromHeaders,
+  verifySessionFromHeaders: jest.fn(),
   hasPermission: jest.fn(() => true),
   isAdmin: jest.fn(),
   canAccessResource: jest.fn(),
 }));
 
-jest.mock('@/infrastructure/di/container', () => ({
-  getNetworkRepository: jest.fn(() => mockNetworkRepository),
-  getAuditLogRepository: jest.fn(() => ({
-    create: jest.fn(),
-    findAll: jest.fn(),
-  })),
-}));
+jest.mock('@/infrastructure/di/container', () => {
+  const { mockNetworkRepository: repo } = require('./helpers/mocks');
+  return {
+    getNetworkRepository: jest.fn(() => repo),
+    getAuditLogRepository: jest.fn(() => ({
+      create: jest.fn(),
+      findAll: jest.fn(),
+    })),
+  };
+});
 
 jest.mock('@/infrastructure/services/rate-limit.service', () => ({
   RateLimitService: {
     checkLimit: jest.fn().mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         allowed: true,
         limit: 100,
         remaining: 99,
         reset: Date.now() + 3600000,
         tier: 'free',
       },
+      error: null,
     }),
   },
   RateLimitError: class RateLimitError extends Error {},
 }));
+
+// Import the route after mocks are set up
+import { GET } from '@/app/api/networks/route';
+
+// Assign mocked functions after imports
+mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
+mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
 
 describe('GET /api/networks', () => {
   const mockNetworks = [

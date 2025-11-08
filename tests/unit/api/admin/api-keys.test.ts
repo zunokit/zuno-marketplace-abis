@@ -7,42 +7,41 @@ import {
   createMockSession,
 } from '../helpers/test-utils';
 import { resetAllMocks } from '../helpers/mocks';
+import * as authHelpers from '@/infrastructure/auth/auth-helpers';
+import * as betterAuthConfig from '@/infrastructure/auth/better-auth.config';
+import * as apiKeyService from '@/infrastructure/services/api-key.service';
 
-// Mock auth helpers
-const mockVerifySessionFromHeaders = jest.fn();
-const mockIsAdmin = jest.fn();
-const mockHasPermission = jest.fn();
-
-// Mock Better Auth
-const mockAuth = {
-  api: {
-    createApiKey: jest.fn(),
-    listApiKeys: jest.fn(),
-  },
-};
-
-// Mock ApiKeyService
-const mockApiKeyService = {
-  buildListParams: jest.fn(),
-  list: jest.fn(),
-  create: jest.fn(),
-};
+// Mock auth helpers - declare after jest.mock to access them
+let mockVerifySessionFromHeaders: jest.Mock;
+let mockIsAdmin: jest.Mock;
+let mockHasPermission: jest.Mock;
+let mockAuth: any;
+let mockApiKeyService: any;
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   verifyApiKey: jest.fn(),
   verifySession: jest.fn(),
-  verifySessionFromHeaders: mockVerifySessionFromHeaders,
-  hasPermission: mockHasPermission,
-  isAdmin: mockIsAdmin,
+  verifySessionFromHeaders: jest.fn(),
+  hasPermission: jest.fn(),
+  isAdmin: jest.fn(),
   canAccessResource: jest.fn(() => true),
 }));
 
 jest.mock('@/infrastructure/auth/better-auth.config', () => ({
-  auth: mockAuth,
+  auth: {
+    api: {
+      createApiKey: jest.fn(),
+      listApiKeys: jest.fn(),
+    },
+  },
 }));
 
 jest.mock('@/infrastructure/services/api-key.service', () => ({
-  ApiKeyService: mockApiKeyService,
+  ApiKeyService: {
+    buildListParams: jest.fn(),
+    list: jest.fn(),
+    create: jest.fn(),
+  },
 }));
 
 jest.mock('@/infrastructure/di/container', () => ({
@@ -54,10 +53,17 @@ jest.mock('@/infrastructure/di/container', () => ({
 
 jest.mock('@/shared/lib/utils/try-catch-wrapper', () => ({
   unwrapOrThrow: jest.fn((result) => {
-    if (result.ok) return result.value;
+    if (result.success) return result.data;
     throw result.error;
   }),
 }));
+
+// Assign mocked functions after imports
+mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
+mockIsAdmin = authHelpers.isAdmin as jest.Mock;
+mockHasPermission = authHelpers.hasPermission as jest.Mock;
+mockAuth = (betterAuthConfig as any).auth;
+mockApiKeyService = (apiKeyService as any).ApiKeyService;
 
 describe('GET /api/admin/api-keys', () => {
   beforeEach(() => {
@@ -102,8 +108,8 @@ describe('GET /api/admin/api-keys', () => {
     });
 
     mockApiKeyService.list.mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         data: mockApiKeys,
         pagination: {
           page: 1,
@@ -114,6 +120,7 @@ describe('GET /api/admin/api-keys', () => {
           hasPrev: false,
         },
       },
+      error: null,
     });
 
     const request = createMockRequest({
@@ -187,8 +194,8 @@ describe('GET /api/admin/api-keys', () => {
     });
 
     mockApiKeyService.list.mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         data: [],
         pagination: {
           page: 2,
@@ -199,6 +206,7 @@ describe('GET /api/admin/api-keys', () => {
           hasPrev: true,
         },
       },
+      error: null,
     });
 
     const request = createMockRequest({
@@ -230,8 +238,8 @@ describe('GET /api/admin/api-keys', () => {
     });
 
     mockApiKeyService.list.mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         data: [],
         pagination: {
           page: 1,
@@ -242,6 +250,7 @@ describe('GET /api/admin/api-keys', () => {
           hasPrev: false,
         },
       },
+      error: null,
     });
 
     const request = createMockRequest({
@@ -291,11 +300,12 @@ describe('POST /api/admin/api-keys', () => {
     };
 
     mockApiKeyService.create.mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         apiKey: newApiKey,
         plainKey: 'zuno_new_key_123456',
       },
+      error: null,
     });
 
     const request = createMockRequest({
@@ -378,11 +388,12 @@ describe('POST /api/admin/api-keys', () => {
     };
 
     mockApiKeyService.create.mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         apiKey: newApiKey,
         plainKey: 'zuno_pro_key_123456',
       },
+      error: null,
     });
 
     const request = createMockRequest({
@@ -423,11 +434,12 @@ describe('POST /api/admin/api-keys', () => {
     };
 
     mockApiKeyService.create.mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         apiKey: newApiKey,
         plainKey: 'zuno_prod_key_123456',
       },
+      error: null,
     });
 
     const request = createMockRequest({
@@ -447,6 +459,7 @@ describe('POST /api/admin/api-keys', () => {
           notes: 'Production use only',
         },
       },
+      error: null,
     });
 
     const response = await POST(request);

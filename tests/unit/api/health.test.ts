@@ -1,20 +1,32 @@
 import { GET } from '@/app/api/health/route';
 import { createMockRequest, extractJsonFromResponse } from './helpers/test-utils';
-import { mockDb, mockCacheService, mockAuth, resetAllMocks } from './helpers/mocks';
+import { resetAllMocks } from './helpers/mocks';
+import * as drizzleClient from '@/infrastructure/database/drizzle/client';
+import { CacheAdapter } from '@/infrastructure/cache/cache.adapter';
+import * as betterAuthConfig from '@/infrastructure/auth/better-auth.config';
+
+// Declare mocks
+let mockDb: any;
+let mockCacheService: any;
+let mockAuth: any;
 
 // Mock external dependencies
 jest.mock('@/infrastructure/database/drizzle/client', () => ({
-  db: mockDb,
+  db: {
+    select: jest.fn(),
+  },
 }));
 
 jest.mock('@/infrastructure/cache/cache.adapter', () => ({
   CacheAdapter: {
-    getInstance: jest.fn(() => mockCacheService),
+    getInstance: jest.fn(),
   },
 }));
 
 jest.mock('@/infrastructure/auth/better-auth.config', () => ({
-  auth: mockAuth,
+  auth: {
+    api: jest.fn(),
+  },
 }));
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
@@ -34,6 +46,16 @@ jest.mock('@/infrastructure/di/container', () => ({
   })),
 }));
 
+// Assign mocked functions after imports
+mockDb = (drizzleClient as any).db;
+mockCacheService = {
+  health: jest.fn(),
+};
+mockAuth = (betterAuthConfig as any).auth;
+
+// Set up CacheAdapter.getInstance to return our mock
+(CacheAdapter.getInstance as jest.Mock).mockReturnValue(mockCacheService);
+
 describe('GET /api/health', () => {
   beforeEach(() => {
     resetAllMocks();
@@ -48,10 +70,12 @@ describe('GET /api/health', () => {
 
     mockCacheService.health.mockResolvedValue(true);
 
-    mockAuth.api.getSession.mockResolvedValue({
-      session: null,
-      user: null,
-    });
+    mockAuth.api = {
+      getSession: jest.fn().mockResolvedValue({
+        session: null,
+        user: null,
+      }),
+    };
   });
 
   it('should return healthy status when all systems are operational', async () => {

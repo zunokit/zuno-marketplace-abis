@@ -1,10 +1,16 @@
 import { GET } from '@/app/api/version/route';
 import { createMockRequest, extractJsonFromResponse } from './helpers/test-utils';
-import { mockDb, resetAllMocks } from './helpers/mocks';
+import { resetAllMocks } from './helpers/mocks';
+import * as drizzleClient from '@/infrastructure/database/drizzle/client';
+
+// Declare mocks
+let mockDb: any;
 
 // Mock external dependencies
 jest.mock('@/infrastructure/database/drizzle/client', () => ({
-  db: mockDb,
+  db: {
+    select: jest.fn(),
+  },
 }));
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
@@ -22,6 +28,9 @@ jest.mock('@/infrastructure/di/container', () => ({
     findAll: jest.fn(),
   })),
 }));
+
+// Assign mocked functions after imports
+mockDb = (drizzleClient as any).db;
 
 describe('GET /api/version', () => {
   beforeEach(() => {

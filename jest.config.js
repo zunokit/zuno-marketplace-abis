@@ -20,7 +20,7 @@ const customJestConfig = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!(.*\\.mjs$|@upstash/redis|better-auth))",
+    "node_modules/(?!(.*\\.mjs$|@upstash/redis|better-auth|@t3-oss|nanoid))",
   ],
   testMatch: [
     "<rootDir>/tests/unit/**/*.{test,spec}.{js,jsx,ts,tsx}",

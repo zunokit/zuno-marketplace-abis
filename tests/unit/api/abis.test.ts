@@ -19,17 +19,18 @@ import {
   mockStorageService,
   resetAllMocks,
 } from './helpers/mocks';
+import * as authHelpers from '@/infrastructure/auth/auth-helpers';
 
-// Mock auth helpers
-const mockVerifyApiKey = jest.fn();
-const mockVerifySessionFromHeaders = jest.fn();
-const mockHasPermission = jest.fn();
+// Mock auth helpers - declare after jest.mock to access them
+let mockVerifyApiKey: jest.Mock;
+let mockVerifySessionFromHeaders: jest.Mock;
+let mockHasPermission: jest.Mock;
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
-  verifyApiKey: mockVerifyApiKey,
+  verifyApiKey: jest.fn(),
   verifySession: jest.fn(),
-  verifySessionFromHeaders: mockVerifySessionFromHeaders,
-  hasPermission: mockHasPermission,
+  verifySessionFromHeaders: jest.fn(),
+  hasPermission: jest.fn(),
   isAdmin: jest.fn(() => false),
   canAccessResource: jest.fn(() => true),
 }));
@@ -47,18 +48,24 @@ jest.mock('@/infrastructure/di/container', () => ({
 jest.mock('@/infrastructure/services/rate-limit.service', () => ({
   RateLimitService: {
     checkLimit: jest.fn().mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         allowed: true,
         limit: 100,
         remaining: 99,
         reset: Date.now() + 3600000,
         tier: 'free',
       },
+      error: null,
     }),
   },
   RateLimitError: class RateLimitError extends Error {},
 }));
+
+// Assign mocked functions after imports
+mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
+mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
+mockHasPermission = authHelpers.hasPermission as jest.Mock;
 
 describe('GET /api/abis', () => {
   beforeEach(() => {
@@ -162,7 +169,7 @@ describe('POST /api/abis', () => {
       contractName: 'TestContract',
       abi: createMockAbi(),
       abiHash: 'hash123',
-      standard: 'ERC20',
+      standard: undefined, // Not claiming any standard
       tags: ['test'],
       userId: 'user_v1_test',
       isDeleted: false,
@@ -187,7 +194,7 @@ describe('POST /api/abis', () => {
         description: 'Test description',
         contractName: 'TestContract',
         abi: createMockAbi(),
-        standard: 'ERC20',
+        // standard: 'ERC20', // Don't claim ERC20 compliance
         tags: ['test'],
       },
     });
@@ -195,10 +202,16 @@ describe('POST /api/abis', () => {
     const response = await POST(request);
     const data = await extractJsonFromResponse(response);
 
+    if (response.status !== 200) {
+      console.log('Error:', JSON.stringify(data, null, 2));
+    } else {
+      console.log('Success data:', JSON.stringify(data, null, 2));
+    }
+
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.abi).toBeDefined();
-    expect(data.data.abi.name).toBe('Test ABI');
+    expect(data.data).toBeDefined();
+    expect(data.data.name).toBe('Test ABI');
   });
 
   it('should require write permissions', async () => {

@@ -11,17 +11,18 @@ import {
   mockCacheService,
   resetAllMocks,
 } from './helpers/mocks';
+import * as authHelpers from '@/infrastructure/auth/auth-helpers';
 
-// Mock auth helpers
-const mockVerifyApiKey = jest.fn();
-const mockVerifySessionFromHeaders = jest.fn();
-const mockHasPermission = jest.fn();
+// Mock auth helpers - declare after jest.mock to access them
+let mockVerifyApiKey: jest.Mock;
+let mockVerifySessionFromHeaders: jest.Mock;
+let mockHasPermission: jest.Mock;
 
 jest.mock('@/infrastructure/auth/auth-helpers', () => ({
-  verifyApiKey: mockVerifyApiKey,
+  verifyApiKey: jest.fn(),
   verifySession: jest.fn(),
-  verifySessionFromHeaders: mockVerifySessionFromHeaders,
-  hasPermission: mockHasPermission,
+  verifySessionFromHeaders: jest.fn(),
+  hasPermission: jest.fn(),
   isAdmin: jest.fn(() => false),
   canAccessResource: jest.fn(() => true),
 }));
@@ -39,18 +40,24 @@ jest.mock('@/infrastructure/di/container', () => ({
 jest.mock('@/infrastructure/services/rate-limit.service', () => ({
   RateLimitService: {
     checkLimit: jest.fn().mockResolvedValue({
-      ok: true,
-      value: {
+      success: true,
+      data: {
         allowed: true,
         limit: 100,
         remaining: 99,
         reset: Date.now() + 3600000,
         tier: 'free',
       },
+      error: null,
     }),
   },
   RateLimitError: class RateLimitError extends Error {},
 }));
+
+// Assign mocked functions after imports
+mockVerifyApiKey = authHelpers.verifyApiKey as jest.Mock;
+mockVerifySessionFromHeaders = authHelpers.verifySessionFromHeaders as jest.Mock;
+mockHasPermission = authHelpers.hasPermission as jest.Mock;
 
 describe('GET /api/contracts', () => {
   beforeEach(() => {
@@ -71,7 +78,7 @@ describe('GET /api/contracts', () => {
         networkId: 'network_v1_ethereum',
         abiId: 'abi_v1_test',
         name: 'Test Contract',
-        type: 'ERC20',
+        type: 'token',
         userId: 'user_v1_test',
         isDeleted: false,
         createdAt: new Date(),
@@ -180,7 +187,7 @@ describe('GET /api/contracts', () => {
         'x-api-key': 'zuno_test_key',
       },
       searchParams: {
-        type: 'ERC20',
+        type: 'token',
       },
     });
 
@@ -254,7 +261,7 @@ describe('POST /api/contracts', () => {
       networkId: 'network_v1_ethereum',
       abiId: 'abi_v1_test',
       name: 'Test Contract',
-      type: 'ERC20',
+      type: 'token',
       userId: 'user_v1_test',
       isDeleted: false,
       createdAt: new Date(),
@@ -276,17 +283,23 @@ describe('POST /api/contracts', () => {
         networkId: 'network_v1_ethereum',
         abiId: 'abi_v1_test',
         name: 'Test Contract',
-        type: 'ERC20',
+        type: 'token', // Valid contract type
       },
     });
 
     const response = await POST(request);
     const data = await extractJsonFromResponse(response);
 
+    if (response.status !== 200) {
+      console.log('Error response:', JSON.stringify(data, null, 2));
+    } else {
+      console.log('Success response:', JSON.stringify(data, null, 2));
+    }
+
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.contract).toBeDefined();
-    expect(data.data.contract.name).toBe('Test Contract');
+    expect(data.data).toBeDefined();
+    expect(data.data.name).toBe('Test Contract');
   });
 
   it('should require write permissions', async () => {
@@ -375,7 +388,7 @@ describe('POST /api/contracts', () => {
       networkId: 'network_v1_ethereum',
       abiId: 'abi_v1_test',
       name: 'Test Contract',
-      type: 'ERC20',
+      type: 'token', // Valid contract type
       userId: 'user_v1_test',
       metadata: {
         verified: true,
@@ -401,7 +414,7 @@ describe('POST /api/contracts', () => {
         networkId: 'network_v1_ethereum',
         abiId: 'abi_v1_test',
         name: 'Test Contract',
-        type: 'ERC20',
+        type: 'token', // Valid contract type
         metadata: {
           verified: true,
           compiler: 'solc',

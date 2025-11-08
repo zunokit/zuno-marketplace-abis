@@ -90,14 +90,15 @@ export const mockAuth = {
  */
 export const mockRateLimitService = {
   checkLimit: jest.fn().mockResolvedValue({
-    ok: true,
-    value: {
+    success: true,
+    data: {
       allowed: true,
       limit: 100,
       remaining: 99,
       reset: Date.now() + 3600000,
       tier: 'free',
     },
+    error: null,
   }),
   resetLimit: jest.fn(),
   getRateLimitInfo: jest.fn(),
@@ -128,6 +129,7 @@ export const mockAbiRepository = {
   findByContractAddress: jest.fn(),
   findByStandard: jest.fn(),
   findByTags: jest.fn(),
+  softDelete: jest.fn(),
 };
 
 /**
@@ -149,6 +151,8 @@ export const mockNetworkRepository = {
   findByChainId: jest.fn(),
   findByName: jest.fn(),
   findEnabled: jest.fn(),
+  getAll: jest.fn(),
+  getAllActive: jest.fn(),
 };
 
 /**
