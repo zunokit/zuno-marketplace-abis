@@ -17,6 +17,7 @@ import {
   tryCatch,
   type TryCatchResult,
 } from "@/shared/lib/utils/try-catch-wrapper";
+import { logger } from "@/shared/lib/utils/logger";
 
 // ============ Types ============
 
@@ -326,7 +327,7 @@ export class ApiKeyService {
           metadata.rateLimit = input.rateLimit;
         }
 
-        console.log("[ApiKeyService] Creating API key with params:", {
+        logger.debug("Creating API key", {
           userId: targetUserId,
           name: input.name,
           expiresIn: input.expiresIn,
@@ -349,7 +350,7 @@ export class ApiKeyService {
           // Better Auth API works without them
         });
 
-        console.log("[ApiKeyService] Better Auth response:", result);
+        logger.debug("API key created successfully", { apiKeyId: result?.id });
 
         if (!result || !result.id) {
           throw new ApiError(
@@ -379,7 +380,7 @@ export class ApiKeyService {
           role: context.user?.role,
         },
         onError: (error, context) => {
-          console.error("[ApiKeyService] Error creating API key:", {
+          logger.error("Error creating API key", {
             name: error instanceof Error ? error.name : "Unknown",
             message: error instanceof Error ? error.message : String(error),
             stack:

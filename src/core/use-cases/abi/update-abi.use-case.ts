@@ -10,6 +10,7 @@ import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import type { IStorageService, ICacheService } from "@/infrastructure/di/container";
 import { AbiValidator } from "@/shared/lib/validation/abi-validator";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
+import { logger } from "@/shared/lib/utils/logger";
 
 export interface UpdateAbiUseCaseInput {
   abiId: string;
@@ -115,7 +116,7 @@ export class UpdateAbiUseCase {
             ipfsUrl = ipfsResult.url;
           }
         } catch (error) {
-          console.error("IPFS storage failed:", error);
+          logger.error("IPFS storage failed", { error });
           // Continue without IPFS - it's a backup storage
         }
 
