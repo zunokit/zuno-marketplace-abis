@@ -5,7 +5,7 @@ export const API_DOCUMENTATION: ApiDocumentation = {
   title: "Zuno Marketplace ABIs API",
   description:
     "Enterprise-grade API for accessing verified smart contract ABIs across multiple EVM-compatible networks. This API provides developers with a centralized repository of contract interfaces, enabling seamless integration with blockchain applications.",
-  baseUrl: process.env.NEXT_PUBLIC_APP_URL || "https://api.zunomarketplace.com",
+  baseUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   authentication: {
     methods: [
       {
