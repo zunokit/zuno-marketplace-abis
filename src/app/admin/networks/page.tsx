@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Eye, ArrowUpDown } from "lucide-react";
 import { getNetworks, createNetwork, updateNetwork, deleteNetwork } from "./actions";
 import { toast } from "sonner";
+import { logger } from "@/shared/lib/utils/logger";
 import {
   Dialog,
   DialogContent,
@@ -78,7 +79,7 @@ export default function NetworksPage() {
     queryKey: ["admin-networks", page, limit],
     queryFn: async () => {
       const result = await getNetworks({ page, limit });
-      console.log("Networks Data:", result);
+      logger.debug("Networks Data fetched", { count: result.data?.length, page, limit });
       return result;
     },
   });

@@ -1,6 +1,6 @@
 import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { ContractNameParamsSchema as ParamsSchema } from "@/shared/lib/validation/contract.dto";
-import { ContractRepositoryImpl } from "@/infrastructure/database/repositories/contract.repository.impl";
+import { getContractRepository } from "@/infrastructure/di/container";
 import { ErrorCode } from "@/shared/types";
 
 /**
@@ -38,7 +38,7 @@ export const GET = ApiWrapper.create(
       );
     }
 
-    const contractRepository = new ContractRepositoryImpl();
+    const contractRepository = getContractRepository();
 
     // Parse pagination parameters
     const page = input.query?.page ? parseInt(input.query.page) : 1;

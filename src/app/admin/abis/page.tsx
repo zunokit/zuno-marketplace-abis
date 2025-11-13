@@ -5,6 +5,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { logger } from "@/shared/lib/utils/logger";
 
 import {
   useAbis,
@@ -69,7 +70,7 @@ export default function ABIsPage() {
         { onSuccess: () => setIsCreateOpen(false) }
       );
     } catch (error) {
-      console.error("Invalid ABI JSON:", error);
+      logger.error("Invalid ABI JSON", { error });
     }
   };
 
