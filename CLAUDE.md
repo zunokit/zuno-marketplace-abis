@@ -565,6 +565,68 @@ FOUNDRY_BROADCAST_DIR="../zuno-marketplace-contracts/broadcast"
 - **Monitoring**: Include health checks, metrics, and observability
 - **Testing**: Unit tests for business logic, integration tests for endpoints
 
+## CI/CD & Automation
+
+### GitHub Actions Workflows
+
+**Location**: `.github/workflows/`
+
+The project includes automated CI/CD pipelines:
+
+#### CI Pipeline (`ci.yml`)
+Runs on push to `main` and `develop` branches, and on pull requests:
+
+1. **Lint and Type Check**
+   - ESLint validation
+   - TypeScript strict type checking
+   - Caching for faster builds
+
+2. **Unit Tests**
+   - Jest test suite with coverage
+   - Coverage uploaded to Codecov
+   - Minimum 80% coverage recommended
+
+3. **Build Verification**
+   - Production build with Turbopack
+   - Validates environment variable schema
+   - Uploads build artifacts
+
+4. **E2E Tests** (after lint/test pass)
+   - Playwright test suite
+   - Browser automation testing
+   - Test report artifacts saved for 7 days
+
+5. **Security Scan**
+   - `pnpm audit` for known vulnerabilities
+   - Snyk vulnerability scanning (requires `SNYK_TOKEN`)
+   - High-severity threshold enforcement
+
+#### Database Backup Workflow (`db-backup.yml`)
+Automated daily database backups with retention policies.
+
+#### Deployment Workflow (`deploy.yml`)
+Automated deployment to staging/production environments.
+
+**Running CI Checks Locally**:
+```bash
+# Run all pre-commit checks
+pnpm lint && pnpm typecheck && pnpm test
+
+# Build verification
+pnpm build
+
+# E2E tests (requires running dev server)
+pnpm test:e2e
+```
+
+**CI Configuration**:
+- **Node Version**: 20.x LTS
+- **pnpm Version**: 10.x
+- **Cache Strategy**: pnpm store + Playwright browsers
+- **Coverage Target**: >80% for unit tests
+
+---
+
 ## Database Migrations & Seeding
 
 ### Drizzle Migrations
@@ -608,6 +670,28 @@ pnpm auth:generate
 - `account` - OAuth provider links
 - `verification` - Email verification tokens
 - `apiKey` - API keys with permissions
+
+### Database Schema Files
+
+**Location**: `src/infrastructure/database/drizzle/schema/`
+
+The database schema is organized into separate files for each domain:
+
+- **`abis.schema.ts`** - ABI storage with IPFS integration and versioning
+- **`contracts.schema.ts`** - Smart contract metadata and network associations
+- **`networks.schema.ts`** - EVM network configurations (chainId, RPC, explorers)
+- **`auth.schema.ts`** - Better Auth tables (user, session, apiKey, verification)
+- **`audit-logs.schema.ts`** - Activity tracking with user, timestamp, and metadata
+- **`versions.schema.ts`** - API version tracking with enabled/deprecated flags
+- **`rate-limit.schema.ts`** - Rate limiting configuration and tracking
+- **`index.ts`** - Re-exports all schemas for Drizzle ORM
+
+**Key Schema Features**:
+- **Versioned IDs**: All entities use prefixed IDs (e.g., `abi_v1_xyz`, `contract_v1_abc`)
+- **Timestamps**: `createdAt` and `updatedAt` on all mutable entities
+- **Foreign Keys**: Enforced relationships between contracts, ABIs, and networks
+- **Indexes**: Optimized for common queries (chainId, contractAddress, network)
+- **JSON Columns**: Flexible metadata storage with type validation
 
 ### Database Seeding
 
@@ -727,6 +811,28 @@ POST   /api/backup/restore                    # Restore from backup
 - **App Config**: `src/shared/config/app.config.ts`
 - **Better Auth Config**: `src/infrastructure/auth/better-auth.config.ts`
 - **Database Config**: `src/infrastructure/database/drizzle/config.ts`
+
+### Shared Utilities
+- **ABI Utilities**: `src/shared/lib/abi-utils/`
+  - `abi-hasher.ts` - Content-based ABI hashing for versioning
+  - `abi-normalizer.ts` - Normalize ABI format for consistency
+  - `abi-parser.ts` - Parse and validate ABI structures
+  - `abi-validator.ts` - Zod-based ABI validation
+- **API Utilities**: `src/shared/lib/api/`
+  - `api-handler.ts` - Standardized API route wrapper with auth/validation
+  - `api-response.ts` - Consistent response formatting
+  - `error-formatter.ts` - User-friendly error message formatting
+  - `error-messages.ts` - Centralized error message definitions
+  - `request-context.ts` - Extract request metadata (IP, user-agent, etc.)
+- **General Utilities**: `src/shared/lib/utils/`
+  - `id-generator.ts` - Generate versioned entity IDs with nanoid
+  - `api-version.ts` - Extract and validate API version from headers
+  - `error-handler.ts` - Global error handling with proper logging
+  - `logger.ts` - Structured logging utility
+  - `try-catch-wrapper.ts` - Type-safe error handling wrapper
+- **Validation**: `src/shared/lib/validation/`
+  - `*.dto.ts` - Zod schemas for request/response validation
+  - `*-validator.ts` - Custom validators for complex business rules
 
 ---
 
@@ -870,6 +976,48 @@ POST   /api/backup/restore                    # Restore from backup
 
 ---
 
-**Last Updated**: 2025-01-19
+## Recent Updates & Features
+
+### Latest Enhancements (November 2024 - January 2025)
+
+#### Contract Name Filtering (v0.1.0)
+- **Feature**: Added `contractName` filter parameter to ABI search endpoints
+- **Location**: `src/app/api/abis/full/route.ts`
+- **Usage**: Filter ABIs by contract name in addition to network and address
+- **Example**: `GET /api/abis/full?contractName=ERC20Token&network=ethereum`
+
+#### IPFS Group Organization
+- **Enhancement**: ABIs organized into groups on Pinata for efficient management
+- **Location**: `src/infrastructure/storage/ipfs/pinata.adapter.ts`
+- **Benefit**: Better content organization and easier bulk operations
+
+#### Foundry Integration
+- **Feature**: Import contract ABIs directly from Foundry build artifacts
+- **Configuration**: `FOUNDRY_OUT_DIR` and `FOUNDRY_BROADCAST_DIR` environment variables
+- **Seeder**: `ContractAbiFromArtifactsSeeder` automatically imports deployed contracts
+- **Use Case**: Seamless integration with Foundry-based smart contract projects
+
+#### Enhanced Query Services
+- **Improvement**: Refactored query builders for contracts and ABIs
+- **Location**: `src/core/services/abi/abi-query.service.ts`
+- **Features**: Advanced filtering, sorting, and pagination support
+
+#### GitHub Actions CI/CD
+- **New**: Comprehensive CI/CD pipeline with automated testing and security scanning
+- **Workflows**: Lint, test, build, E2E, security audit, and deployment automation
+- **Integration**: Codecov for coverage tracking, Snyk for vulnerability scanning
+
+### Migration Notes
+
+When upgrading from earlier versions:
+
+1. **Database Schema**: Run `pnpm db:generate && pnpm db:migrate` to apply new schemas
+2. **Environment Variables**: Add optional Foundry integration variables if needed
+3. **Dependencies**: Run `pnpm install` to update to latest package versions
+4. **CI/CD**: Configure GitHub secrets (`SNYK_TOKEN`, etc.) for full CI functionality
+
+---
+
+**Last Updated**: 2025-01-15
 **Version**: 0.1.0
 **Maintainers**: Zuno Team
