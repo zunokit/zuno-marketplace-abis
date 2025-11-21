@@ -1,19 +1,27 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
-import { API_DOCUMENTATION } from "@/shared/lib/api/api-documentation";
+import { NextResponse } from "next/server";
+import { getOpenApiSchema } from "@/shared/config/openapi.schema";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 /**
  * GET /api/docs - API Documentation
  *
- * Public endpoint that provides comprehensive API documentation
- * including endpoints, authentication methods, rate limits, and examples.
+ * Serves the OpenAPI 3.1 schema as JSON for external tools.
+ * This endpoint can be used by:
+ * - API testing tools (Postman, Insomnia)
+ * - Code generation tools
+ * - API documentation tools
+ * - CI/CD validation pipelines
  *
- * No authentication required - this is a public documentation endpoint.
+ * @public endpoint - no authentication required
  */
-export const GET = ApiWrapper.create(
-  async () => {
-    return API_DOCUMENTATION;
-  },
-  {
-    auth: { required: false },
-  }
-);
+export async function GET() {
+  const baseUrl = getCurrentUrl();
+  const schema = getOpenApiSchema(baseUrl);
+
+  return NextResponse.json(schema, {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600, s-maxage=3600",
+    },
+  });
+}

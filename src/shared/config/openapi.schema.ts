@@ -12,7 +12,8 @@
 
 import type { OpenAPIV3_1 } from "openapi-types";
 
-export const openApiSchema: OpenAPIV3_1.Document = ({
+export function getOpenApiSchema(baseUrl: string): OpenAPIV3_1.Document {
+  return ({
   openapi: "3.1.0",
   info: {
     title: "Zuno Marketplace ABIs API",
@@ -74,7 +75,7 @@ Default version: v1
   },
   servers: [
     {
-      url: "/api",
+      url: `${baseUrl}/api`,
       description: "API Server",
     },
   ],
@@ -841,6 +842,348 @@ Default version: v1
         },
       },
     },
+    "/contracts/{address}/versions": {
+      get: {
+        summary: "Get Contract ABI Versions",
+        description: "Get all ABI versions for a contract. Returns version history tracking contract upgrades.",
+        tags: ["Contracts", "ABIs"],
+        operationId: "getContractVersions",
+        security: [{ ApiKey: [] }, { SessionAuth: [] }],
+        parameters: [
+          {
+            name: "address",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Contract address",
+          },
+          {
+            name: "networkId",
+            in: "query",
+            required: true,
+            schema: { type: "string" },
+            description: "Network UUID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "ABI version history",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        contract: { $ref: "#/components/schemas/Contract" },
+                        abi: {
+                          type: "object",
+                          properties: {
+                            id: { type: "string" },
+                            name: { type: "string" },
+                            currentVersion: { type: "string" },
+                          },
+                        },
+                        versions: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string" },
+                              versionNumber: { type: "integer" },
+                              version: { type: "string" },
+                              abiHash: { type: "string" },
+                              ipfsHash: { type: "string" },
+                              ipfsUrl: { type: "string" },
+                              changeLog: { type: "string", nullable: true },
+                              createdAt: { type: "string", format: "date-time" },
+                            },
+                          },
+                        },
+                        totalVersions: { type: "integer" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/admin/api-keys": {
+      get: {
+        summary: "List API Keys",
+        description: "List all API keys for current admin user (admin only)",
+        tags: ["Admin"],
+        operationId: "listApiKeys",
+        security: [{ SessionAuth: [] }],
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", default: 1 },
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 20, maximum: 100 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "List of API keys",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          name: { type: "string" },
+                          key: { type: "string", description: "Partially masked key" },
+                          permissions: { type: "array", items: { type: "string" } },
+                          expiresAt: { type: "string", format: "date-time", nullable: true },
+                          createdAt: { type: "string", format: "date-time" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        summary: "Create API Key",
+        description: "Create new API key (admin only)",
+        tags: ["Admin"],
+        operationId: "createApiKey",
+        security: [{ SessionAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "permissions"],
+                properties: {
+                  name: { type: "string", minLength: 1, maxLength: 100 },
+                  permissions: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Array of permission scopes",
+                  },
+                  expiresIn: {
+                    type: "number",
+                    description: "Expiration time in milliseconds",
+                  },
+                  metadata: { type: "object" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "API key created",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        name: { type: "string" },
+                        key: { type: "string", description: "Full API key (shown once)" },
+                        permissions: { type: "array", items: { type: "string" } },
+                        expiresAt: { type: "string", format: "date-time", nullable: true },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/admin/api-keys/{id}": {
+      delete: {
+        summary: "Delete API Key",
+        description: "Revoke/delete API key by ID (admin only)",
+        tags: ["Admin"],
+        operationId: "deleteApiKey",
+        security: [{ SessionAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "API key ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "API key deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        deletedAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/backup/create": {
+      post: {
+        summary: "Create Database Backup",
+        description: "Create a full database backup (admin only)",
+        tags: ["Admin", "Backup"],
+        operationId: "createBackup",
+        security: [{ SessionAuth: [] }],
+        responses: {
+          "200": {
+            description: "Backup created successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    jobId: { type: "string" },
+                    backup: { type: "object" },
+                    metadata: { type: "object" },
+                    completedAt: { type: "string", format: "date-time" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/backup/restore": {
+      post: {
+        summary: "Restore Database Backup",
+        description: "Restore database from backup (admin only)",
+        tags: ["Admin", "Backup"],
+        operationId: "restoreBackup",
+        security: [{ SessionAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["backup"],
+                properties: {
+                  backup: {
+                    type: "object",
+                    description: "Backup data to restore",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Backup restored successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    jobId: { type: "string" },
+                    completedAt: { type: "string", format: "date-time" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/keys/public": {
+      post: {
+        summary: "Get Public API Key",
+        description: "Issue a public API key for unauthenticated access (read-only)",
+        tags: ["System"],
+        operationId: "getPublicApiKey",
+        responses: {
+          "200": {
+            description: "Public API key issued",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        key: { type: "string" },
+                        permissions: { type: "array", items: { type: "string" } },
+                        expiresAt: { type: "string", format: "date-time", nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/docs": {
+      get: {
+        summary: "API Documentation",
+        description: "OpenAPI 3.1 schema for API documentation. Compatible with Swagger UI, Postman, and code generators.",
+        tags: ["System"],
+        operationId: "getApiDocs",
+        responses: {
+          "200": {
+            description: "OpenAPI schema",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  description: "OpenAPI 3.1 Document",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   tags: [
     {
@@ -859,5 +1202,14 @@ Default version: v1
       name: "Contracts",
       description: "Smart contract registry operations",
     },
+    {
+      name: "Admin",
+      description: "Admin-only endpoints for system management",
+    },
+    {
+      name: "Backup",
+      description: "Database backup and restore operations",
+    },
   ],
-} as any) as OpenAPIV3_1.Document;
+  } as any) as OpenAPIV3_1.Document;
+}
