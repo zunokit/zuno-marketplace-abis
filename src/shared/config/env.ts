@@ -1,3 +1,4 @@
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
@@ -8,7 +9,7 @@ export const env = createEnv({
 
     // Authentication
     BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+    BETTER_AUTH_URL: z.string().url().default(getCurrentUrl()),
 
     // Cache
     UPSTASH_REDIS_REST_URL: z.string().url(),
@@ -46,7 +47,7 @@ export const env = createEnv({
     // Server
     DATABASE_URL: process.env.DATABASE_URL,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    BETTER_AUTH_URL: getCurrentUrl() || process.env.BETTER_AUTH_URL,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     PINATA_JWT: process.env.PINATA_JWT,

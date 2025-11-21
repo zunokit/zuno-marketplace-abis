@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/shared/config/env";
 import { appConfig } from "@/shared/config/app.config";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 /**
  * CORS Configuration
@@ -67,11 +68,7 @@ export interface CORSConfig {
  * Default CORS configuration
  */
 const defaultCORSConfig: CORSConfig = {
-  allowedOrigins: [
-    env.NEXT_PUBLIC_APP_URL,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-  ],
+  allowedOrigins: [getCurrentUrl()],
   allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",

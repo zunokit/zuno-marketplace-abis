@@ -8,6 +8,8 @@ import { env } from "@/shared/config/env";
 import { appConfig } from "@/shared/config/app.config";
 import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
 
+import { getCurrentUrl } from "@/shared/lib/utils/url";
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -20,7 +22,7 @@ export const auth = betterAuth({
   }),
 
   secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: getCurrentUrl(),
 
   // Email provider configuration
   emailAndPassword: {
@@ -149,7 +151,7 @@ export const auth = betterAuth({
 
   // CORS configuration
   cors: {
-    origin: [env.NEXT_PUBLIC_APP_URL],
+    origin: [getCurrentUrl()],
     credentials: true,
   },
 });

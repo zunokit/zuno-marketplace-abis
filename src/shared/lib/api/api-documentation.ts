@@ -1,11 +1,12 @@
 import type { ApiDocumentation } from "@/shared/types/api-docs.types";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 export const API_DOCUMENTATION: ApiDocumentation = {
   version: "v1",
   title: "Zuno Marketplace ABIs API",
   description:
     "Enterprise-grade API for accessing verified smart contract ABIs across multiple EVM-compatible networks. This API provides developers with a centralized repository of contract interfaces, enabling seamless integration with blockchain applications.",
-  baseUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseUrl: getCurrentUrl(),
   authentication: {
     methods: [
       {
