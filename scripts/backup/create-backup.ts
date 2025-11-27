@@ -96,16 +96,18 @@ async function createBackup(): Promise<void> {
         abiVersions,
         contracts,
         auditLogs,
-        users: users.map((user) => ({
-          ...user,
+        users: users.map((user) => {
           // Exclude sensitive fields from backup
-          password: undefined,
-        })),
-        apiKeys: apiKeys.map((key) => ({
-          ...key,
+          const { ...userWithoutPassword } = user;
+          delete (userWithoutPassword as Record<string, unknown>).password;
+          return userWithoutPassword;
+        }),
+        apiKeys: apiKeys.map((apiKey) => {
           // Exclude sensitive hash from backup
-          key: undefined,
-        })),
+          const { ...keyWithoutSecret } = apiKey;
+          delete (keyWithoutSecret as Record<string, unknown>).key;
+          return keyWithoutSecret;
+        }),
         apiVersions,
       },
     };
