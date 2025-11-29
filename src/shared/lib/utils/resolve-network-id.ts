@@ -7,6 +7,7 @@
 import { getNetworkRepository } from "@/infrastructure/di/container";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { CacheAdapter } from "@/infrastructure/cache/cache.adapter";
 
 /**
  * Resolve networkId from chainId
@@ -28,6 +29,12 @@ export async function resolveNetworkId(chainId: string | number): Promise<string
       400
     );
   }
+
+  // Clear cache before resolving to ensure fresh data
+  // This prevents stale cache issues when database is re-seeded
+  const cache = CacheAdapter.getInstance();
+  const cacheKey = `network:chainId:${chainIdNum}`;
+  await cache.del(cacheKey);
 
   // Find network by chainId
   const networkRepository = getNetworkRepository();
