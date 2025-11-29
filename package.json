@@ -12,6 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed/index.ts",
+    "db:truncate": "tsx scripts/db-truncate.ts",
+    "db:reset": "tsx scripts/db-truncate.ts && tsx scripts/seed/index.ts",
     "test": "jest --config tests/setup/jest.config.js",
     "test:watch": "jest --watch --config tests/setup/jest.config.js",
     "test:e2e": "playwright test",

@@ -41,16 +41,19 @@ export const GET = ApiWrapper.create(
 
     const contractRepository = getContractRepository();
 
+    // Extract query params (handle nested structure like /contracts route)
+    const queryParams = (input as any).query || input;
+
     // Parse pagination parameters
-    const page = input.query?.page ? parseInt(input.query.page) : 1;
-    const limit = input.query?.limit
-      ? Math.min(parseInt(input.query.limit), 100)
+    const page = queryParams?.page ? parseInt(queryParams.page) : 1;
+    const limit = queryParams?.limit
+      ? Math.min(parseInt(queryParams.limit), 100)
       : 20;
 
     // Build filters - resolve networkId from chainId if provided
     const filters: { networkId?: string } = {};
-    if (input.query?.chainId) {
-      filters.networkId = await resolveNetworkId(input.query.chainId);
+    if (queryParams?.chainId) {
+      filters.networkId = await resolveNetworkId(queryParams.chainId);
     }
 
     // Search contracts by name
@@ -58,8 +61,8 @@ export const GET = ApiWrapper.create(
       page,
       limit,
       query: nameParam,
-      sortBy: (input.query?.sortBy as "name" | "createdAt" | "updatedAt") || "name",
-      sortOrder: (input.query?.sortOrder as "asc" | "desc") || "asc",
+      sortBy: (queryParams?.sortBy as "name" | "createdAt" | "updatedAt") || "name",
+      sortOrder: (queryParams?.sortOrder as "asc" | "desc") || "asc",
       filters,
     });
 
