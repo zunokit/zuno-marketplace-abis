@@ -2,6 +2,7 @@ import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { ContractNameParamsSchema as ParamsSchema } from "@/shared/lib/validation/contract.dto";
 import { getContractRepository } from "@/infrastructure/di/container";
 import { ErrorCode } from "@/shared/types";
+import { resolveNetworkId } from "@/shared/lib/utils/resolve-network-id";
 
 /**
  * GET /api/contracts/by-name/[name] - Find contracts by name
@@ -12,7 +13,7 @@ import { ErrorCode } from "@/shared/types";
  * Query parameters:
  * - page: Page number (default: 1)
  * - limit: Items per page (default: 20, max: 100)
- * - networkId: Optional - Filter by network
+ * - chainId: Optional - Filter by network (integer)
  * - sortBy: Optional - Sort field (name, createdAt, updatedAt)
  * - sortOrder: Optional - Sort direction (asc, desc)
  */
@@ -22,7 +23,7 @@ export const GET = ApiWrapper.create(
       query?: {
         page?: string;
         limit?: string;
-        networkId?: string;
+        chainId?: string | number;
         sortBy?: string;
         sortOrder?: string;
       };
@@ -46,10 +47,10 @@ export const GET = ApiWrapper.create(
       ? Math.min(parseInt(input.query.limit), 100)
       : 20;
 
-    // Build filters
+    // Build filters - resolve networkId from chainId if provided
     const filters: { networkId?: string } = {};
-    if (input.query?.networkId) {
-      filters.networkId = input.query.networkId;
+    if (input.query?.chainId) {
+      filters.networkId = await resolveNetworkId(input.query.chainId);
     }
 
     // Search contracts by name
