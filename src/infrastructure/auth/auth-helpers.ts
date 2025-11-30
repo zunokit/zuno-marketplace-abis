@@ -1,8 +1,7 @@
 import { auth } from "./better-auth.config";
 import { headers as nextHeaders } from "next/headers";
-import { ApiKey, user as userTable } from "@/infrastructure/database/drizzle/schema/auth.schema";
+import { ApiKey, user as userTable, apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/auth.schema";
 import { db } from "@/infrastructure/database/drizzle/client";
-import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/auth.schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 

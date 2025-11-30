@@ -2,8 +2,8 @@
  * Auth Helpers Tests
  * Tests for authentication helper functions
  *
- * These tests verify the admin bypass logic for rate limiting without
- * importing the actual service (to avoid Jest ESM parsing issues)
+ * These tests verify the admin bypass logic for rate limiting using
+ * replicated logic to avoid importing modules that require ESM parsing.
  */
 
 describe("Admin API Key Rate Limit Bypass Logic", () => {
