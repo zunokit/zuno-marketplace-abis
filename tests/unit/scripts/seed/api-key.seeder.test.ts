@@ -5,9 +5,11 @@
 
 import crypto from "crypto";
 
-// Hash function matching the seeder implementation
+// Hash function matching the seeder implementation (Better Auth compatible)
+// Better Auth uses: SHA-256 → base64url encoding (no padding)
 function hashApiKey(key: string): string {
-  return crypto.createHash("sha256").update(key).digest("hex");
+  const hash = crypto.createHash("sha256").update(key).digest();
+  return hash.toString("base64url");
 }
 
 describe("API Key Hashing", () => {
@@ -20,12 +22,13 @@ describe("API Key Hashing", () => {
       expect(hash1).toBe(hash2);
     });
 
-    it("should produce 64-character hex string (SHA-256)", () => {
+    it("should produce 43-character base64url string (SHA-256)", () => {
       const key = "zuno_admin_key_abc123";
       const hash = hashApiKey(key);
 
-      expect(hash).toHaveLength(64);
-      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+      // SHA-256 = 32 bytes → base64url without padding = 43 chars
+      expect(hash).toHaveLength(43);
+      expect(hash).toMatch(/^[A-Za-z0-9_-]{43}$/);
     });
 
     it("should produce different hashes for different keys", () => {
@@ -40,31 +43,29 @@ describe("API Key Hashing", () => {
 
     it("should hash empty string without error", () => {
       const hash = hashApiKey("");
-      expect(hash).toHaveLength(64);
-      // SHA-256 of empty string
-      expect(hash).toBe(
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      );
+      expect(hash).toHaveLength(43);
+      // SHA-256 of empty string in base64url
+      expect(hash).toBe("47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU");
     });
 
     it("should handle unicode characters", () => {
       const key = "zuno_キー_テスト";
       const hash = hashApiKey(key);
 
-      expect(hash).toHaveLength(64);
-      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+      expect(hash).toHaveLength(43);
+      expect(hash).toMatch(/^[A-Za-z0-9_-]{43}$/);
     });
 
     it("should handle special characters", () => {
       const key = "zuno_key-with.special!chars@123#";
       const hash = hashApiKey(key);
 
-      expect(hash).toHaveLength(64);
-      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+      expect(hash).toHaveLength(43);
+      expect(hash).toMatch(/^[A-Za-z0-9_-]{43}$/);
     });
 
     it("should be compatible with Better Auth verification", () => {
-      // Better Auth uses SHA-256 hex for API key hashing
+      // Better Auth uses SHA-256 → base64url for API key hashing
       // This test ensures our implementation matches
       const plaintextKey = "zuno_verification_test_key";
       const hash = hashApiKey(plaintextKey);
@@ -73,7 +74,8 @@ describe("API Key Hashing", () => {
       const expectedHash = crypto
         .createHash("sha256")
         .update(plaintextKey)
-        .digest("hex");
+        .digest()
+        .toString("base64url");
 
       expect(hash).toBe(expectedHash);
     });
@@ -240,7 +242,7 @@ describe("API Key Seeder Integration", () => {
 
       // Hash
       const hashedKey = hashApiKey(plaintextKey);
-      expect(hashedKey).toHaveLength(64);
+      expect(hashedKey).toHaveLength(43);
 
       // Extract display info
       const start = plaintextKey.slice(0, 8);
@@ -272,13 +274,13 @@ describe("API Key Seeder Integration", () => {
 
       // First key
       expect(processedKeys[0].plaintext).toBe("zuno_xxx_admin_xxx_01");
-      expect(processedKeys[0].hash).toHaveLength(64);
+      expect(processedKeys[0].hash).toHaveLength(43);
       expect(processedKeys[0].start).toBe("zuno_xxx");
       expect(processedKeys[0].index).toBe(1);
 
       // Second key
       expect(processedKeys[1].plaintext).toBe("zuno_xxx_admin_xxx_02");
-      expect(processedKeys[1].hash).toHaveLength(64);
+      expect(processedKeys[1].hash).toHaveLength(43);
       expect(processedKeys[1].start).toBe("zuno_xxx");
       expect(processedKeys[1].index).toBe(2);
 
@@ -316,8 +318,9 @@ describe("Security Considerations", () => {
       const shortKey = "a";
       const longKey = "a".repeat(10000);
 
-      expect(hashApiKey(shortKey)).toHaveLength(64);
-      expect(hashApiKey(longKey)).toHaveLength(64);
+      // base64url of 32 bytes = 43 chars
+      expect(hashApiKey(shortKey)).toHaveLength(43);
+      expect(hashApiKey(longKey)).toHaveLength(43);
     });
   });
 

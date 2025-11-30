@@ -10,11 +10,14 @@ import { eq } from "drizzle-orm";
 import crypto from "crypto";
 
 /**
- * Hash API key using SHA-256 (Better Auth compatible)
- * Better Auth stores API keys as SHA-256 hex hashes
+ * Hash API key using SHA-256 + base64url (Better Auth compatible)
+ * Better Auth uses: SHA-256 → base64url encoding (no padding)
+ * See: https://github.com/better-auth/better-auth defaultKeyHasher
  */
 function hashApiKey(key: string): string {
-  return crypto.createHash("sha256").update(key).digest("hex");
+  const hash = crypto.createHash("sha256").update(key).digest();
+  // Convert to base64url without padding (matches Better Auth's defaultKeyHasher)
+  return hash.toString("base64url");
 }
 
 export class ApiKeySeeder implements Seeder {
