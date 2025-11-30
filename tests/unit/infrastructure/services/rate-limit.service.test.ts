@@ -30,9 +30,19 @@ function getKeyTier(metadataType?: string): RateLimitTier {
   }
 }
 
+// Rate limit config interface
+interface RateLimitConfig {
+  tier: RateLimitTier;
+  limits: {
+    requestsPerHour: number;
+    requestsPerDay: number;
+    burst?: number;
+  };
+}
+
 // Replicate tier config for testing
-function getTierConfig(tier: RateLimitTier) {
-  const configs = {
+function getTierConfig(tier: RateLimitTier): RateLimitConfig {
+  const configs: Record<RateLimitTier, RateLimitConfig> = {
     [RateLimitTier.PUBLIC]: {
       tier: RateLimitTier.PUBLIC,
       limits: { requestsPerHour: 100, requestsPerDay: 1000 },
@@ -101,7 +111,8 @@ describe("RateLimitService Tier Configuration", () => {
       const config = getTierConfig(RateLimitTier.PRO);
       expect(config.limits.requestsPerHour).toBe(5000);
       expect(config.limits.requestsPerDay).toBe(100000);
-      expect(config.limits.burst).toBe(100);
+      expect(config.limits.burst).toBeDefined();
+      expect(config.limits.burst!).toBe(100);
     });
 
     it("should return unlimited for ENTERPRISE tier", () => {
