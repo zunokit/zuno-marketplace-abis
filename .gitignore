@@ -52,4 +52,3 @@ playwright-report
 
 .factory
 !.env.example
-.infisical.json
