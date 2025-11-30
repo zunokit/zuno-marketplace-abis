@@ -1,6 +1,6 @@
 import { auth } from "./better-auth.config";
 import { headers as nextHeaders } from "next/headers";
-import { ApiKey } from "@/infrastructure/database/drizzle/schema/auth.schema";
+import { ApiKey, user as userTable } from "@/infrastructure/database/drizzle/schema/auth.schema";
 import { db } from "@/infrastructure/database/drizzle/client";
 import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/auth.schema";
 import { eq, and } from "drizzle-orm";
@@ -333,6 +333,35 @@ export function canAccessResource(
   resourceUserId: string
 ): boolean {
   return isAdmin(context) || isOwner(context, resourceUserId);
+}
+
+/**
+ * Check if an API key belongs to an admin user
+ * Used to bypass rate limiting for admin users' API keys
+ *
+ * @param apiKey - API key to check
+ * @returns true if the API key belongs to an admin user
+ */
+export async function isApiKeyOwnerAdmin(
+  apiKey: AuthApiKey
+): Promise<boolean> {
+  try {
+    const [userRecord] = await db
+      .select({ role: userTable.role })
+      .from(userTable)
+      .where(eq(userTable.id, apiKey.userId))
+      .limit(1);
+
+    if (!userRecord) {
+      logger.warn("User not found for API key", { keyId: apiKey.id, userId: apiKey.userId });
+      return false;
+    }
+
+    return userRecord.role === "admin";
+  } catch (error) {
+    logger.error("Failed to check API key owner role", { error, keyId: apiKey.id });
+    return false;
+  }
 }
 
 /**

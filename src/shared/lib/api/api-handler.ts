@@ -12,6 +12,7 @@ import {
   hasPermission,
   isAdmin,
   canAccessResource,
+  isApiKeyOwnerAdmin,
   type AuthContext,
   type AuthUser,
   type AuthApiKey,
@@ -307,9 +308,18 @@ export class ApiWrapper {
             request.headers.get("referer") ||
             undefined;
 
-          // Admin API keys bypass rate limiting
-          if (isHardcodedAdminApiKey(apiKeyValue)) {
-            logger.debug("Admin API key - bypassing rate limit", { keyId: apiKey.id });
+          // Check if API key should bypass rate limiting
+          // 1. Hardcoded admin API keys from env.API_KEYS
+          // 2. API keys belonging to admin users
+          const isHardcodedAdmin = isHardcodedAdminApiKey(apiKeyValue);
+          const isOwnerAdmin = !isHardcodedAdmin && await isApiKeyOwnerAdmin(apiKey);
+
+          if (isHardcodedAdmin || isOwnerAdmin) {
+            logger.debug("Admin API key - bypassing rate limit", { 
+              keyId: apiKey.id,
+              isHardcodedAdmin,
+              isOwnerAdmin
+            });
             context.rateLimit = { limit: Infinity, remaining: Infinity, reset: 0 };
           } else {
             // Check rate limit using Redis-based service
