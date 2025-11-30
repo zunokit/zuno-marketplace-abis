@@ -29,7 +29,7 @@ export interface AuthApiKey {
   rateLimitTimeWindow?: number | null;
   remaining?: number | null;
   metadata?: {
-    type?: "personal" | "organization" | "public";
+    type?: "personal" | "organization" | "public" | "enterprise";
     scopes?: string[];
     ipWhitelist?: string[];
     allowedOrigins?: string[];
