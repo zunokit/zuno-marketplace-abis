@@ -22,6 +22,7 @@ import {
 } from "@/infrastructure/services/rate-limit.service";
 import { unwrapOrThrow } from "@/shared/lib/utils/try-catch-wrapper";
 import { logger } from "@/shared/lib/utils/logger";
+import { env } from "@/shared/config/env";
 import {
   createFormattedErrorResponse,
   extractRequestId,
@@ -31,6 +32,14 @@ import {
 import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
+
+/**
+ * Check if API key is a hardcoded admin key (bypasses rate limiting)
+ */
+function isHardcodedAdminApiKey(apiKeyValue: string): boolean {
+  if (!env.API_KEYS) return false;
+  return env.API_KEYS.split(",").map((k) => k.trim()).includes(apiKeyValue);
+}
 
 export interface ApiContext extends AuthContext {
   request: NextRequest;
@@ -298,44 +307,44 @@ export class ApiWrapper {
             request.headers.get("referer") ||
             undefined;
 
-          // Check rate limit using Redis-based service
-          // This handles: IP whitelist, Origin validation, Tier-based limits
-          try {
-            const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
-              ip: clientIp,
-              origin,
-            });
-
-            const rateLimit = unwrapOrThrow(rateLimitResult);
-
-            context.rateLimit = {
-              limit: rateLimit.limit,
-              remaining: rateLimit.remaining,
-              reset: rateLimit.reset,
-            };
-
-            logger.debug("Rate limit check passed", {
-              keyId: apiKey.id,
-              tier: rateLimit.tier,
-              remaining: rateLimit.remaining,
-            });
-          } catch (error) {
-            if (error instanceof RateLimitError) {
-              const retryAfter = error.result.retryAfter || 0;
-
-              logger.warn("Rate limit exceeded", {
+          // Admin API keys bypass rate limiting
+          if (isHardcodedAdminApiKey(apiKeyValue)) {
+            logger.debug("Admin API key - bypassing rate limit", { keyId: apiKey.id });
+            context.rateLimit = { limit: Infinity, remaining: Infinity, reset: 0 };
+          } else {
+            // Check rate limit using Redis-based service
+            try {
+              const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
+                ip: clientIp,
+                origin,
+              });
+              const rateLimit = unwrapOrThrow(rateLimitResult);
+              context.rateLimit = {
+                limit: rateLimit.limit,
+                remaining: rateLimit.remaining,
+                reset: rateLimit.reset,
+              };
+              logger.debug("Rate limit check passed", {
                 keyId: apiKey.id,
-                tier: error.result.tier,
-                retryAfter,
+                tier: rateLimit.tier,
+                remaining: rateLimit.remaining,
               });
-
-              throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
-                retryAfter,
-                limit: error.result.limit,
-                reset: error.result.reset,
-              });
+            } catch (error) {
+              if (error instanceof RateLimitError) {
+                const retryAfter = error.result.retryAfter || 0;
+                logger.warn("Rate limit exceeded", {
+                  keyId: apiKey.id,
+                  tier: error.result.tier,
+                  retryAfter,
+                });
+                throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
+                  retryAfter,
+                  limit: error.result.limit,
+                  reset: error.result.reset,
+                });
+              }
+              throw error;
             }
-            throw error; // Re-throw other errors
           }
 
           // Set API key context
