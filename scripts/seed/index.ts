@@ -8,6 +8,7 @@ import { SeedOrchestrator } from './orchestrator';
 import { NetworkSeeder } from './seeders/network.seeder';
 import { UserSeeder } from './seeders/user.seeder';
 import { ApiVersionSeeder } from './seeders/api-version.seeder';
+import { ApiKeySeeder } from './seeders/api-key.seeder';
 // DISABLED: Mock seeders - using real contract ABIs from Foundry
 // import { AbiSeeder } from './seeders/abi.seeder';
 // import { AbiVersionSeeder } from './seeders/abi-version.seeder';
@@ -52,6 +53,7 @@ export async function seed(config?: {
     // Register seeders in dependency order
     // ACTIVE: Core seeders for local development
     orchestrator.register(new UserSeeder()); // Creates admin + public users
+    orchestrator.register(new ApiKeySeeder()); // Creates hardcoded admin API keys (no rate limit)
     orchestrator.register(new ApiVersionSeeder()); // Creates v1 API version
     orchestrator.register(new NetworkSeeder()); // Creates Anvil network only
     orchestrator.register(new ContractAbiFromArtifactsSeeder()); // Seeds ABIs from Foundry artifacts

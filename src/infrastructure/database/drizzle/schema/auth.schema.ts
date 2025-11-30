@@ -123,7 +123,7 @@ export const apiKey = pgTable("api_key", {
   // Better Auth handles JSON serialization/deserialization internally
   metadata: text("metadata").$type<{
     // Key type
-    type?: "personal" | "organization" | "public";
+    type?: "personal" | "organization" | "public" | "enterprise";
     // Custom scopes (application-specific)
     scopes?: string[]; // ['read:abis', 'write:abis', 'delete:abis']
 
