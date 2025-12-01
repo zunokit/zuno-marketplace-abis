@@ -39,7 +39,7 @@ import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
  */
 function isHardcodedAdminApiKey(apiKeyValue: string): boolean {
   if (!env.API_KEYS) return false;
-  return env.API_KEYS.split(",").map((k) => k.trim()).includes(apiKeyValue);
+  return env.API_KEYS.split(",").map((k: string) => k.trim()).includes(apiKeyValue);
 }
 
 export interface ApiContext extends AuthContext {
