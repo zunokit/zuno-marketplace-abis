@@ -17,13 +17,8 @@ class Logger {
     // Safe access for both client and server environments
     // On client: process.env.NODE_ENV is available from Next.js build-time replacement
     // On server: Access the env config
-    if (typeof window === "undefined") {
-      // Server-side: dynamically import to avoid client-side errors
-      this.isDevelopment = process.env.NODE_ENV === "development";
-    } else {
-      // Client-side: use process.env which is replaced at build time
-      this.isDevelopment = process.env.NODE_ENV === "development";
-    }
+    // Determine development mode based on NODE_ENV
+    this.isDevelopment = process.env.NODE_ENV === "development";
   }
 
   public static getInstance(): Logger {
