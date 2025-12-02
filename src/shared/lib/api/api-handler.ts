@@ -35,11 +35,45 @@ import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 
 /**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function constantTimeCompare(a: string, b: string): boolean {
+  // If lengths differ, still compare all bytes to maintain constant time
+  const aLen = Buffer.byteLength(a);
+  const bLen = Buffer.byteLength(b);
+  const maxLen = Math.max(aLen, bLen);
+  
+  const bufferA = Buffer.alloc(maxLen);
+  const bufferB = Buffer.alloc(maxLen);
+  
+  Buffer.from(a).copy(bufferA);
+  Buffer.from(b).copy(bufferB);
+  
+  let result = aLen === bLen ? 0 : 1;
+  
+  for (let i = 0; i < maxLen; i++) {
+    result |= bufferA[i] ^ bufferB[i];
+  }
+  
+  return result === 0;
+}
+
+/**
  * Check if API key is a hardcoded admin key (bypasses rate limiting)
  */
 function isHardcodedAdminApiKey(apiKeyValue: string): boolean {
   if (!env.API_KEYS) return false;
-  return env.API_KEYS.split(",").map((k: string) => k.trim()).includes(apiKeyValue);
+  
+  const adminKeys = env.API_KEYS.split(",").map((k: string) => k.trim());
+  
+  // Use constant-time comparison to prevent timing attacks
+  for (const adminKey of adminKeys) {
+    if (constantTimeCompare(apiKeyValue, adminKey)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 export interface ApiContext extends AuthContext {

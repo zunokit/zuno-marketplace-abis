@@ -255,7 +255,7 @@ export function hasPermission(
   if (context.apiKey) {
     // Check that ALL required permissions are satisfied
     // SECURITY: Must use .every() to ensure all permissions match, not .some()
-    const hasAllPermissions = requiredPermissions.every((perm) => {
+    const hasRequiredPermissions = requiredPermissions.every((perm) => {
       // Check scopes first (format: "write:abis", "read:contracts")
       if (context.apiKey!.scopes.includes(perm)) {
         return true;
@@ -283,7 +283,7 @@ export function hasPermission(
       return false;
     });
 
-    return hasAllPermissions;
+    return hasRequiredPermissions;
   }
 
   // For session-based auth, default users have read-only access
