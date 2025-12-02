@@ -8,7 +8,7 @@
  * 
  * @returns The current URL of the application.
  */
-export const getCurrentUrl =():string=>{
+export const getCurrentUrl = (): string => {
   const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL;
   if (vercelUrl && vercelUrl.trim() !== '') {
     return vercelUrl.startsWith('http') ? vercelUrl : `https://${vercelUrl}`;
