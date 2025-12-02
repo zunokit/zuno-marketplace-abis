@@ -33,46 +33,23 @@ import {
 import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
-
-/**
- * Constant-time string comparison to prevent timing attacks
- */
-function constantTimeCompare(a: string, b: string): boolean {
-  // If lengths differ, still compare all bytes to maintain constant time
-  const aLen = Buffer.byteLength(a);
-  const bLen = Buffer.byteLength(b);
-  const maxLen = Math.max(aLen, bLen);
-  
-  const bufferA = Buffer.alloc(maxLen);
-  const bufferB = Buffer.alloc(maxLen);
-  
-  Buffer.from(a).copy(bufferA);
-  Buffer.from(b).copy(bufferB);
-  
-  let result = aLen === bLen ? 0 : 1;
-  
-  for (let i = 0; i < maxLen; i++) {
-    result |= bufferA[i] ^ bufferB[i];
-  }
-  
-  return result === 0;
-}
+import { constantTimeCompare } from "@/shared/lib/utils/compare-string";
 
 /**
  * Check if API key is a hardcoded admin key (bypasses rate limiting)
  */
 function isHardcodedAdminApiKey(apiKeyValue: string): boolean {
   if (!env.API_KEYS) return false;
-  
+
   const adminKeys = env.API_KEYS.split(",").map((k: string) => k.trim());
-  
+
   // Use constant-time comparison to prevent timing attacks
   for (const adminKey of adminKeys) {
     if (constantTimeCompare(apiKeyValue, adminKey)) {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -229,7 +206,9 @@ export class ApiWrapper {
         const size = parseInt(contentLength, 10);
         if (size > maxBytes) {
           throw new ApiError(
-            `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(maxBytes / 1024)}KB)`,
+            `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
+              maxBytes / 1024
+            )}KB)`,
             ErrorCode.VALIDATION_ERROR,
             413,
             {
@@ -251,7 +230,9 @@ export class ApiWrapper {
           const actualSize = new TextEncoder().encode(text).length;
           if (actualSize > maxBytes) {
             throw new ApiError(
-              `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(maxBytes / 1024)}KB)`,
+              `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
+                maxBytes / 1024
+              )}KB)`,
               ErrorCode.VALIDATION_ERROR,
               413,
               {
@@ -291,7 +272,7 @@ export class ApiWrapper {
             offset: ((Number(query.page) || 1) - 1) * limit,
             threshold: appConfig.api.pagination.warnThreshold,
             url: request.url,
-            userAgent: request.headers.get('user-agent'),
+            userAgent: request.headers.get("user-agent"),
           } as any);
         }
       }
@@ -346,22 +327,30 @@ export class ApiWrapper {
           // 1. Hardcoded admin API keys from env.API_KEYS
           // 2. API keys belonging to admin users
           const isHardcodedAdmin = isHardcodedAdminApiKey(apiKeyValue);
-          const isOwnerAdmin = !isHardcodedAdmin && await isApiKeyOwnerAdmin(apiKey);
+          const isOwnerAdmin =
+            !isHardcodedAdmin && (await isApiKeyOwnerAdmin(apiKey));
 
           if (isHardcodedAdmin || isOwnerAdmin) {
-            logger.debug("Admin API key - bypassing rate limit", { 
+            logger.debug("Admin API key - bypassing rate limit", {
               keyId: apiKey.id,
               isHardcodedAdmin,
-              isOwnerAdmin
+              isOwnerAdmin,
             });
-            context.rateLimit = { limit: Infinity, remaining: Infinity, reset: 0 };
+            context.rateLimit = {
+              limit: Infinity,
+              remaining: Infinity,
+              reset: 0,
+            };
           } else {
             // Check rate limit using Redis-based service
             try {
-              const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
-                ip: clientIp,
-                origin,
-              });
+              const rateLimitResult = await RateLimitService.checkLimit(
+                apiKey,
+                {
+                  ip: clientIp,
+                  origin,
+                }
+              );
               const rateLimit = unwrapOrThrow(rateLimitResult);
               context.rateLimit = {
                 limit: rateLimit.limit,
@@ -632,24 +621,26 @@ export const commonSchemas = {
     id: z.string().min(1, "ID is required"),
   }),
 
-  pagination: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce
-      .number()
-      .min(appConfig.api.minPageSize)
-      .max(appConfig.api.maxPageSize)
-      .default(appConfig.api.defaultPageSize),
-  }).refine(
-    (data) => {
-      // Validate that offset (page * limit) doesn't exceed maxOffset
-      const offset = (data.page - 1) * data.limit;
-      return offset <= appConfig.api.pagination.maxOffset;
-    },
-    {
-      message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
-      path: ["page"],
-    }
-  ),
+  pagination: z
+    .object({
+      page: z.coerce.number().min(1).default(1),
+      limit: z.coerce
+        .number()
+        .min(appConfig.api.minPageSize)
+        .max(appConfig.api.maxPageSize)
+        .default(appConfig.api.defaultPageSize),
+    })
+    .refine(
+      (data) => {
+        // Validate that offset (page * limit) doesn't exceed maxOffset
+        const offset = (data.page - 1) * data.limit;
+        return offset <= appConfig.api.pagination.maxOffset;
+      },
+      {
+        message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
+        path: ["page"],
+      }
+    ),
 
   sort: z.object({
     sortBy: z.string().optional(),
