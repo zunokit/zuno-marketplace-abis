@@ -248,7 +248,7 @@ export class ApiWrapper {
       query = validation.query.parse(query) as Record<string, string>;
 
       // Log warning for high pagination limits (DOS protection)
-      if (query.limit && typeof query.limit === 'number') {
+      if (query.limit) {
         const limit = Number(query.limit);
         if (limit >= appConfig.api.pagination.warnThreshold) {
           logger.warn("High pagination limit requested", {
