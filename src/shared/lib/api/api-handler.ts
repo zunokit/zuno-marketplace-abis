@@ -12,6 +12,7 @@ import {
   hasPermission,
   isAdmin,
   canAccessResource,
+  isApiKeyOwnerAdmin,
   type AuthContext,
   type AuthUser,
   type AuthApiKey,
@@ -22,14 +23,35 @@ import {
 } from "@/infrastructure/services/rate-limit.service";
 import { unwrapOrThrow } from "@/shared/lib/utils/try-catch-wrapper";
 import { logger } from "@/shared/lib/utils/logger";
+import { env } from "@/shared/config/env";
 import {
   createFormattedErrorResponse,
   extractRequestId,
   logError,
   type FriendlyErrorResponse,
 } from "./error-formatter";
+import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
+import { constantTimeCompare } from "@/shared/lib/utils/compare-string";
+
+/**
+ * Check if API key is a hardcoded admin key (bypasses rate limiting)
+ */
+function isHardcodedAdminApiKey(apiKeyValue: string): boolean {
+  if (!env.API_KEYS) return false;
+
+  const adminKeys = env.API_KEYS.split(",").map((k: string) => k.trim());
+
+  // Use constant-time comparison to prevent timing attacks
+  for (const adminKey of adminKeys) {
+    if (constantTimeCompare(apiKeyValue, adminKey)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export interface ApiContext extends AuthContext {
   request: NextRequest;
@@ -63,6 +85,9 @@ export interface ApiRouteConfig {
     max: number;
     window: number;
   };
+  bodySize?: {
+    maxBytes?: number; // Max body size in bytes
+  };
 }
 
 export class ApiWrapper {
@@ -87,7 +112,8 @@ export class ApiWrapper {
         const parsedData = await this.parseRequest(
           request,
           config.validation,
-          params
+          params,
+          config.bodySize
         );
 
         // 3. Create API context
@@ -155,7 +181,8 @@ export class ApiWrapper {
   private static async parseRequest(
     request: NextRequest,
     validation?: ApiRouteConfig["validation"],
-    routeParams: Record<string, string> = {}
+    routeParams: Record<string, string> = {},
+    bodySizeConfig?: ApiRouteConfig["bodySize"]
   ) {
     const url = new URL(request.url);
     const method = request.method;
@@ -171,14 +198,60 @@ export class ApiWrapper {
 
     // Parse body for POST/PUT/PATCH requests
     if (["POST", "PUT", "PATCH"].includes(method)) {
+      // Check body size limit
+      const contentLength = request.headers.get("content-length");
+      const maxBytes = bodySizeConfig?.maxBytes || 1024 * 1024; // 1MB default
+
+      if (contentLength) {
+        const size = parseInt(contentLength, 10);
+        if (size > maxBytes) {
+          throw new ApiError(
+            `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
+              maxBytes / 1024
+            )}KB)`,
+            ErrorCode.VALIDATION_ERROR,
+            413,
+            {
+              maxSize: maxBytes,
+              actualSize: size,
+              maxSizeFormatted: `${Math.round(maxBytes / 1024)}KB`,
+              actualSizeFormatted: `${Math.round(size / 1024)}KB`,
+            }
+          );
+        }
+      }
+
       const contentType = request.headers.get("content-type");
       if (contentType?.includes("application/json")) {
         try {
           const text = await request.text();
+
+          // Double-check actual size after reading
+          const actualSize = new TextEncoder().encode(text).length;
+          if (actualSize > maxBytes) {
+            throw new ApiError(
+              `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
+                maxBytes / 1024
+              )}KB)`,
+              ErrorCode.VALIDATION_ERROR,
+              413,
+              {
+                maxSize: maxBytes,
+                actualSize,
+                maxSizeFormatted: `${Math.round(maxBytes / 1024)}KB`,
+                actualSizeFormatted: `${Math.round(actualSize / 1024)}KB`,
+              }
+            );
+          }
+
           if (text.trim()) {
             body = JSON.parse(text);
           }
         } catch (error) {
+          // If it's our ApiError, re-throw it
+          if (error instanceof ApiError) {
+            throw error;
+          }
           // If parsing fails, leave body as undefined
           logger.debug("Failed to parse request body as JSON", { error });
         }
@@ -188,6 +261,21 @@ export class ApiWrapper {
     // Validate using Zod schemas if provided
     if (validation?.query) {
       query = validation.query.parse(query) as Record<string, string>;
+
+      // Log warning for high pagination limits (DOS protection)
+      if (query.limit) {
+        const limit = Number(query.limit);
+        if (limit >= appConfig.api.pagination.warnThreshold) {
+          logger.warn("High pagination limit requested", {
+            limit,
+            page: query.page || 1,
+            offset: ((Number(query.page) || 1) - 1) * limit,
+            threshold: appConfig.api.pagination.warnThreshold,
+            url: request.url,
+            userAgent: request.headers.get("user-agent"),
+          } as any);
+        }
+      }
     }
 
     if (validation?.body && body !== undefined) {
@@ -235,44 +323,61 @@ export class ApiWrapper {
             request.headers.get("referer") ||
             undefined;
 
-          // Check rate limit using Redis-based service
-          // This handles: IP whitelist, Origin validation, Tier-based limits
-          try {
-            const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
-              ip: clientIp,
-              origin,
-            });
+          // Check if API key should bypass rate limiting
+          // 1. Hardcoded admin API keys from env.API_KEYS
+          // 2. API keys belonging to admin users
+          const isHardcodedAdmin = isHardcodedAdminApiKey(apiKeyValue);
+          const isOwnerAdmin =
+            !isHardcodedAdmin && (await isApiKeyOwnerAdmin(apiKey));
 
-            const rateLimit = unwrapOrThrow(rateLimitResult);
-
-            context.rateLimit = {
-              limit: rateLimit.limit,
-              remaining: rateLimit.remaining,
-              reset: rateLimit.reset,
-            };
-
-            logger.debug("Rate limit check passed", {
+          if (isHardcodedAdmin || isOwnerAdmin) {
+            logger.debug("Admin API key - bypassing rate limit", {
               keyId: apiKey.id,
-              tier: rateLimit.tier,
-              remaining: rateLimit.remaining,
+              isHardcodedAdmin,
+              isOwnerAdmin,
             });
-          } catch (error) {
-            if (error instanceof RateLimitError) {
-              const retryAfter = error.result.retryAfter || 0;
-
-              logger.warn("Rate limit exceeded", {
+            context.rateLimit = {
+              limit: Infinity,
+              remaining: Infinity,
+              reset: 0,
+            };
+          } else {
+            // Check rate limit using Redis-based service
+            try {
+              const rateLimitResult = await RateLimitService.checkLimit(
+                apiKey,
+                {
+                  ip: clientIp,
+                  origin,
+                }
+              );
+              const rateLimit = unwrapOrThrow(rateLimitResult);
+              context.rateLimit = {
+                limit: rateLimit.limit,
+                remaining: rateLimit.remaining,
+                reset: rateLimit.reset,
+              };
+              logger.debug("Rate limit check passed", {
                 keyId: apiKey.id,
-                tier: error.result.tier,
-                retryAfter,
+                tier: rateLimit.tier,
+                remaining: rateLimit.remaining,
               });
-
-              throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
-                retryAfter,
-                limit: error.result.limit,
-                reset: error.result.reset,
-              });
+            } catch (error) {
+              if (error instanceof RateLimitError) {
+                const retryAfter = error.result.retryAfter || 0;
+                logger.warn("Rate limit exceeded", {
+                  keyId: apiKey.id,
+                  tier: error.result.tier,
+                  retryAfter,
+                });
+                throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
+                  retryAfter,
+                  limit: error.result.limit,
+                  reset: error.result.reset,
+                });
+              }
+              throw error;
             }
-            throw error; // Re-throw other errors
           }
 
           // Set API key context
@@ -516,10 +621,26 @@ export const commonSchemas = {
     id: z.string().min(1, "ID is required"),
   }),
 
-  pagination: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
-  }),
+  pagination: z
+    .object({
+      page: z.coerce.number().min(1).default(1),
+      limit: z.coerce
+        .number()
+        .min(appConfig.api.minPageSize)
+        .max(appConfig.api.maxPageSize)
+        .default(appConfig.api.defaultPageSize),
+    })
+    .refine(
+      (data) => {
+        // Validate that offset (page * limit) doesn't exceed maxOffset
+        const offset = (data.page - 1) * data.limit;
+        return offset <= appConfig.api.pagination.maxOffset;
+      },
+      {
+        message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
+        path: ["page"],
+      }
+    ),
 
   sort: z.object({
     sortBy: z.string().optional(),

@@ -1,5 +1,3 @@
-import { env } from "@/shared/config/env";
-
 export enum LogLevel {
   DEBUG = "DEBUG",
   INFO = "INFO",
@@ -16,7 +14,11 @@ class Logger {
   private isDevelopment: boolean;
 
   private constructor() {
-    this.isDevelopment = env.NODE_ENV === "development";
+    // Safe access for both client and server environments
+    // On client: process.env.NODE_ENV is available from Next.js build-time replacement
+    // On server: Access the env config
+    // Determine development mode based on NODE_ENV
+    this.isDevelopment = process.env.NODE_ENV === "development";
   }
 
   public static getInstance(): Logger {

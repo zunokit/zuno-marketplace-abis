@@ -15,6 +15,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import {
   getAbiRepository,
@@ -37,6 +38,8 @@ import {
   type AbiListItemDto,
 } from "@/shared/dto/abi.dto";
 import { PAGINATION } from "@/shared/constants/cache-config";
+import { auth } from "@/infrastructure/auth/better-auth.config";
+import { logger } from "@/shared/lib/utils/logger";
 
 // ============ Input Validation Schemas ============
 
@@ -90,7 +93,7 @@ export async function getAbis(
     // Convert to DTO
     return AbiDtoMapper.toPaginatedResponseDto(result);
   } catch (error) {
-    console.error("Error fetching ABIs:", error);
+    logger.error("Error fetching ABIs", { error });
     throw new Error("Failed to fetch ABIs");
   }
 }
@@ -118,7 +121,7 @@ export async function getAbiById(
     // Convert to DTO
     return AbiDtoMapper.toResponseDto(abi);
   } catch (error) {
-    console.error("Error fetching ABI:", error);
+    logger.error("Error fetching ABI", { error });
     throw new Error("Failed to fetch ABI");
   }
 }
@@ -131,6 +134,15 @@ export async function createAbi(input: CreateAbiDto): Promise<AbiResponseDto> {
     // Validate input
     const validatedInput = CreateAbiSchema.parse(input);
 
+    // Get authenticated user session
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      throw new Error("Unauthorized: User session not found");
+    }
+
     // Get services
     const abiRepository = getAbiRepository();
     const storageService = getStorageService();
@@ -139,13 +151,13 @@ export async function createAbi(input: CreateAbiDto): Promise<AbiResponseDto> {
     // Create use case
     const createAbiUseCase = new CreateAbiUseCase(
       abiRepository,
-      storageService as any, // TODO: Fix type compatibility
-      cacheService as any
+      storageService,
+      cacheService
     );
 
     // Execute use case
     const result = await createAbiUseCase.execute({
-      userId: "admin", // TODO: Get from auth context
+      userId: session.user.id,
       ...validatedInput,
     });
 
@@ -155,7 +167,7 @@ export async function createAbi(input: CreateAbiDto): Promise<AbiResponseDto> {
     // Convert to DTO
     return AbiDtoMapper.toResponseDto(result.abi);
   } catch (error) {
-    console.error("Error creating ABI:", error);
+    logger.error("Error creating ABI", { error });
     throw new Error("Failed to create ABI");
   }
 }
@@ -171,6 +183,15 @@ export async function updateAbi(
     // Validate input
     const validatedInput = UpdateAbiSchema.parse(input);
 
+    // Get authenticated user session
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      throw new Error("Unauthorized: User session not found");
+    }
+
     // Get services
     const abiRepository = getAbiRepository();
     const storageService = getStorageService();
@@ -179,14 +200,14 @@ export async function updateAbi(
     // Create use case
     const updateAbiUseCase = new UpdateAbiUseCase(
       abiRepository,
-      storageService as any, // TODO: Fix type compatibility
-      cacheService as any
+      storageService,
+      cacheService
     );
 
     // Execute use case
     const result = await updateAbiUseCase.execute({
       abiId: id,
-      userId: "admin", // TODO: Get from auth context
+      userId: session.user.id,
       ...validatedInput,
     });
 
@@ -197,7 +218,7 @@ export async function updateAbi(
     // Convert to DTO
     return AbiDtoMapper.toResponseDto(result.abi);
   } catch (error) {
-    console.error("Error updating ABI:", error);
+    logger.error("Error updating ABI", { error });
     throw new Error("Failed to update ABI");
   }
 }
@@ -223,7 +244,7 @@ export async function deleteAbi(
 
     return { success: true };
   } catch (error) {
-    console.error("Error deleting ABI:", error);
+    logger.error("Error deleting ABI", { error });
     throw new Error("Failed to delete ABI");
   }
 }

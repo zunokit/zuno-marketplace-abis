@@ -9,6 +9,7 @@ import type { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { AbiValidator } from "@/shared/lib/validation/abi-validator";
 import { AbiHasher } from "@/shared/lib/abi-utils/abi-hasher";
 import type { IStorageService, ICacheService } from "@/infrastructure/di/container";
+import { logger } from "@/shared/lib/utils/logger";
 
 export interface CreateAbiUseCaseInput {
   userId: string;
@@ -27,6 +28,11 @@ export interface CreateAbiUseCaseInput {
     sourceUrl?: string;
     bytecode?: string;
   };
+  /**
+   * API version from request context
+   * Should be extracted from X-API-Version header or default to "v1"
+   */
+  apiVersion?: string;
 }
 
 export interface CreateAbiUseCaseOutput {
@@ -90,7 +96,7 @@ export class CreateAbiUseCase {
         ipfsUrl = ipfsResult.url;
       }
     } catch (error) {
-      console.error("IPFS storage failed:", error);
+      logger.error("IPFS storage failed", { error });
       // Continue without IPFS - it's a backup storage
     }
 
@@ -106,7 +112,9 @@ export class CreateAbiUseCase {
       metadata: input.metadata,
     };
 
-    const abiEntity = AbiFactory.createAbi(createParams, abiHash);
+    // Use provided apiVersion or default to "v1" for backward compatibility
+    const apiVersion = input.apiVersion || "v1";
+    const abiEntity = AbiFactory.createAbi(createParams, abiHash, apiVersion);
     abiEntity.ipfsHash = ipfsHash;
     abiEntity.ipfsUrl = ipfsUrl;
 

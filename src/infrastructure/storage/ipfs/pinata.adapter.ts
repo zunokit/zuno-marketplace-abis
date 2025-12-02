@@ -1,4 +1,5 @@
 import { IPFSClient } from "./ipfs.client";
+import { logger } from "@/shared/lib/utils/logger";
 
 export interface StoragePort {
   store(data: unknown, metadata?: Record<string, unknown>): Promise<{ hash: string; url: string; groupId?: string } | null>;
@@ -31,7 +32,7 @@ export class PinataAdapter implements StoragePort {
 
   async retrieve<T>(hash: string): Promise<T | null> {
     if (!IPFSClient.isValidHash(hash)) {
-      console.error(`Invalid IPFS hash: ${hash}`);
+      logger.error("Invalid IPFS hash", { hash });
       return null;
     }
 

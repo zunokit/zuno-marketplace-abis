@@ -144,6 +144,8 @@ export class RateLimitService {
         return RateLimitTier.FREE;
       case "organization":
         return RateLimitTier.PRO;
+      case "enterprise":
+        return RateLimitTier.ENTERPRISE;
       default:
         return RateLimitTier.FREE;
     }
