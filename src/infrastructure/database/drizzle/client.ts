@@ -62,7 +62,7 @@ export const db = drizzle(databaseUrl, {
   logger: appConfig.database.pool.enableQueryLogging
     ? {
         logQuery: (query: string, params: unknown[]) => {
-          logger.dbQuery(query, undefined);
+          logger.debug(query, undefined);
         },
       }
     : false,
