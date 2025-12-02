@@ -362,27 +362,3 @@ export async function isApiKeyOwnerAdmin(
     return false;
   }
 }
-
-/**
- * @deprecated Use RateLimitService from @/infrastructure/services/rate-limit.service instead
- *
- * Rate limiting has been migrated to Redis-based RateLimitService which provides:
- * - Distributed rate limiting with Upstash Redis
- * - Tier-based limits (Public, Free, Pro, Enterprise)
- * - IP whitelist validation
- * - Origin validation
- * - Automatic TTL cleanup
- *
- * Migration example:
- * ```typescript
- * // Old (deprecated)
- * const rateLimit = await checkRateLimit(apiKey);
- *
- * // New (correct)
- * import { RateLimitService } from '@/infrastructure/services/rate-limit.service';
- * const rateLimit = await RateLimitService.checkLimit(apiKey, {
- *   ip: clientIp,
- *   origin: requestOrigin
- * });
- * ```
- */
