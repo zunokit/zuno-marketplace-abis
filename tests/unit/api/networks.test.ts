@@ -17,6 +17,7 @@ jest.mock('@/infrastructure/auth/auth-helpers', () => ({
   hasPermission: jest.fn(() => true),
   isAdmin: jest.fn(),
   canAccessResource: jest.fn(),
+  isApiKeyOwnerAdmin: jest.fn().mockResolvedValue(false),
 }));
 
 jest.mock('@/infrastructure/di/container', () => ({
