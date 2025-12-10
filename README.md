@@ -78,6 +78,20 @@
 
 ---
 
+## 📚 Documentation
+
+**Complete documentation available in `./docs/` directory**:
+
+| Document | Purpose |
+|----------|---------|
+| **[docs/project-overview-pdr.md](docs/project-overview-pdr.md)** | Product requirements, business goals, roadmap |
+| **[docs/codebase-summary.md](docs/codebase-summary.md)** | Project structure, file organization, dependencies |
+| **[docs/code-standards.md](docs/code-standards.md)** | Coding conventions, patterns, best practices |
+| **[docs/system-architecture.md](docs/system-architecture.md)** | Architecture layers, data flows, components |
+| **[CLAUDE.md](CLAUDE.md)** | Development workflows and CI/CD |
+
+---
+
 ## 📋 Table of Contents
 
 - [Quick Start](#-quick-start)
