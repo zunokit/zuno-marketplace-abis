@@ -11,6 +11,10 @@ import { sql } from "drizzle-orm";
 import * as schema from "@/infrastructure/database/drizzle/schema";
 import { Redis } from "@upstash/redis";
 
+// Configuration
+const HEALTH_CHECK_TIMEOUT = 10000; // 10 seconds timeout for each check
+const REDIS_REQUIRED = process.env.REDIS_REQUIRED === "true"; // Optional: Set to "true" to make Redis required
+
 // Logger utility
 const logger = {
   info: (message: string) =>
@@ -28,6 +32,19 @@ interface HealthCheckResult {
   healthy: boolean;
   latency: number;
   error?: string;
+  skipped?: boolean;
+}
+
+// Timeout wrapper for health checks
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  checkName: string
+): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    setTimeout(() => reject(new Error(`${checkName} timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]);
 }
 
 // Check database connectivity
@@ -77,12 +94,22 @@ async function checkRedis(): Promise<HealthCheckResult> {
     const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
     const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+    // If Redis is not required and env vars are missing, skip the check
     if (!redisUrl || !redisToken) {
+      if (!REDIS_REQUIRED) {
+        logger.warn("Redis environment variables not set - skipping (Redis is optional)");
+        return {
+          name: "redis",
+          healthy: true,
+          latency: 0,
+          skipped: true,
+        };
+      }
       return {
         name: "redis",
         healthy: false,
         latency: 0,
-        error: "Redis environment variables are not set",
+        error: "Redis environment variables are not set (REDIS_REQUIRED=true)",
       };
     }
 
@@ -115,13 +142,15 @@ async function checkRedis(): Promise<HealthCheckResult> {
 // Main health check function
 async function runHealthChecks(): Promise<void> {
   logger.info("Starting health checks...");
+  logger.info(`Timeout: ${HEALTH_CHECK_TIMEOUT}ms per check`);
+  logger.info(`Redis required: ${REDIS_REQUIRED}`);
 
   const results: HealthCheckResult[] = [];
 
-  // Run checks in parallel
+  // Run checks in parallel with timeout protection
   const [dbResult, redisResult] = await Promise.all([
-    checkDatabase(),
-    checkRedis(),
+    withTimeout(checkDatabase(), HEALTH_CHECK_TIMEOUT, "Database check"),
+    withTimeout(checkRedis(), HEALTH_CHECK_TIMEOUT, "Redis check"),
   ]);
 
   results.push(dbResult, redisResult);
@@ -134,13 +163,23 @@ async function runHealthChecks(): Promise<void> {
   let allHealthy = true;
 
   results.forEach((result) => {
-    const status = result.healthy ? "✅ HEALTHY" : "❌ UNHEALTHY";
+    let status: string;
+    if (result.skipped) {
+      status = "⏭️  SKIPPED";
+    } else {
+      status = result.healthy ? "✅ HEALTHY" : "❌ UNHEALTHY";
+    }
+
     console.log(`${status} - ${result.name}`);
     console.log(`   Latency: ${result.latency}ms`);
 
     if (result.error) {
       console.log(`   Error: ${result.error}`);
       allHealthy = false;
+    }
+
+    if (result.skipped) {
+      console.log(`   Note: Check skipped (optional service)`);
     }
 
     console.log("");

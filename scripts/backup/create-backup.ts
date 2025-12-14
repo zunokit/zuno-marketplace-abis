@@ -53,7 +53,7 @@ async function createBackup(): Promise<void> {
     // Collect data from all tables
     logger.info("Fetching data from database tables...");
 
-    const [networks, abis, abiVersions, contracts, auditLogs, users, apiKeys, apiVersions] =
+    const [networks, abis, abiVersions, contracts, auditLogs, users, accounts, apiKeys, apiVersions] =
       await Promise.all([
         db.select().from(schema.networks),
         db.select().from(schema.abis),
@@ -61,6 +61,7 @@ async function createBackup(): Promise<void> {
         db.select().from(schema.contracts),
         db.select().from(schema.auditLogs),
         db.select().from(schema.user),
+        db.select().from(schema.account),
         db.select().from(schema.apiKey),
         db.select().from(schema.apiVersions),
       ]);
@@ -77,6 +78,7 @@ async function createBackup(): Promise<void> {
           contracts: contracts.length,
           auditLogs: auditLogs.length,
           users: users.length,
+          accounts: accounts.length,
           apiKeys: apiKeys.length,
           apiVersions: apiVersions.length,
         },
@@ -87,6 +89,7 @@ async function createBackup(): Promise<void> {
           contracts.length +
           auditLogs.length +
           users.length +
+          accounts.length +
           apiKeys.length +
           apiVersions.length,
       },
@@ -96,16 +99,15 @@ async function createBackup(): Promise<void> {
         abiVersions,
         contracts,
         auditLogs,
-        users: users.map((user) => {
-          // Exclude sensitive fields from backup
-          const { ...userWithoutPassword } = user;
-          delete (userWithoutPassword as Record<string, unknown>).password;
-          return userWithoutPassword;
+        users, // No sensitive data in user table (Better Auth stores passwords in account table)
+        accounts: accounts.map((account) => {
+          // Exclude password hash from backup using destructuring
+          const { password, ...accountWithoutPassword } = account;
+          return accountWithoutPassword;
         }),
         apiKeys: apiKeys.map((apiKey) => {
-          // Exclude sensitive hash from backup
-          const { ...keyWithoutSecret } = apiKey;
-          delete (keyWithoutSecret as Record<string, unknown>).key;
+          // Exclude sensitive key from backup using destructuring
+          const { key, ...keyWithoutSecret } = apiKey;
           return keyWithoutSecret;
         }),
         apiVersions,
