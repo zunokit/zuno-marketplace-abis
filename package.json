@@ -71,7 +71,7 @@
     "lucide-react": "^0.545.0",
     "multihashes": "^4.0.3",
     "nanoid": "^5.1.6",
-    "next": "15.5.5",
+    "next": "15.5.9",
     "next-themes": "^0.4.6",
     "pinata": "^2.5.1",
     "react": "19.2.0",
