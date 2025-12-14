@@ -18,6 +18,7 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      ".claude/**", // ClaudeKit files use CommonJS
     ],
   },
   {
