@@ -33,6 +33,10 @@ export const env = createEnv({
     FOUNDRY_OUT_DIR: z.string().default("../zuno-marketplace-contracts/out"),
     FOUNDRY_BROADCAST_DIR: z.string().default("../zuno-marketplace-contracts/broadcast"),
 
+    // Hardcoded Admin API Keys (comma-separated, no rate limiting)
+    // Format: API_KEYS=zuno_xxx_admin_01,zuno_xxx_admin_02
+    API_KEYS: z.string().optional(),
+
     // Node Environment
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -61,6 +65,8 @@ export const env = createEnv({
 
     FOUNDRY_OUT_DIR: process.env.FOUNDRY_OUT_DIR,
     FOUNDRY_BROADCAST_DIR: process.env.FOUNDRY_BROADCAST_DIR,
+
+    API_KEYS: process.env.API_KEYS,
 
     // Client
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

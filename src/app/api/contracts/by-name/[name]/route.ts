@@ -2,6 +2,7 @@ import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { ContractNameParamsSchema as ParamsSchema } from "@/shared/lib/validation/contract.dto";
 import { getContractRepository } from "@/infrastructure/di/container";
 import { ErrorCode } from "@/shared/types";
+import { resolveNetworkId } from "@/shared/lib/utils/resolve-network-id";
 
 /**
  * GET /api/contracts/by-name/[name] - Find contracts by name
@@ -12,7 +13,7 @@ import { ErrorCode } from "@/shared/types";
  * Query parameters:
  * - page: Page number (default: 1)
  * - limit: Items per page (default: 20, max: 100)
- * - networkId: Optional - Filter by network
+ * - chainId: Optional - Filter by network (integer)
  * - sortBy: Optional - Sort field (name, createdAt, updatedAt)
  * - sortOrder: Optional - Sort direction (asc, desc)
  */
@@ -22,7 +23,7 @@ export const GET = ApiWrapper.create(
       query?: {
         page?: string;
         limit?: string;
-        networkId?: string;
+        chainId?: string | number;
         sortBy?: string;
         sortOrder?: string;
       };
@@ -40,16 +41,19 @@ export const GET = ApiWrapper.create(
 
     const contractRepository = getContractRepository();
 
+    // Extract query params (handle nested structure like /contracts route)
+    const queryParams = (input as any).query || input;
+
     // Parse pagination parameters
-    const page = input.query?.page ? parseInt(input.query.page) : 1;
-    const limit = input.query?.limit
-      ? Math.min(parseInt(input.query.limit), 100)
+    const page = queryParams?.page ? parseInt(queryParams.page) : 1;
+    const limit = queryParams?.limit
+      ? Math.min(parseInt(queryParams.limit), 100)
       : 20;
 
-    // Build filters
+    // Build filters - resolve networkId from chainId if provided
     const filters: { networkId?: string } = {};
-    if (input.query?.networkId) {
-      filters.networkId = input.query.networkId;
+    if (queryParams?.chainId) {
+      filters.networkId = await resolveNetworkId(queryParams.chainId);
     }
 
     // Search contracts by name
@@ -57,8 +61,8 @@ export const GET = ApiWrapper.create(
       page,
       limit,
       query: nameParam,
-      sortBy: (input.query?.sortBy as "name" | "createdAt" | "updatedAt") || "name",
-      sortOrder: (input.query?.sortOrder as "asc" | "desc") || "asc",
+      sortBy: (queryParams?.sortBy as "name" | "createdAt" | "updatedAt") || "name",
+      sortOrder: (queryParams?.sortOrder as "asc" | "desc") || "asc",
       filters,
     });
 

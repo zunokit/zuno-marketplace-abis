@@ -12,6 +12,7 @@ import {
   hasPermission,
   isAdmin,
   canAccessResource,
+  isApiKeyOwnerAdmin,
   type AuthContext,
   type AuthUser,
   type AuthApiKey,
@@ -22,6 +23,7 @@ import {
 } from "@/infrastructure/services/rate-limit.service";
 import { unwrapOrThrow } from "@/shared/lib/utils/try-catch-wrapper";
 import { logger } from "@/shared/lib/utils/logger";
+import { env } from "@/shared/config/env";
 import {
   createFormattedErrorResponse,
   extractRequestId,
@@ -31,6 +33,25 @@ import {
 import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
+import { constantTimeCompare } from "@/shared/lib/utils/compare-string";
+
+/**
+ * Check if API key is a hardcoded admin key (bypasses rate limiting)
+ */
+function isHardcodedAdminApiKey(apiKeyValue: string): boolean {
+  if (!env.API_KEYS) return false;
+
+  const adminKeys = env.API_KEYS.split(",").map((k: string) => k.trim());
+
+  // Use constant-time comparison to prevent timing attacks
+  for (const adminKey of adminKeys) {
+    if (constantTimeCompare(apiKeyValue, adminKey)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export interface ApiContext extends AuthContext {
   request: NextRequest;
@@ -185,7 +206,9 @@ export class ApiWrapper {
         const size = parseInt(contentLength, 10);
         if (size > maxBytes) {
           throw new ApiError(
-            `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(maxBytes / 1024)}KB)`,
+            `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
+              maxBytes / 1024
+            )}KB)`,
             ErrorCode.VALIDATION_ERROR,
             413,
             {
@@ -207,7 +230,9 @@ export class ApiWrapper {
           const actualSize = new TextEncoder().encode(text).length;
           if (actualSize > maxBytes) {
             throw new ApiError(
-              `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(maxBytes / 1024)}KB)`,
+              `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
+                maxBytes / 1024
+              )}KB)`,
               ErrorCode.VALIDATION_ERROR,
               413,
               {
@@ -238,7 +263,7 @@ export class ApiWrapper {
       query = validation.query.parse(query) as Record<string, string>;
 
       // Log warning for high pagination limits (DOS protection)
-      if (query.limit && typeof query.limit === 'number') {
+      if (query.limit) {
         const limit = Number(query.limit);
         if (limit >= appConfig.api.pagination.warnThreshold) {
           logger.warn("High pagination limit requested", {
@@ -247,7 +272,7 @@ export class ApiWrapper {
             offset: ((Number(query.page) || 1) - 1) * limit,
             threshold: appConfig.api.pagination.warnThreshold,
             url: request.url,
-            userAgent: request.headers.get('user-agent'),
+            userAgent: request.headers.get("user-agent"),
           } as any);
         }
       }
@@ -298,44 +323,61 @@ export class ApiWrapper {
             request.headers.get("referer") ||
             undefined;
 
-          // Check rate limit using Redis-based service
-          // This handles: IP whitelist, Origin validation, Tier-based limits
-          try {
-            const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
-              ip: clientIp,
-              origin,
-            });
+          // Check if API key should bypass rate limiting
+          // 1. Hardcoded admin API keys from env.API_KEYS
+          // 2. API keys belonging to admin users
+          const isHardcodedAdmin = isHardcodedAdminApiKey(apiKeyValue);
+          const isOwnerAdmin =
+            !isHardcodedAdmin && (await isApiKeyOwnerAdmin(apiKey));
 
-            const rateLimit = unwrapOrThrow(rateLimitResult);
-
-            context.rateLimit = {
-              limit: rateLimit.limit,
-              remaining: rateLimit.remaining,
-              reset: rateLimit.reset,
-            };
-
-            logger.debug("Rate limit check passed", {
+          if (isHardcodedAdmin || isOwnerAdmin) {
+            logger.debug("Admin API key - bypassing rate limit", {
               keyId: apiKey.id,
-              tier: rateLimit.tier,
-              remaining: rateLimit.remaining,
+              isHardcodedAdmin,
+              isOwnerAdmin,
             });
-          } catch (error) {
-            if (error instanceof RateLimitError) {
-              const retryAfter = error.result.retryAfter || 0;
-
-              logger.warn("Rate limit exceeded", {
+            context.rateLimit = {
+              limit: Infinity,
+              remaining: Infinity,
+              reset: 0,
+            };
+          } else {
+            // Check rate limit using Redis-based service
+            try {
+              const rateLimitResult = await RateLimitService.checkLimit(
+                apiKey,
+                {
+                  ip: clientIp,
+                  origin,
+                }
+              );
+              const rateLimit = unwrapOrThrow(rateLimitResult);
+              context.rateLimit = {
+                limit: rateLimit.limit,
+                remaining: rateLimit.remaining,
+                reset: rateLimit.reset,
+              };
+              logger.debug("Rate limit check passed", {
                 keyId: apiKey.id,
-                tier: error.result.tier,
-                retryAfter,
+                tier: rateLimit.tier,
+                remaining: rateLimit.remaining,
               });
-
-              throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
-                retryAfter,
-                limit: error.result.limit,
-                reset: error.result.reset,
-              });
+            } catch (error) {
+              if (error instanceof RateLimitError) {
+                const retryAfter = error.result.retryAfter || 0;
+                logger.warn("Rate limit exceeded", {
+                  keyId: apiKey.id,
+                  tier: error.result.tier,
+                  retryAfter,
+                });
+                throw new ApiError(error.message, ErrorCode.RATE_LIMITED, 429, {
+                  retryAfter,
+                  limit: error.result.limit,
+                  reset: error.result.reset,
+                });
+              }
+              throw error;
             }
-            throw error; // Re-throw other errors
           }
 
           // Set API key context
@@ -579,24 +621,26 @@ export const commonSchemas = {
     id: z.string().min(1, "ID is required"),
   }),
 
-  pagination: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce
-      .number()
-      .min(appConfig.api.minPageSize)
-      .max(appConfig.api.maxPageSize)
-      .default(appConfig.api.defaultPageSize),
-  }).refine(
-    (data) => {
-      // Validate that offset (page * limit) doesn't exceed maxOffset
-      const offset = (data.page - 1) * data.limit;
-      return offset <= appConfig.api.pagination.maxOffset;
-    },
-    {
-      message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
-      path: ["page"],
-    }
-  ),
+  pagination: z
+    .object({
+      page: z.coerce.number().min(1).default(1),
+      limit: z.coerce
+        .number()
+        .min(appConfig.api.minPageSize)
+        .max(appConfig.api.maxPageSize)
+        .default(appConfig.api.defaultPageSize),
+    })
+    .refine(
+      (data) => {
+        // Validate that offset (page * limit) doesn't exceed maxOffset
+        const offset = (data.page - 1) * data.limit;
+        return offset <= appConfig.api.pagination.maxOffset;
+      },
+      {
+        message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
+        path: ["page"],
+      }
+    ),
 
   sort: z.object({
     sortBy: z.string().optional(),

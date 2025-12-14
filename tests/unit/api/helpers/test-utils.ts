@@ -126,6 +126,29 @@ export function createMockPublicApiKey(
     name: "Public API Key",
     scopes: ["abis:read"],
     permissions: { abis: ["read"] },
+    metadata: { type: "public" },
+    ...overrides,
+  });
+}
+
+/**
+ * Create a mock enterprise API key (no rate limiting)
+ */
+export function createMockEnterpriseApiKey(
+  overrides?: Partial<AuthApiKey>
+): AuthApiKey {
+  return createMockApiKey({
+    id: "apiKey_v1_enterprise",
+    userId: "user_v1_admin",
+    name: "Enterprise API Key",
+    scopes: ["*"],
+    permissions: {
+      abis: ["read", "list", "create", "update", "delete"],
+      contracts: ["read", "list", "create", "update", "delete"],
+      networks: ["read", "list", "create", "update", "delete"],
+      admin: ["*"],
+    },
+    metadata: { type: "enterprise" },
     ...overrides,
   });
 }

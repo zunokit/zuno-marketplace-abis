@@ -23,6 +23,7 @@ import {
 import { AuthContextService } from "@/core/services/auth/auth-context.service";
 import { ErrorCode } from "@/shared/types";
 import { ContractError } from "@/core/domain/contract/contract.entity";
+import { resolveNetworkId } from "@/shared/lib/utils/resolve-network-id";
 
 const ParamsSchema = ContractAddressParamsSchema;
 
@@ -30,7 +31,7 @@ const ParamsSchema = ContractAddressParamsSchema;
  * GET /api/contracts/[address] - Get contract by address
  */
 export const GET = ApiWrapper.create<
-  { query?: { networkId?: string; includeAbi?: string } },
+  { query?: { chainId?: string | number; includeAbi?: string } },
   ContractWithAbiResponseDto
 >(
   async (input, context) => {
@@ -46,14 +47,17 @@ export const GET = ApiWrapper.create<
 
     // Extract query from nested input structure
     const queryParams = (input as any).query || input;
-    const networkId = queryParams?.networkId;
-    if (!networkId) {
+    const chainId = queryParams?.chainId;
+    if (!chainId) {
       throw new ApiError(
-        "networkId query parameter is required",
+        "chainId query parameter is required",
         ErrorCode.VALIDATION_ERROR,
         400
       );
     }
+
+    // Resolve networkId from chainId
+    const networkId = await resolveNetworkId(chainId);
 
     // 2. Create use case với DI
     const getContractUseCase = new GetContractUseCase(
@@ -87,7 +91,7 @@ export const GET = ApiWrapper.create<
 export const PUT = ApiWrapper.create<
   {
     body: z.infer<typeof UpdateContractSchema>;
-    query?: { networkId?: string };
+    query?: { chainId?: string | number };
   },
   UpdatedContractResponseDto
 >(
@@ -104,14 +108,17 @@ export const PUT = ApiWrapper.create<
 
     // Extract query from nested input structure
     const queryParams = (input as any).query || input;
-    const networkId = queryParams?.networkId;
-    if (!networkId) {
+    const chainId = queryParams?.chainId;
+    if (!chainId) {
       throw new ApiError(
-        "networkId query parameter is required",
+        "chainId query parameter is required",
         ErrorCode.VALIDATION_ERROR,
         400
       );
     }
+
+    // Resolve networkId from chainId
+    const networkId = await resolveNetworkId(chainId);
 
     // 2. Extract user ID qua service
     const userId = AuthContextService.extractUserId(context);
@@ -173,7 +180,7 @@ export const PUT = ApiWrapper.create<
  * DELETE /api/contracts/[address] - Delete contract
  */
 export const DELETE = ApiWrapper.create<
-  { query?: { networkId?: string } },
+  { query?: { chainId?: string | number } },
   DeletedContractResponseDto
 >(
   async (input, context) => {
@@ -189,14 +196,17 @@ export const DELETE = ApiWrapper.create<
 
     // Extract query from nested input structure
     const queryParams = (input as any).query || input;
-    const networkId = queryParams?.networkId;
-    if (!networkId) {
+    const chainId = queryParams?.chainId;
+    if (!chainId) {
       throw new ApiError(
-        "networkId query parameter is required",
+        "chainId query parameter is required",
         ErrorCode.VALIDATION_ERROR,
         400
       );
     }
+
+    // Resolve networkId from chainId
+    const networkId = await resolveNetworkId(chainId);
 
     // 2. Extract user ID qua service
     const userId = AuthContextService.extractUserId(context);
