@@ -19,7 +19,6 @@
     "db:reset": "tsx scripts/db-truncate.ts && tsx scripts/seed/index.ts",
     "test": "jest --config tests/setup/jest.config.js",
     "test:watch": "jest --watch --config tests/setup/jest.config.js",
-    "test:e2e": "playwright test",
     "auth:generate": "better-auth generate",
     "auth:migrate": "better-auth migrate",
     "script:test": "tsx scripts/test-complete.ts",
@@ -87,7 +86,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
-    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

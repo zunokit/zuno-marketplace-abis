@@ -291,7 +291,6 @@ abi:versions:{contractId}
 | **Caching** | Upstash Redis | Latest | Distributed cache |
 | **Storage** | Pinata | 2.5 | IPFS gateway |
 | **Testing** | Jest | 30.2 | Unit testing |
-| | Playwright | 1.57 | E2E testing |
 
 ### API Design Requirements
 
@@ -393,7 +392,7 @@ Infrastructure Layer (Database, cache, external services)
 - **Code Organization**: Clean Architecture with clear layer separation
 - **Type Safety**: TypeScript strict mode enforced
 - **Documentation**: JSDoc for public APIs, comprehensive guides
-- **Testing**: >80% unit test coverage, critical path E2E tests
+- **Testing**: >80% unit test coverage
 - **Deployment**: Zero-downtime deployments with database migrations
 
 ---
@@ -420,7 +419,7 @@ Infrastructure Layer (Database, cache, external services)
 
 - Security secrets rotated and stored securely
 - Database migrations tested in staging
-- All tests passing (unit, integration, E2E)
+- All tests passing (unit, integration)
 - Type checking clean
 - Linting clean
 - Admin credentials changed

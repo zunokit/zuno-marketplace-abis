@@ -57,7 +57,7 @@
 - 🔐 Better Auth for authentication
 - 📦 Pinata for IPFS storage
 - 🏗️ Clean Architecture (Hexagonal)
-- 🧪 Jest + Playwright for testing
+- 🧪 Jest for testing
 
 </td>
 </tr>
@@ -750,7 +750,6 @@ pnpm auth:migrate       # Run auth migrations
 # Testing
 pnpm test               # Unit tests
 pnpm test:watch         # Watch mode
-pnpm test:e2e           # E2E tests
 pnpm test:coverage      # Coverage report
 
 # Build
@@ -876,8 +875,7 @@ psql -h localhost -U user -d zuno_marketplace < backup.sql
 ```
 tests/
 ├── unit/              # Unit tests (Jest)
-├── integration/       # Integration tests (Jest)
-└── e2e/              # E2E tests (Playwright)
+└── integration/       # Integration tests (Jest)
 ```
 
 ### Running Tests
@@ -891,12 +889,6 @@ pnpm test:watch
 
 # Coverage report
 pnpm test:coverage
-
-# E2E tests
-pnpm test:e2e
-
-# E2E with UI
-pnpm test:e2e --ui
 ```
 
 ### Writing Tests
@@ -915,22 +907,10 @@ describe("AbiService", () => {
 });
 ```
 
-#### E2E Test Example
-
-```typescript
-import { test, expect } from "@playwright/test";
-
-test("should display ABIs list", async ({ page }) => {
-  await page.goto("/admin/abis");
-  await expect(page.locator("h1")).toContainText("ABIs");
-});
-```
-
 ### Test Coverage Goals
 
 - **Unit Tests**: >80% coverage
 - **Integration Tests**: All API endpoints
-- **E2E Tests**: Critical user flows
 
 ---
 
@@ -961,7 +941,7 @@ test("should display ABIs list", async ({ page }) => {
 - [ ] Log aggregation configured (optional: Logtail, Papertrail)
 
 #### Code Quality
-- [ ] All tests passing (`pnpm test && pnpm test:e2e`)
+- [ ] All tests passing (`pnpm test`)
 - [ ] Type checking clean (`pnpm typecheck`)
 - [ ] Linting clean (`pnpm lint`)
 - [ ] No console.log statements in production code
@@ -1537,7 +1517,6 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
    pnpm typecheck  # Type checking
    pnpm lint       # Linting
    pnpm test       # Unit tests
-   pnpm test:e2e   # E2E tests (optional)
    ```
 
 5. **Commit Your Changes**
