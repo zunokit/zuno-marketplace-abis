@@ -381,7 +381,12 @@ Infrastructure Layer (Database, cache, external services)
 ### Monitoring & Observability
 
 - **Error Tracking**: Sentry integration for server, client, and edge runtime errors
-- **Performance Monitoring**: Distributed tracing with 5% sampling (production), 100% (development)
+- **Performance Monitoring**:
+  - **Distributed Tracing**: 5% sampling (production), 100% (development) - ~1,500 traces/day for 30K requests
+  - **Performance Profiling**: 10% sampling (production), 100% (development) for CPU performance analysis
+  - **Auto-instrumentation**: HTTP, PostgreSQL, Redis operations automatically traced
+  - **Custom Span Helpers**: tracedRepositoryCall, tracedCacheCall, tracedExternalCall for custom tracing
+  - **IPFS Operation Tracing**: Pin, retrieve, unpin operations monitored
 - **Operational Error Filtering**: Automatic filtering of expected business errors
 - **Privacy Protection**: Headers and query params scrubbed before sending to Sentry
 - **Release Tracking**: Automatic release tracking via git SHA
@@ -452,7 +457,9 @@ Infrastructure Layer (Database, cache, external services)
 ✅ Audit logging
 ✅ Multi-network support
 ✅ ABI versioning
-✅ Sentry error tracking (Phase 1)
+✅ Sentry error tracking (Phase 1: Foundation)
+✅ Sentry enhanced capture (Phase 2: Process & API errors)
+✅ Sentry performance monitoring (Phase 3: Distributed tracing & profiling)
 
 ### v0.2.0 (Q1 2025) - Public Marketplace
 🚧 Public marketplace UI

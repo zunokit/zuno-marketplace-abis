@@ -21,16 +21,6 @@ function sanitizeMessage(message: string): string {
   return sanitized;
 }
 
-// Operational errors to skip (expected business logic errors)
-const SKIP_ERROR_PATTERNS = [
-  "RATE_LIMIT_EXCEEDED",
-  "VALIDATION_ERROR",
-  "UNAUTHORIZED",
-  "NOT_FOUND",
-  "FORBIDDEN",
-  "BAD_REQUEST",
-];
-
 // Sensitive query parameters to scrub
 const SENSITIVE_PARAMS = ["token", "password", "secret", "apiKey", "api_key"];
 
@@ -41,11 +31,13 @@ Sentry.init({
   // Set release from git SHA (Vercel provides this)
   release: process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_APP_VERSION || "local",
 
-  // Tracing - Use 1.0 for dev, 0.05 for production (stays within free tier ~3K traces/day)
+  // Smart sampling for distributed tracing
+  // Development: 100% sampling for debugging
+  // Production: Smart sampling to stay within free tier limits
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.05 : 1.0,
 
-  // Profiling - Disable for Phase 1
-  profilesSampleRate: 0,
+  // Profiling - Enable for performance analysis (10% in production)
+  profilesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
   // Session replay (Phase 2) - Lower sampling for cost control
   replaysSessionSampleRate: 0,

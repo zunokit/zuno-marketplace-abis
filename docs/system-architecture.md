@@ -795,7 +795,7 @@ Error
 
 ## Monitoring & Observability
 
-### Error Tracking with Sentry (Phase 2)
+### Error Tracking with Sentry (Phase 1-3)
 
 **Configuration Files**:
 - `sentry.server.config.ts` - Server-side error tracking with enhanced sanitization
@@ -807,6 +807,8 @@ Error
 **Integration Points**:
 - `src/shared/lib/errors/process-error-handler.ts` - Fatal process error capture
 - `src/shared/lib/api/api-handler.ts` - API error capture with user context
+- `src/infrastructure/monitoring/sentry-span.ts` - Custom span helpers (Phase 3)
+- `src/infrastructure/storage/ipfs/pinata.adapter.ts` - IPFS operation tracing (Phase 3)
 
 **Environment Variables**:
 ```
@@ -821,16 +823,19 @@ SENTRY_PROJECT       - Sentry project name
 | Feature | Configuration | Purpose |
 |---------|--------------|---------|
 | **Error Tracking** | Server/Client/Edge configs | Capture unhandled errors |
-| **Performance Tracing** | 5% prod / 100% dev | Distributed tracing for performance |
+| **Distributed Tracing** | 5% prod / 100% dev | End-to-end request tracing |
+| **Performance Profiling** | 10% prod / 100% dev | CPU performance analysis |
+| **Auto-instrumentation** | HTTP, PostgreSQL, Redis | Automatic span creation |
+| **Custom Span Helpers** | `tracedRepositoryCall`, etc. | Custom operation tracing |
 | **Operational Filtering** | `SKIP_ERROR_PATTERNS` | Filter expected business errors |
 | **Privacy Protection** | `SENSITIVE_PARAMS` + sanitization | Scrub headers/query params/messages |
 | **Release Tracking** | Git SHA via Vercel | Track errors by release |
 | **User Context** | Auto-set on auth | Track errors by user/session |
 | **Process Error Capture** | `process-error-handler.ts` | Fatal error monitoring |
 | **API Error Capture** | `api-handler.ts` | Request-scoped error tracking |
-| **Session Replay** | Phase 2 (10% on error) | User session playback for debugging |
+| **Session Replay** | 10% on error (Phase 2) | User session playback for debugging |
 
-**Error Capture Points** (Phase 2):
+**Error Capture Points**:
 
 | Capture Point | File | Level | Context |
 |--------------|------|-------|---------|
@@ -859,6 +864,63 @@ SENTRY_PROJECT       - Sentry project name
 - Chrome extensions (`/extensions//`, `chrome://`)
 - Browser extension errors (`top.GLOBALS`)
 - Random plugins (`cordova`, `sencha`)
+
+---
+
+### Performance Monitoring (Phase 3)
+
+**Distributed Tracing Configuration**:
+```typescript
+// sentry.server.config.ts
+tracesSampleRate: process.env.NODE_ENV === "production" ? 0.05 : 1.0,
+profilesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+```
+
+**Sampling Strategy**:
+- **Production**: 5% trace sampling (~1,500 traces/day for 30K requests)
+- **Development**: 100% trace sampling for debugging
+- **Profiling**: 10% in production for CPU flame graphs
+- **Free Tier Compliant**: Stays within Sentry's free tier limits
+
+**Auto-Instrumented Operations**:
+- **HTTP**: Incoming/outgoing HTTP requests
+- **PostgreSQL**: Database queries (Drizzle ORM)
+- **Redis**: Cache operations (Upstash)
+
+**Custom Span Helpers** (`src/infrastructure/monitoring/sentry-span.ts`):
+
+```typescript
+// Repository operations (database)
+await tracedRepositoryCall("abi.findById", () =>
+  this.abiRepository.findById(id)
+);
+
+// Cache operations (Redis)
+await tracedCacheCall("get:abi:123", () =>
+  this.cache.get("abi:123")
+);
+
+// External service calls (IPFS, APIs)
+await tracedExternalCall("pinata", "pin", () =>
+  this.ipfs.pin(data)
+);
+```
+
+**IPFS Operation Tracing** (`src/infrastructure/storage/ipfs/pinata.adapter.ts`):
+
+| Operation | Span Name | Op Type | Service |
+|-----------|-----------|---------|---------|
+| `store()` | `pinata.pin` | `http.client` | pinata |
+| `retrieve()` | `pinata.retrieve` | `http.client` | pinata |
+| `remove()` | `pinata.unpin` | `http.client` | pinata |
+
+**Performance Insights Available**:
+- End-to-end request latency breakdown
+- Database query performance
+- Cache hit/miss timing
+- IPFS operation latency
+- External service call timing
+- CPU profiling for bottleneck identification
 
 ### Health Check Endpoint
 

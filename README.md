@@ -66,7 +66,9 @@
 ### 🚀 Production-Ready Features
 
 - ✅ **Health Monitoring**: `/api/health` endpoint with database, cache, and IPFS checks
-- ✅ **Error Tracking**: Structured error handling with request IDs for tracing
+- ✅ **Error Tracking**: Sentry integration with distributed tracing and performance profiling
+- ✅ **Distributed Tracing**: 5% production sampling (~1,500 traces/day for 30K requests)
+- ✅ **Performance Profiling**: CPU flame graphs with 10% production sampling
 - ✅ **Database Migrations**: Versioned schema migrations with Drizzle Kit
 - ✅ **Type Generation**: Automatic TypeScript types from database schema
 - ✅ **Security Headers**: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
@@ -1447,13 +1449,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | **Core API** | ✅ Production Ready | RESTful API with versioning |
 | **Admin Dashboard** | ✅ Production Ready | Full CRUD operations |
 | **Authentication** | ✅ Production Ready | Session + API key auth |
-| **IPFS Storage** | ✅ Production Ready | Pinata integration |
+| **IPFS Storage** | ✅ Production Ready | Pinata integration with tracing |
 | **Rate Limiting** | ✅ Production Ready | Dual-layer protection |
 | **Caching** | ✅ Production Ready | Redis-backed |
 | **Audit Logging** | ✅ Production Ready | Complete activity tracking |
 | **Multi-Network** | ✅ Production Ready | 8+ networks supported |
 | **ABI Versioning** | ✅ Production Ready | Full version history |
 | **Database Backups** | ✅ Production Ready | Automated backups |
+| **Monitoring (Sentry)** | ✅ Production Ready | Error tracking + distributed tracing + profiling |
 
 ### Roadmap
 

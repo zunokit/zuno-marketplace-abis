@@ -20,7 +20,7 @@ This roadmap tracks the implementation progress of the Zuno Marketplace ABIs pla
 | Phase | Status | Completion | Notes |
 |-------|--------|------------|-------|
 | v0.1.0 Foundation | ✅ Complete | 2025-01 | Core platform deployed |
-| Sentry Integration | 🚧 In Progress | 40% | Phase 2 DONE |
+| Sentry Integration | 🚧 In Progress | 60% | Phase 3 DONE |
 | v0.2.0 Marketplace | 📋 Planned | Q1 2025 | Public UI pending |
 
 ---
@@ -58,7 +58,7 @@ This roadmap tracks the implementation progress of the Zuno Marketplace ABIs pla
 ## Sentry Integration - In Progress 🚧
 
 **Timeline**: Started 2025-12-26
-**Status**: Phase 1 Complete (20% overall)
+**Status**: Phase 3 Complete (60% overall)
 **Plan**: `plans/251226-sentry-integration/plan.md`
 
 ### Phase Progress
@@ -67,7 +67,7 @@ This roadmap tracks the implementation progress of the Zuno Marketplace ABIs pla
 |-------|--------|-----------|-------------|
 | Phase 1: Foundation | ✅ DONE | 2025-12-26 | SDK setup, config files, Vercel integration |
 | Phase 2: Enhanced Error Capture | ✅ DONE | 2025-12-26 23:18 | Process handler, API wrapper integration, error filtering |
-| Phase 3: Performance Monitoring | 📋 Pending | - | Distributed tracing, DB/Redis instrumentation |
+| Phase 3: Performance Monitoring | ✅ DONE | 2025-12-26 23:38 | Distributed tracing, DB/Redis instrumentation, custom span helpers |
 | Phase 4: User Action Tracking | 📋 Pending | - | Event tracking, breadcrumbs |
 | Phase 5: Dashboard & Alerts | 📋 Pending | - | Sentry project setup, alert rules |
 
@@ -97,6 +97,35 @@ This roadmap tracks the implementation progress of the Zuno Marketplace ABIs pla
 - Removed incorrect `beforeSendTransaction` pattern
 
 **Next**: Proceed to Phase 2 (Enhanced Error Capture)
+
+---
+
+### Phase 3 Details (Complete)
+
+**Duration**: 1.5 hours
+**Completed**: 2025-12-26 23:38
+**Test Report**: `plans/reports/tester-251226-2332-sentry-phase3-test.md`
+**Code Review**: `plans/reports/code-reviewer-251226-2338-sentry-phase3.md`
+
+**Completed Tasks**:
+- ✅ Enabled distributed tracing with HTTP/Postgres/Redis integrations
+- ✅ Configured smart sampling (5% prod / 100% dev)
+- ✅ Added performance profiling (10% prod sampling)
+- ✅ Created custom span helpers (`sentry-span.ts`)
+- ✅ Instrumented IPFS operations (Pinata adapter)
+
+**Files Modified**:
+- `sentry.server.config.ts` - Distributed tracing + profiling
+- `src/infrastructure/monitoring/sentry-span.ts` - NEW custom span helpers
+- `src/infrastructure/storage/ipfs/pinata.adapter.ts` - IPFS tracing
+
+**Test Results**:
+- 17 test suites passed
+- 255 tests passed
+- Type checking clean
+- 0 critical issues in code review
+
+**Next**: Proceed to Phase 4 (User Action Tracking)
 
 ---
 
@@ -165,13 +194,18 @@ Active implementation plans are tracked in the `plans/` directory:
 
 | Plan | Status | Location |
 |------|--------|----------|
-| Sentry Integration | Phase 2 DONE | `plans/251226-sentry-integration/plan.md` |
+| Sentry Integration | Phase 3 DONE | `plans/251226-sentry-integration/plan.md` |
 
 ---
 
 ## Changelog
 
 ### 2025-12-26
+- ✅ Completed Sentry Integration Phase 3 (Performance Monitoring)
+  - `sentry.server.config.ts`: Distributed tracing (5% sampling), profiling (10%), HTTP/Postgres/Redis integrations
+  - `src/infrastructure/monitoring/sentry-span.ts`: Custom span helpers for DB/cache/external calls
+  - `src/infrastructure/storage/ipfs/pinata.adapter.ts`: IPFS operation tracing
+  - Tests: 255/255 passed, 0 critical issues
 - ✅ Completed Sentry Integration Phase 2 (Enhanced Error Capture)
   - `process-error-handler.ts`: Sentry fatal error capture with context
   - `api-handler.ts`: Sentry error capture + user context
@@ -232,9 +266,10 @@ None
 
 | Priority | Task | Owner | Due |
 |----------|------|-------|-----|
-| P0 | Sentry Phase 2: Enhanced Error Capture | Backend | 2025-12-27 |
+| P0 | Sentry Phase 4: User Action Tracking | Backend | 2025-12-27 |
 | P1 | Monitor Sentry usage for 24h | DevOps | 2025-12-27 |
 | P2 | Review free tier consumption | PM | 2025-12-28 |
+| P3 | Address Phase 3 code review findings (optional) | Backend | 2025-12-29 |
 
 ---
 
@@ -244,6 +279,6 @@ None at this time.
 
 ---
 
-**Last Updated**: 2025-12-26 22:37
+**Last Updated**: 2025-12-27 03:31
 **Updated By**: Project Manager Agent
-**Next Review**: After Phase 2 completion
+**Next Review**: After Phase 4 completion
