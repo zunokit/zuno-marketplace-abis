@@ -31,6 +31,7 @@ E:\zuno-marketplace-abis\
 │   └── settings.json          # Workspace settings
 ├── .opencode/                 # OpenCode integration
 ├── .repomixignore             # Repomix exclude patterns
+├── .sentryclirc               # Sentry CLI configuration
 ├── src/                       # Main application code
 ├── scripts/                   # Build and utility scripts
 ├── tests/                     # Test suites (unit, integration)
@@ -40,10 +41,13 @@ E:\zuno-marketplace-abis\
 ├── README.md                  # Project overview
 ├── package.json               # Dependencies and scripts
 ├── tsconfig.json              # TypeScript configuration
-├── next.config.ts             # Next.js configuration
+├── next.config.ts             # Next.js configuration (with Sentry wrapper)
 ├── drizzle.config.ts          # Database configuration
 ├── eslint.config.mjs          # Linting rules
 ├── postcss.config.mjs         # Tailwind CSS config
+├── sentry.server.config.ts    # Server-side Sentry configuration
+├── sentry.client.config.ts    # Client-side Sentry configuration
+├── sentry.edge.config.ts      # Edge runtime Sentry configuration
 └── components.json            # shadcn/ui configuration
 ```
 
@@ -617,6 +621,15 @@ tests/
 - Crypto-js 4.2: Cryptographic operations
 - Constant-time comparison: Timing attack prevention
 
+**Monitoring & Error Tracking**:
+- Sentry 10.32: Error tracking and performance monitoring
+  - Server-side error tracking
+  - Client-side error tracking
+  - Edge runtime error tracking
+  - Performance tracing with distributed tracing
+  - Operational error filtering
+  - Privacy protection (headers/query params scrubbed)
+
 **Caching**:
 - Upstash Redis: Serverless Redis client
 - Cache-aside pattern: Efficient caching strategy
@@ -651,8 +664,8 @@ tests/
 
 ## Dependencies Summary
 
-**Total Dependencies**: 87
-- **Production**: 26 direct packages
+**Total Dependencies**: 88
+- **Production**: 27 direct packages (including @sentry/nextjs)
 - **Development**: 61 dev packages
 - **Package Manager**: pnpm (recommended) or npm/yarn
 
@@ -660,6 +673,7 @@ tests/
 - Node.js 18.x minimum (20.x LTS recommended)
 - PostgreSQL 14+ (16+ recommended)
 - TypeScript 5.9+
+- Sentry 10.32+ (error tracking & performance monitoring)
 
 ---
 

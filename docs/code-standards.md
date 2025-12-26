@@ -435,6 +435,153 @@ throw new Error('Not found');
 throw new Error('Invalid input');
 ```
 
+### Sentry Integration
+
+**Error Reporting**:
+```typescript
+// ✅ CORRECT - Capture exceptions with context
+import * as Sentry from "@sentry/nextjs";
+
+export async function GET(request: Request) {
+  try {
+    const result = await someOperation();
+    return ApiWrapper.success(result);
+  } catch (error) {
+    // Capture error with Sentry
+    Sentry.captureException(error, {
+      tags: {
+        component: "abi-api",
+        operation: "get-abi",
+      },
+      extra: {
+        url: request.url,
+        method: request.method,
+      },
+    });
+
+    if (error instanceof DomainError) {
+      return ApiWrapper.error(error.code, error.message, error.statusCode);
+    }
+    return ApiWrapper.error('INTERNAL_ERROR', 'Internal server error', 500);
+  }
+}
+```
+
+**Operational Error Filtering**:
+```typescript
+// ✅ CORRECT - Don't report operational errors to Sentry
+const SKIP_ERROR_PATTERNS = [
+  "RATE_LIMIT_EXCEEDED",
+  "VALIDATION_ERROR",
+  "UNAUTHORIZED",
+  "NOT_FOUND",
+  "FORBIDDEN",
+  "BAD_REQUEST",
+];
+
+// Sentry's beforeSend hook filters these automatically
+// See sentry.server.config.ts, sentry.client.config.ts, sentry.edge.config.ts
+```
+
+**Custom Context with Sentry**:
+```typescript
+// ✅ CORRECT - Add custom context for debugging
+Sentry.captureException(error, {
+  user: {
+    id: userId,
+    email: userEmail,
+  },
+  tags: {
+    tier: apiTier,
+    network: contractNetwork,
+  },
+  extra: {
+    contractAddress: address,
+    abiId: abiId,
+    requestId: requestId,
+  },
+  level: "error",
+});
+```
+
+**Performance Monitoring**:
+```typescript
+// ✅ CORRECT - Track performance with transactions
+import * as Sentry from "@sentry/nextjs";
+
+async function processAbiCreation(abiData: AbiInput) {
+  // Start a performance transaction
+  return await Sentry.startSpan(
+    { name: "process_abi_creation", op: "abi.create" },
+    async (span) => {
+      // Child span for IPFS operation
+      const ipfsHash = await Sentry.startSpan(
+        { name: "pin_to_ipfs", op: "ipfs.pin" },
+        async () => await ipfsService.pin(abiData)
+      );
+
+      // Child span for database operation
+      const abi = await Sentry.startSpan(
+        { name: "save_to_db", op: "db.insert" },
+        async () => await abiRepository.save(abiData)
+      );
+
+      return { ipfsHash, abi };
+    }
+  );
+}
+```
+
+**Breadcrumbs for Debugging**:
+```typescript
+// ✅ CORRECT - Add breadcrumbs for error context
+import * as Sentry from "@sentry/nextjs";
+
+// Add breadcrumb before operation
+Sentry.addBreadcrumb({
+  category: "abi",
+  message: "Starting ABI validation",
+  level: "info",
+});
+
+// Add breadcrumb with data
+Sentry.addBreadcrumb({
+  category: "abi",
+  message: "ABI validation passed",
+  level: "info",
+  data: {
+    abiSize: abiData.length,
+    functionCount: abiData.filter(f => f.type === "function").length,
+  },
+});
+
+// When error occurs, breadcrumbs help trace the execution path
+```
+
+**User Tracking**:
+```typescript
+// ✅ CORRECT - Set user context for better error tracking
+import * as Sentry from "@sentry/nextjs";
+
+// Set user context on authentication
+Sentry.setUser({
+  id: user.id,
+  email: user.email,
+  tier: user.apiTier,
+});
+
+// Clear user context on logout
+Sentry.setUser(null);
+```
+
+**Replay Integration (Phase 2 - Planned)**:
+```typescript
+// Session replay configuration (not yet enabled)
+// See sentry.client.config.ts for replaysSessionSampleRate setting
+replaysSessionSampleRate: 0,      // Phase 2: enable for sampling
+replaysOnErrorSampleRate: 0.1,    // Capture replay on errors
+```
+
 ### Error Handling in API Routes
 
 ```typescript
@@ -900,6 +1047,11 @@ export const env = {
   REDIS_URL: process.env.UPSTASH_REDIS_REST_URL!,
   PINATA_JWT: process.env.PINATA_JWT!,
   NODE_ENV: process.env.NODE_ENV || 'development',
+  // Sentry environment variables
+  SENTRY_DSN: process.env.SENTRY_DSN,
+  SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+  SENTRY_ORG: process.env.SENTRY_ORG,
+  SENTRY_PROJECT: process.env.SENTRY_PROJECT,
 };
 
 // Validation happens at module load time
@@ -910,6 +1062,23 @@ if (!env.DATABASE_URL) {
 // ❌ INCORRECT - No validation
 const dbUrl = process.env.DATABASE_URL; // Could be undefined
 ```
+
+### Sentry Configuration
+
+**Environment Variables** (via Vercel Integration):
+```
+SENTRY_DSN           - Data Source Name (auto-configured by Vercel)
+SENTRY_AUTH_TOKEN    - Auth token (auto-configured by Vercel)
+SENTRY_ORG           - Organization slug (auto-configured by Vercel)
+SENTRY_PROJECT       - Project name (auto-configured by Vercel)
+```
+
+**Configuration Files**:
+- `sentry.server.config.ts` - Server-side configuration
+- `sentry.client.config.ts` - Client-side configuration
+- `sentry.edge.config.ts` - Edge runtime configuration
+- `.sentryclirc` - Sentry CLI configuration
+- `next.config.ts` - Wrapped with `withSentryConfig`
 
 ### Feature Flags
 

@@ -795,6 +795,51 @@ Error
 
 ## Monitoring & Observability
 
+### Error Tracking with Sentry (Phase 1)
+
+**Configuration Files**:
+- `sentry.server.config.ts` - Server-side error tracking
+- `sentry.client.config.ts` - Client-side error tracking
+- `sentry.edge.config.ts` - Edge runtime error tracking
+- `.sentryclirc` - Sentry CLI configuration
+- `next.config.ts` - Wrapped with `withSentryConfig`
+
+**Environment Variables**:
+```
+SENTRY_DSN           - Data Source Name for Sentry project
+SENTRY_AUTH_TOKEN    - Authentication token for Sentry API
+SENTRY_ORG           - Sentry organization slug
+SENTRY_PROJECT       - Sentry project name
+```
+
+**Features Implemented**:
+
+| Feature | Configuration | Purpose |
+|---------|--------------|---------|
+| **Error Tracking** | Server/Client/Edge configs | Capture unhandled errors |
+| **Performance Tracing** | 5% prod / 100% dev | Distributed tracing for performance |
+| **Operational Filtering** | `SKIP_ERROR_PATTERNS` | Filter expected business errors |
+| **Privacy Protection** | `SENSITIVE_PARAMS` | Scrub headers/query params |
+| **Release Tracking** | Git SHA via Vercel | Track errors by release |
+| **Session Replay** | Phase 2 (planned) | User session playback for debugging |
+
+**Filtered Errors** (operational/business errors):
+- `RATE_LIMIT_EXCEEDED`
+- `VALIDATION_ERROR`
+- `UNAUTHORIZED`
+- `NOT_FOUND`
+- `FORBIDDEN`
+- `BAD_REQUEST`
+
+**Scrubbed Data** (privacy protection):
+- Headers: `authorization`, `x-api-key`, `cookie`
+- Query params: `token`, `password`, `secret`, `apiKey`, `api_key`
+
+**Ignored Sources** (denoising):
+- Chrome extensions (`/extensions//`, `chrome://`)
+- Browser extension errors (`top.GLOBALS`)
+- Random plugins (`cordova`, `sencha`)
+
 ### Health Check Endpoint
 
 ```
@@ -830,6 +875,7 @@ Response:
 - IPFS operation times
 - Rate limit hits
 - Authentication failures
+- Error rates and types (via Sentry)
 
 ---
 
@@ -842,19 +888,22 @@ Development
   ├── Local PostgreSQL
   ├── Upstash Redis (free tier)
   ├── Pinata IPFS (free tier)
-  └── Better Auth (local)
+  ├── Better Auth (local)
+  └── Sentry (development environment)
 
 Staging
   ├── PostgreSQL (managed)
   ├── Redis (production instance)
   ├── Pinata IPFS (production account)
-  └── Better Auth (staging keys)
+  ├── Better Auth (staging keys)
+  └── Sentry (staging environment)
 
 Production
   ├── PostgreSQL (HA setup)
   ├── Redis (production instance)
   ├── Pinata IPFS (production account)
   ├── Better Auth (production keys)
+  ├── Sentry (production environment)
   └── CDN (Vercel, CloudFront)
 ```
 
@@ -932,6 +981,12 @@ CREATE INDEX idx_contracts_name_tsvector
 ## Integration Points
 
 ### External Services
+
+**Sentry**:
+- Error tracking (server, client, edge)
+- Performance monitoring and tracing
+- Release tracking via git SHA
+- Alert notifications
 
 **Pinata IPFS**:
 - Pin ABI JSON
