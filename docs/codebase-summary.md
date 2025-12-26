@@ -479,10 +479,14 @@ Utility functions:
 src/shared/lib/
 ├── utils/
 │   ├── logger.ts          # Structured logging
-│   ├── errors.ts          # Error handling
+│   ├── errors.ts          # Error handling utilities
 │   ├── api-helper.ts      # API utility functions
 │   ├── time.ts            # Date/time utilities
 │   ├── constants.ts       # App constants
+│   └── index.ts
+├── errors/
+│   ├── process-error-handler.ts  # Process-level error handling (Phase 2)
+│   ├── error-utils.ts            # Error utility functions
 │   └── index.ts
 ├── validation/
 │   ├── abi-validator.ts   # ABI schema validation
@@ -492,12 +496,15 @@ src/shared/lib/
 │   ├── auth-validator.ts
 │   └── index.ts
 ├── api/
-│   ├── api-wrapper.ts     # Standardized API wrapper
-│   ├── error-handler.ts   # Error response formatting
-│   ├── cache-wrapper.ts   # Cache operations
+│   ├── api-handler.ts     # API wrapper with Sentry error capture (Phase 2)
+│   ├── error-formatter.ts # Error response formatting
 │   └── index.ts
 └── index.ts
 ```
+
+**Error Handling Libraries** (Phase 2):
+- `process-error-handler.ts` - Handles uncaught exceptions, unhandled rejections, graceful shutdown
+- `api-handler.ts` - API wrapper with Sentry user context and error capture
 
 #### 4.3 Types (`src/shared/types/`)
 
@@ -622,13 +629,17 @@ tests/
 - Constant-time comparison: Timing attack prevention
 
 **Monitoring & Error Tracking**:
-- Sentry 10.32: Error tracking and performance monitoring
-  - Server-side error tracking
+- Sentry 10.32: Error tracking and performance monitoring (Phase 2)
+  - Server-side error tracking with enhanced sanitization
   - Client-side error tracking
   - Edge runtime error tracking
   - Performance tracing with distributed tracing
   - Operational error filtering
-  - Privacy protection (headers/query params scrubbed)
+  - Privacy protection (headers/query params/messages scrubbed)
+  - User context tracking (API key + session auth)
+  - Fatal process error capture (uncaught exceptions, unhandled rejections)
+  - API error capture with request context
+  - Session replay on errors (10% sampling)
 
 **Caching**:
 - Upstash Redis: Serverless Redis client

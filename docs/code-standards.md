@@ -467,20 +467,95 @@ export async function GET(request: Request) {
 }
 ```
 
+**Process Error Handler (Phase 2)**:
+```typescript
+// ✅ CORRECT - Initialize process error handler at app startup
+// In instrumentation.ts or server entry point
+import { initProcessErrorHandler } from "@/shared/lib/errors/process-error-handler";
+
+initProcessErrorHandler({
+  exitOnUncaughtException: true,  // Exit on fatal errors in production
+  exitOnUnhandledRejection: false, // Log but continue for promise rejections
+  gracePeriodMs: 5000,             // Allow cleanup before exit
+  onError: (error, type) => {
+    // Custom error handling ( Sentry already notified internally)
+    console.error(`Process error (${type}):`, error);
+  },
+});
+```
+
+**User Context Tracking (Phase 2)**:
+```typescript
+// ✅ CORRECT - Set user context on authentication (automatically done in api-handler.ts)
+// API Key authentication
+Sentry.setUser({
+  id: apiKey.userId,
+  apiKey: apiKey.id,
+  scopes: apiKey.scopes,
+});
+
+// Session authentication
+Sentry.setUser({
+  id: sessionData.user.id,
+  email: sessionData.user.email,
+  role: sessionData.user.role,
+});
+
+// Clear context on logout
+Sentry.setUser(null);
+```
+
+**API Error Capture (Phase 2)**:
+```typescript
+// ✅ CORRECT - Non-blocking error capture in API handler
+// Automatically handled in src/shared/lib/api/api-handler.ts
+
+// For API errors (captured non-blocking in production):
+if (process.env.NODE_ENV === "production") {
+  Promise.resolve().then(() =>
+    Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        errorCode: apiError.code,
+        statusCode: apiError.statusCode.toString(),
+      },
+      extra: {
+        details: apiError.details,
+        path: request.nextUrl.pathname,
+        method: request.method,
+      },
+    })
+  ).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+}
+
+// For unexpected errors:
+Promise.resolve().then(() =>
+  Sentry.captureException(error, {
+    level: "error",
+    tags: {
+      errorType: "unexpected",
+    },
+    extra: {
+      path: request.nextUrl.pathname,
+      method: request.method,
+    },
+  })
+).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+```
+
 **Operational Error Filtering**:
 ```typescript
 // ✅ CORRECT - Don't report operational errors to Sentry
 const SKIP_ERROR_PATTERNS = [
-  "RATE_LIMIT_EXCEEDED",
-  "VALIDATION_ERROR",
-  "UNAUTHORIZED",
-  "NOT_FOUND",
-  "FORBIDDEN",
-  "BAD_REQUEST",
+  "RATE_LIMITED",      // Expected user behavior
+  "VALIDATION_ERROR",  // Bad input
+  "UNAUTHORIZED",      // Auth failure
+  "FORBIDDEN",         // Permission denied
+  "NOT_FOUND",         // Resource missing
 ];
 
 // Sentry's beforeSend hook filters these automatically
-// See sentry.server.config.ts, sentry.client.config.ts, sentry.edge.config.ts
+// See sentry.server.config.ts
 ```
 
 **Custom Context with Sentry**:
@@ -558,28 +633,12 @@ Sentry.addBreadcrumb({
 // When error occurs, breadcrumbs help trace the execution path
 ```
 
-**User Tracking**:
+**Replay Integration (Phase 2)**:
 ```typescript
-// ✅ CORRECT - Set user context for better error tracking
-import * as Sentry from "@sentry/nextjs";
-
-// Set user context on authentication
-Sentry.setUser({
-  id: user.id,
-  email: user.email,
-  tier: user.apiTier,
-});
-
-// Clear user context on logout
-Sentry.setUser(null);
-```
-
-**Replay Integration (Phase 2 - Planned)**:
-```typescript
-// Session replay configuration (not yet enabled)
-// See sentry.client.config.ts for replaysSessionSampleRate setting
-replaysSessionSampleRate: 0,      // Phase 2: enable for sampling
-replaysOnErrorSampleRate: 0.1,    // Capture replay on errors
+// Session replay configuration (enabled in Phase 2)
+// See sentry.server.config.ts
+replaysSessionSampleRate: 0,           // Normal session sampling (disabled)
+replaysOnErrorSampleRate: 0.1,         // Capture replay on errors (10%)
 ```
 
 ### Error Handling in API Routes

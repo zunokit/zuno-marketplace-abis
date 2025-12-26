@@ -1,5 +1,26 @@
 import * as Sentry from "@sentry/nextjs";
 
+// Sensitive patterns to redact from error messages
+const SENSITIVE_PATTERNS = [
+  /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi,  // Bearer tokens
+  /sk_[a-zA-Z0-9]{20,}/g,               // API keys (sk_live_, sk_test_)
+  /"[^"]*apiKey[^"]*":\s*"[^"]+"/g,      // JSON apiKey values
+  /token[^"]*[:=]\s*[A-Za-z0-9\-._~+/]{10,}/gi,  // Tokens in logs
+  /password[^"]*[:=]\s*"[^"]+"/gi,       // Passwords in logs
+  /secret[^"]*[:=]\s*"[^"]+"/gi,         // Secrets in logs
+];
+
+/**
+ * Sanitize error message by redacting sensitive patterns
+ */
+function sanitizeMessage(message: string): string {
+  let sanitized = message;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    sanitized = sanitized.replace(pattern, "[REDACTED]");
+  }
+  return sanitized;
+}
+
 // Operational errors to skip (expected business logic errors)
 const SKIP_ERROR_PATTERNS = [
   "RATE_LIMIT_EXCEEDED",
@@ -11,7 +32,7 @@ const SKIP_ERROR_PATTERNS = [
 ];
 
 // Sensitive query parameters to scrub
-const SENSITIVE_PARAMS = ["token", "password", "secret", "apiKey", "apiKey"];
+const SENSITIVE_PARAMS = ["token", "password", "secret", "apiKey", "api_key"];
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -43,17 +64,29 @@ Sentry.init({
 
   // Filter sensitive data and operational errors
   beforeSend(event, hint) {
-    // Skip operational errors (expected business logic errors)
-    const errorMessage = event.exception?.values?.[0]?.value || "";
-    if (SKIP_ERROR_PATTERNS.some((pattern) => errorMessage.includes(pattern))) {
-      return null;
-    }
-
     // Remove sensitive headers
     if (event.request?.headers) {
       delete event.request.headers["authorization"];
       delete event.request.headers["x-api-key"];
       delete event.request.headers["cookie"];
+    }
+
+    // Skip operational errors (not bugs)
+    const skipCodes = [
+      "RATE_LIMITED",      // Expected user behavior
+      "VALIDATION_ERROR",  // Bad input
+      "UNAUTHORIZED",      // Auth failure
+      "FORBIDDEN",         // Permission denied
+      "NOT_FOUND",         // Resource missing
+    ];
+
+    if (event.tags?.code && skipCodes.includes(event.tags.code as string)) {
+      return null; // Don't send
+    }
+
+    // Only send production errors to Sentry
+    if (process.env.NODE_ENV !== "production") {
+      return null; // Keep in local logs only
     }
 
     // Scrub sensitive query parameters
@@ -72,6 +105,34 @@ Sentry.init({
           SENSITIVE_PARAMS.includes(key) ? [key, "[REDACTED]"] : [key, value]
         ) as typeof qs;
       }
+    }
+
+    // Sanitize error messages to remove sensitive data
+    if (event.exception?.values) {
+      for (const exception of event.exception.values) {
+        if (exception.value) {
+          exception.value = sanitizeMessage(exception.value);
+        }
+      }
+    }
+
+    // Sanitize breadcrumbs messages
+    if (event.breadcrumbs) {
+      for (const breadcrumb of event.breadcrumbs) {
+        if (breadcrumb.message) {
+          breadcrumb.message = sanitizeMessage(breadcrumb.message);
+        }
+      }
+    }
+
+    // Add request context
+    if (event.request) {
+      event.contexts = {
+        ...event.contexts,
+        app: {
+          request_id: event.request.headers?.["x-request-id"],
+        },
+      };
     }
 
     return event;

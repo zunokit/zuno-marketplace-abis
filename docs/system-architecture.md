@@ -795,14 +795,18 @@ Error
 
 ## Monitoring & Observability
 
-### Error Tracking with Sentry (Phase 1)
+### Error Tracking with Sentry (Phase 2)
 
 **Configuration Files**:
-- `sentry.server.config.ts` - Server-side error tracking
+- `sentry.server.config.ts` - Server-side error tracking with enhanced sanitization
 - `sentry.client.config.ts` - Client-side error tracking
 - `sentry.edge.config.ts` - Edge runtime error tracking
 - `.sentryclirc` - Sentry CLI configuration
 - `next.config.ts` - Wrapped with `withSentryConfig`
+
+**Integration Points**:
+- `src/shared/lib/errors/process-error-handler.ts` - Fatal process error capture
+- `src/shared/lib/api/api-handler.ts` - API error capture with user context
 
 **Environment Variables**:
 ```
@@ -819,21 +823,37 @@ SENTRY_PROJECT       - Sentry project name
 | **Error Tracking** | Server/Client/Edge configs | Capture unhandled errors |
 | **Performance Tracing** | 5% prod / 100% dev | Distributed tracing for performance |
 | **Operational Filtering** | `SKIP_ERROR_PATTERNS` | Filter expected business errors |
-| **Privacy Protection** | `SENSITIVE_PARAMS` | Scrub headers/query params |
+| **Privacy Protection** | `SENSITIVE_PARAMS` + sanitization | Scrub headers/query params/messages |
 | **Release Tracking** | Git SHA via Vercel | Track errors by release |
-| **Session Replay** | Phase 2 (planned) | User session playback for debugging |
+| **User Context** | Auto-set on auth | Track errors by user/session |
+| **Process Error Capture** | `process-error-handler.ts` | Fatal error monitoring |
+| **API Error Capture** | `api-handler.ts` | Request-scoped error tracking |
+| **Session Replay** | Phase 2 (10% on error) | User session playback for debugging |
+
+**Error Capture Points** (Phase 2):
+
+| Capture Point | File | Level | Context |
+|--------------|------|-------|---------|
+| **API Errors** | `api-handler.ts` | error | errorCode, statusCode, path, method |
+| **Process Errors** | `process-error-handler.ts` | fatal | type, processUptime, memoryUsage |
+| **Unexpected Errors** | `api-handler.ts` | error | errorType: "unexpected" |
+
+**User Context Tracking**:
+- API Key auth: `{ id, apiKey, scopes }`
+- Session auth: `{ id, email, role }`
+- Automatically set on successful authentication
 
 **Filtered Errors** (operational/business errors):
-- `RATE_LIMIT_EXCEEDED`
+- `RATE_LIMITED`
 - `VALIDATION_ERROR`
 - `UNAUTHORIZED`
-- `NOT_FOUND`
 - `FORBIDDEN`
-- `BAD_REQUEST`
+- `NOT_FOUND`
 
 **Scrubbed Data** (privacy protection):
 - Headers: `authorization`, `x-api-key`, `cookie`
 - Query params: `token`, `password`, `secret`, `apiKey`, `api_key`
+- Error messages: Bearer tokens, API keys, passwords, secrets (via regex sanitization)
 
 **Ignored Sources** (denoising):
 - Chrome extensions (`/extensions//`, `chrome://`)

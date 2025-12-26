@@ -20,7 +20,7 @@ This roadmap tracks the implementation progress of the Zuno Marketplace ABIs pla
 | Phase | Status | Completion | Notes |
 |-------|--------|------------|-------|
 | v0.1.0 Foundation | ✅ Complete | 2025-01 | Core platform deployed |
-| Sentry Integration | 🚧 In Progress | 20% | Phase 1 DONE |
+| Sentry Integration | 🚧 In Progress | 40% | Phase 2 DONE |
 | v0.2.0 Marketplace | 📋 Planned | Q1 2025 | Public UI pending |
 
 ---
@@ -66,7 +66,7 @@ This roadmap tracks the implementation progress of the Zuno Marketplace ABIs pla
 | Phase | Status | Completed | Description |
 |-------|--------|-----------|-------------|
 | Phase 1: Foundation | ✅ DONE | 2025-12-26 | SDK setup, config files, Vercel integration |
-| Phase 2: Enhanced Error Capture | 📋 Pending | - | Process handler, API wrapper integration |
+| Phase 2: Enhanced Error Capture | ✅ DONE | 2025-12-26 23:18 | Process handler, API wrapper integration, error filtering |
 | Phase 3: Performance Monitoring | 📋 Pending | - | Distributed tracing, DB/Redis instrumentation |
 | Phase 4: User Action Tracking | 📋 Pending | - | Event tracking, breadcrumbs |
 | Phase 5: Dashboard & Alerts | 📋 Pending | - | Sentry project setup, alert rules |
@@ -165,13 +165,17 @@ Active implementation plans are tracked in the `plans/` directory:
 
 | Plan | Status | Location |
 |------|--------|----------|
-| Sentry Integration | Phase 1 DONE | `plans/251226-sentry-integration/plan.md` |
+| Sentry Integration | Phase 2 DONE | `plans/251226-sentry-integration/plan.md` |
 
 ---
 
 ## Changelog
 
 ### 2025-12-26
+- ✅ Completed Sentry Integration Phase 2 (Enhanced Error Capture)
+  - `process-error-handler.ts`: Sentry fatal error capture with context
+  - `api-handler.ts`: Sentry error capture + user context
+  - `sentry.server.config.ts`: sanitizeMessage, operational error filtering, production filter
 - ✅ Completed Sentry Integration Phase 1 (Foundation Setup)
 - Applied all critical code review feedback
 - Configured Vercel integration with auto environment variables
