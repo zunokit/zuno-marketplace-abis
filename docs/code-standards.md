@@ -518,7 +518,6 @@ describe('AbiTest', () => {
 
 - **Unit Tests**: >80% code coverage
 - **Integration Tests**: All API endpoints
-- **E2E Tests**: Critical user flows
 - **Skipped Tests**: Mark with `.skip` and add comment with issue/reason
 
 ```typescript

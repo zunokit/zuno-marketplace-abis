@@ -33,7 +33,7 @@ E:\zuno-marketplace-abis\
 ├── .repomixignore             # Repomix exclude patterns
 ├── src/                       # Main application code
 ├── scripts/                   # Build and utility scripts
-├── tests/                     # Test suites (unit, integration, E2E)
+├── tests/                     # Test suites (unit, integration)
 ├── public/                    # Static assets
 ├── docs/                      # Documentation (this folder)
 ├── CLAUDE.md                  # Development guidelines
@@ -42,7 +42,6 @@ E:\zuno-marketplace-abis\
 ├── tsconfig.json              # TypeScript configuration
 ├── next.config.ts             # Next.js configuration
 ├── drizzle.config.ts          # Database configuration
-├── playwright.config.ts       # E2E test configuration
 ├── eslint.config.mjs          # Linting rules
 ├── postcss.config.mjs         # Tailwind CSS config
 └── components.json            # shadcn/ui configuration
@@ -544,7 +543,6 @@ src/components/
 | `tsconfig.json` | TypeScript configuration | Strict mode enabled, module resolution |
 | `next.config.ts` | Next.js configuration | Turbopack enabled, redirects, headers |
 | `drizzle.config.ts` | Database configuration | PostgreSQL connection, migration paths |
-| `playwright.config.ts` | E2E test configuration | Browser settings, timeout configs |
 | `eslint.config.mjs` | Linting rules | TypeScript support, import ordering |
 | `postcss.config.mjs` | CSS processing | Tailwind CSS v4 with autoprefixer |
 
@@ -569,10 +567,7 @@ tests/
 │   ├── use-cases/          # Use case tests
 │   └── ...
 ├── integration/            # Integration tests
-└── e2e/
-    ├── admin/             # Admin UI tests
-    ├── api/               # API endpoint tests
-    └── ...
+└── api/                   # API endpoint tests
 ```
 
 ---
@@ -640,7 +635,6 @@ tests/
 
 **Testing**:
 - Jest 30.2: Unit and integration testing
-- Playwright 1.57: E2E browser testing
 - @testing-library/react 16.3: React component testing
 
 **Code Quality**:
@@ -698,7 +692,6 @@ pnpm lint
 # Testing
 pnpm test                   # Unit tests
 pnpm test:watch            # Watch mode
-pnpm test:e2e              # E2E tests
 pnpm test:coverage         # Coverage report
 ```
 
@@ -709,7 +702,7 @@ pnpm test:coverage         # Coverage report
 pnpm typecheck && pnpm lint
 
 # Run all tests
-pnpm test && pnpm test:e2e
+pnpm test
 
 # Build for production
 pnpm build
@@ -753,7 +746,7 @@ pnpm db:check
 |--------|-------|-------|
 | **Total Files** | 267+ | Including tests and configs |
 | **TypeScript Files** | 180+ | Main source code |
-| **Test Files** | 30+ | Unit, integration, E2E |
+| **Test Files** | 25+ | Unit, integration |
 | **Config Files** | 15+ | Build and tool configurations |
 | **Lines of Code** | ~35,000 | Excluding node_modules and migrations |
 | **Test Coverage** | >80% | Unit test coverage goal |
