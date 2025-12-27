@@ -381,6 +381,12 @@ Infrastructure Layer (Database, cache, external services)
 ### Monitoring & Observability
 
 - **Error Tracking**: Sentry integration for server, client, and edge runtime errors
+- **User Action Tracking**:
+  - **Breadcrumb Trail**: Records user actions for error context (auth, ABI operations, contract operations, admin operations)
+  - **Request Context**: Per-request tracking with request ID, path, and timestamp
+  - **Authentication Events**: Login (API key/session), logout, failures tracked
+  - **Operation Tracking**: Create, update, delete, view operations for ABIs and contracts
+  - **Rate Limit & Cache**: Breadcrumbs for rate limit hits and cache operations
 - **Performance Monitoring**:
   - **Distributed Tracing**: 5% sampling (production), 100% (development) - ~1,500 traces/day for 30K requests
   - **Performance Profiling**: 10% sampling (production), 100% (development) for CPU performance analysis
@@ -460,6 +466,7 @@ Infrastructure Layer (Database, cache, external services)
 ✅ Sentry error tracking (Phase 1: Foundation)
 ✅ Sentry enhanced capture (Phase 2: Process & API errors)
 ✅ Sentry performance monitoring (Phase 3: Distributed tracing & profiling)
+✅ Sentry user action tracking (Phase 4: Breadcrumb context for debugging)
 
 ### v0.2.0 (Q1 2025) - Public Marketplace
 🚧 Public marketplace UI

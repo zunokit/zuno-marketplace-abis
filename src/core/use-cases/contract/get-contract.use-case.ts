@@ -8,6 +8,7 @@ import { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { logger } from "@/shared/lib/utils/logger";
 import { isValidAddress } from "@/shared/types";
 import { ValidationError } from "@/shared/lib/utils/error-handler";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 /**
  * Input parameters for retrieving a contract
@@ -118,6 +119,9 @@ export class GetContractUseCase {
         } as any);
       }
     }
+
+    // Track contract viewed
+    SentryTracker.trackContractViewed(contract.address, contract.networkId);
 
     logger.info("Contract retrieved successfully", {
       contractId: contract.id,

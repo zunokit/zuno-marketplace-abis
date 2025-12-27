@@ -609,28 +609,84 @@ async function processAbiCreation(abiData: AbiInput) {
 
 **Breadcrumbs for Debugging**:
 ```typescript
-// ✅ CORRECT - Add breadcrumbs for error context
-import * as Sentry from "@sentry/nextjs";
+// ✅ CORRECT - Use SentryTracker for consistent breadcrumb management
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 // Add breadcrumb before operation
-Sentry.addBreadcrumb({
-  category: "abi",
-  message: "Starting ABI validation",
-  level: "info",
-});
+SentryTracker.addBreadcrumb("abi", "Starting ABI validation", "info");
 
 // Add breadcrumb with data
-Sentry.addBreadcrumb({
-  category: "abi",
-  message: "ABI validation passed",
-  level: "info",
-  data: {
-    abiSize: abiData.length,
-    functionCount: abiData.filter(f => f.type === "function").length,
-  },
+SentryTracker.addBreadcrumb("abi", "ABI validation passed", "info", {
+  abiSize: abiData.length,
+  functionCount: abiData.filter(f => f.type === "function").length,
 });
 
 // When error occurs, breadcrumbs help trace the execution path
+```
+
+**User Action Tracking (Phase 4)**:
+```typescript
+// ✅ CORRECT - Track user actions via SentryTracker helper methods
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
+
+// Track authentication events
+SentryTracker.trackLogin(userId, "api_key");        // API key authentication
+SentryTracker.trackLogin(userId, "session");        // Session authentication
+SentryTracker.trackLogout(userId);                  // Logout event
+SentryTracker.trackLoginFailure("invalid_key");     // Failed login attempt
+
+// Track ABI operations
+SentryTracker.trackAbiViewed(abiId);                // ABI details viewed
+SentryTracker.trackAbiListed(filters);              // ABI list viewed
+SentryTracker.trackAbiCreated({ abiId, network });  // ABI created successfully
+SentryTracker.trackAbiUpdated(abiId, changes);      // ABI updated
+SentryTracker.trackAbiDeleted(abiId);               // ABI deleted
+SentryTracker.trackAbiVersionsViewed(abiId);        // ABI versions viewed
+
+// Track contract operations
+SentryTracker.trackContractViewed(address, network);     // Contract viewed
+SentryTracker.trackContractRegistered(address, network); // Contract registered
+SentryTracker.trackContractUpdated(address);             // Contract updated
+SentryTracker.trackContractDeleted(address);             // Contract deleted
+
+// Track admin operations
+SentryTracker.trackApiKeysListed();              // API keys list viewed
+SentryTracker.trackApiKeyCreated(tier);          // API key created
+SentryTracker.trackApiKeyDeleted(keyId);         // API key deleted
+SentryTracker.trackNetworksModified(action, id); // Network modified
+
+// Track errors with context
+SentryTracker.trackError("category", "message", error);
+
+// Track rate limit and cache operations
+SentryTracker.trackRateLimitHit(endpoint, tier);  // Rate limit hit
+SentryTracker.trackCacheHit(key);                 // Cache hit
+SentryTracker.trackCacheMiss(key);                // Cache miss
+```
+
+**Request Context Management (Phase 4)**:
+```typescript
+// ✅ CORRECT - Initialize and clear request context (handled in api-handler.ts)
+import { initRequestContext, clearRequestContext } from "@/infrastructure/monitoring/sentry-tracker";
+
+// At the start of each API request:
+initRequestContext(requestId, path);
+
+// At the end of each API request (in finally block):
+clearRequestContext();
+```
+
+**Breadcrumb Categories**:
+```typescript
+// Standard breadcrumb categories used throughout the application:
+"auth"      - Authentication events (login, logout, failures)
+"abi"       - ABI operations (create, update, delete, view)
+"contract"  - Contract operations (register, view, update, delete)
+"admin"     - Admin operations (API keys, networks)
+"http"      - HTTP requests (method, path)
+"ratelimit" - Rate limit events (hits, warnings)
+"cache"     - Cache operations (hits, misses)
+"error"     - Error events with context
 ```
 
 **Replay Integration (Phase 2)**:

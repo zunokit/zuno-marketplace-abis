@@ -35,6 +35,8 @@ import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 import { constantTimeCompare } from "@/shared/lib/utils/compare-string";
+import { initRequestContext, clearRequestContext } from "@/infrastructure/monitoring/sentry-tracker";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 /**
  * Check if API key is a hardcoded admin key (bypasses rate limiting)
@@ -107,8 +109,15 @@ export class ApiWrapper {
       try {
         // 1. Extract request metadata
         const requestId = extractRequestId(request);
+        const path = request.nextUrl.pathname;
 
-        // 2. Parse and validate request data
+        // 2. Initialize Sentry context and track HTTP request
+        initRequestContext(requestId, path);
+        SentryTracker.addBreadcrumb("http", `${request.method} ${path}`, "info", {
+          requestId,
+        });
+
+        // 3. Parse and validate request data
         const params = context?.params ? await context.params : {};
         const parsedData = await this.parseRequest(
           request,
@@ -175,6 +184,10 @@ export class ApiWrapper {
         );
 
         return this.handleError(error, request);
+      } finally {
+        // Clear Sentry request context and user context after request completes
+        clearRequestContext();
+        Sentry.setUser(null); // Clear user context to prevent bleeding in serverless environments
       }
     };
   }

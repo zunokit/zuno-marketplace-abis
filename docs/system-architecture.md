@@ -795,7 +795,7 @@ Error
 
 ## Monitoring & Observability
 
-### Error Tracking with Sentry (Phase 1-3)
+### Error Tracking with Sentry (Phase 1-4)
 
 **Configuration Files**:
 - `sentry.server.config.ts` - Server-side error tracking with enhanced sanitization
@@ -807,6 +807,7 @@ Error
 **Integration Points**:
 - `src/shared/lib/errors/process-error-handler.ts` - Fatal process error capture
 - `src/shared/lib/api/api-handler.ts` - API error capture with user context
+- `src/infrastructure/monitoring/sentry-tracker.ts` - User action tracking and breadcrumbs (Phase 4)
 - `src/infrastructure/monitoring/sentry-span.ts` - Custom span helpers (Phase 3)
 - `src/infrastructure/storage/ipfs/pinata.adapter.ts` - IPFS operation tracing (Phase 3)
 
@@ -827,6 +828,8 @@ SENTRY_PROJECT       - Sentry project name
 | **Performance Profiling** | 10% prod / 100% dev | CPU performance analysis |
 | **Auto-instrumentation** | HTTP, PostgreSQL, Redis | Automatic span creation |
 | **Custom Span Helpers** | `tracedRepositoryCall`, etc. | Custom operation tracing |
+| **User Action Tracking** | `SentryTracker` class (Phase 4) | Breadcrumb trail for debugging |
+| **Request Context** | `initRequestContext` (Phase 4) | Per-request tracking metadata |
 | **Operational Filtering** | `SKIP_ERROR_PATTERNS` | Filter expected business errors |
 | **Privacy Protection** | `SENSITIVE_PARAMS` + sanitization | Scrub headers/query params/messages |
 | **Release Tracking** | Git SHA via Vercel | Track errors by release |
@@ -921,6 +924,94 @@ await tracedExternalCall("pinata", "pin", () =>
 - IPFS operation latency
 - External service call timing
 - CPU profiling for bottleneck identification
+
+### User Action Tracking (Phase 4)
+
+**SentryTracker Class** (`src/infrastructure/monitoring/sentry-tracker.ts`):
+```typescript
+export class SentryTracker {
+  // Add generic breadcrumb
+  static addBreadcrumb(category, message, level, data)
+
+  // Track authentication events
+  static trackLogin(userId, method)
+  static trackLogout(userId)
+  static trackLoginFailure(reason)
+
+  // Track ABI operations
+  static trackAbiListed(filters)
+  static trackAbiViewed(abiId)
+  static trackAbiCreated(data)
+  static trackAbiUpdated(abiId, changes)
+  static trackAbiDeleted(abiId)
+  static trackAbiVersionsViewed(abiId)
+
+  // Track contract operations
+  static trackContractViewed(address, network)
+  static trackContractRegistered(address, network)
+  static trackContractUpdated(address)
+  static trackContractDeleted(address)
+
+  // Track admin operations
+  static trackApiKeysListed()
+  static trackApiKeyCreated(tier)
+  static trackApiKeyDeleted(keyId)
+  static trackNetworksModified(action, networkId)
+
+  // Track errors and operations
+  static trackError(category, message, error)
+  static trackRateLimitHit(endpoint, tier)
+  static trackCacheHit(key)
+  static trackCacheMiss(key)
+}
+```
+
+**Request Context Management**:
+```typescript
+// Initialize at request start
+initRequestContext(requestId, path)
+
+// Clear at request end
+clearRequestContext()
+
+// Set user context (automatic in api-handler.ts)
+Sentry.setUser({ id, apiKey, scopes })  // API key auth
+Sentry.setUser({ id, email, role })     // Session auth
+Sentry.setUser(null)                    // Clear user context
+```
+
+**Breadcrumb Categories**:
+| Category | Usage | Examples |
+|----------|-------|----------|
+| `auth` | Authentication events | Login, logout, failures |
+| `abi` | ABI operations | Create, update, delete, view |
+| `contract` | Contract operations | Register, view, update, delete |
+| `admin` | Admin operations | API keys, networks |
+| `http` | HTTP requests | Method, path |
+| `ratelimit` | Rate limit events | Hits, warnings |
+| `cache` | Cache operations | Hits, misses |
+| `error` | Error events | With context |
+
+**Example Breadcrumb Trail**:
+```
+1. auth: User logged in via api_key
+2. http: GET /api/abis
+3. abi: ABI list viewed (filters: {network: "ethereum"})
+4. abi: ABI creation started (name: "USDC ABI")
+5. abi: ABI created successfully (abiId: "abi_v1_xyz123")
+[ERROR occurs here with full context]
+```
+
+**Integration Points**:
+| File | Integration Type | Usage |
+|------|-----------------|-------|
+| `api-handler.ts` | Request context | Initialize/clear context per request |
+| `auth-helpers.ts` | Authentication | Track login/logout/failure |
+| `create-abi.use-case.ts` | ABI operations | Track create/update/delete |
+| `get-abi-versions.use-case.ts` | ABI operations | Track versions viewed |
+| `register-contract.use-case.ts` | Contract operations | Track contract registered |
+| `get-contract.use-case.ts` | Contract operations | Track contract viewed |
+| `delete-contract.use-case.ts` | Contract operations | Track contract deleted |
 
 ### Health Check Endpoint
 
