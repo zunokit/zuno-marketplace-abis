@@ -966,6 +966,23 @@ export class SentryTracker {
 }
 ```
 
+### Alert Testing Endpoints (Phase 5)
+
+**Temporary Test Endpoints**:
+- `GET /api/test-alert` - Triggers test error to verify alert delivery
+- `GET /api/test-slow` - Simulates slow response (2.5s) for P95 performance alert testing
+
+**Usage**:
+```bash
+# Test error alert delivery
+curl https://your-domain.com/api/test-alert
+
+# Test performance alert (run 100+ times to trigger P95)
+for i in {1..100}; do curl https://your-domain.com/api/test-slow & done
+```
+
+**Important**: These are temporary endpoints for manual validation only. Delete after testing complete (see `plans/251226-sentry-integration/phase-05-alerts.md` Test 5.3).
+
 **Request Context Management**:
 ```typescript
 // Initialize at request start

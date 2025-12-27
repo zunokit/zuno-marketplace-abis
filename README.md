@@ -672,6 +672,43 @@ curl -H "X-API-Key: sk_live_..." \
 ```
 </details>
 
+#### Monitoring & Testing (Temporary Endpoints)
+
+<details>
+<summary><b>GET /api/test-alert</b> - Test Sentry alert delivery</summary>
+
+> **Temporary endpoint** - Delete after Sentry alert validation complete
+
+**Purpose**: Triggers a test exception to verify Sentry alert delivery
+
+**Expected behavior**:
+- Sentry captures the test exception
+- Slack receives notification (if configured)
+- GitHub issue created (if configured)
+- Email alert sent (if configured)
+
+**Usage**:
+```bash
+curl https://your-domain.com/api/test-alert
+```
+</details>
+
+<details>
+<summary><b>GET /api/test-slow</b> - Test performance alert (P95)</summary>
+
+> **Temporary endpoint** - Delete after Sentry alert validation complete
+
+**Purpose**: Simulates slow response (2.5s) to test P95 performance alerts
+
+**Usage**:
+```bash
+# Run 100+ times to trigger P95 alert
+for i in {1..100}; do curl https://your-domain.com/api/test-slow & done
+```
+
+**Note**: Response takes 2.5 seconds (exceeds 2000ms threshold for performance alerts)
+</details>
+
 ### Response Format
 
 #### Success Response
