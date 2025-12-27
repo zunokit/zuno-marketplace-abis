@@ -2,12 +2,12 @@ import * as Sentry from "@sentry/nextjs";
 
 // Sensitive patterns to redact from error messages
 const SENSITIVE_PATTERNS = [
-  /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi,  // Bearer tokens
-  /sk_[a-zA-Z0-9]{20,}/g,               // API keys (sk_live_, sk_test_)
-  /"[^"]*apiKey[^"]*":\s*"[^"]+"/g,      // JSON apiKey values
-  /token[^"]*[:=]\s*[A-Za-z0-9\-._~+/]{10,}/gi,  // Tokens in logs
-  /password[^"]*[:=]\s*"[^"]+"/gi,       // Passwords in logs
-  /secret[^"]*[:=]\s*"[^"]+"/gi,         // Secrets in logs
+  /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, // Bearer tokens
+  /sk_[a-zA-Z0-9]{20,}/g, // API keys (sk_live_, sk_test_)
+  /"[^"]*apiKey[^"]*":\s*"[^"]+"/g, // JSON apiKey values
+  /token[^"]*[:=]\s*[A-Za-z0-9\-._~+/]{10,}/gi, // Tokens in logs
+  /password[^"]*[:=]\s*"[^"]+"/gi, // Passwords in logs
+  /secret[^"]*[:=]\s*"[^"]+"/gi, // Secrets in logs
 ];
 
 /**
@@ -29,7 +29,10 @@ Sentry.init({
   environment: process.env.NODE_ENV || "development",
 
   // Set release from git SHA (Vercel provides this)
-  release: process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_APP_VERSION || "local",
+  release:
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.NEXT_PUBLIC_APP_VERSION ||
+    "local",
 
   // Smart sampling for distributed tracing
   // Development: 100% sampling for debugging
@@ -65,20 +68,23 @@ Sentry.init({
 
     // Skip operational errors (not bugs)
     const skipCodes = [
-      "RATE_LIMITED",      // Expected user behavior
-      "VALIDATION_ERROR",  // Bad input
-      "UNAUTHORIZED",      // Auth failure
-      "FORBIDDEN",         // Permission denied
-      "NOT_FOUND",         // Resource missing
+      "RATE_LIMITED", // Expected user behavior
+      "VALIDATION_ERROR", // Bad input
+      "UNAUTHORIZED", // Auth failure
+      "FORBIDDEN", // Permission denied
+      "NOT_FOUND", // Resource missing
     ];
 
     if (event.tags?.code && skipCodes.includes(event.tags.code as string)) {
       return null; // Don't send
     }
 
-    // Only send production errors to Sentry
-    if (process.env.NODE_ENV !== "production") {
-      return null; // Keep in local logs only
+    // Only send production errors to Sentry (development errors stay in logs)
+    if (
+      process.env.NODE_ENV !== "production" &&
+      process.env.SENTRY_ENABLED !== "true"
+    ) {
+      return null;
     }
 
     // Scrub sensitive query parameters
