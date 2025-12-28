@@ -322,8 +322,8 @@ export default function SentryDebugPage() {
           <ol className="list-decimal list-inside space-y-1 mt-2">
             <li>Click any test button above to send an event to Sentry</li>
             <li>Check your Sentry dashboard (zunokit → zuno-abis)</li>
-            <li>Look for events with message starting with "Debug test"</li>
-            <li>Use CLI for verification: <code>sentry-cli send-event -m "Test"</code></li>
+            <li>Look for events with message starting with &quot;Debug test&quot;</li>
+            <li>Use CLI for verification: <code>sentry-cli send-event -m &quot;Test&quot;</code></li>
           </ol>
         </AlertDescription>
       </Alert>
