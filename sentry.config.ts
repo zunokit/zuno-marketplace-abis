@@ -114,28 +114,33 @@ export function getProfilesSampleRate(): number {
 
 /**
  * Get session replay sample rate for normal sessions
+ *
+ * For local/dev: Disabled (causes fetch errors in development)
+ * For production: Disabled (cost saving)
  */
 export function getReplaysSessionSampleRate(): number {
   const env = getSentryEnvironment();
 
-  if (env === "production" || env === "staging") {
-    return 0.0;
+  if (env === "production") {
+    return 0.0; // Disabled to save quota
   }
 
-  return 0.0;
+  return 0.0; // Disabled in local (causes fetch errors)
 }
 
 /**
  * Get session replay sample rate for error sessions
+ *
+ * Records sessions when errors occur for debugging
  */
 export function getReplaysOnErrorSampleRate(): number {
   const env = getSentryEnvironment();
 
   if (env === "production" || env === "staging") {
-    return 0.1;
+    return 1.0;
   }
 
-  return 0.0;
+  return 0.0; // Disabled in local (causes fetch errors)
 }
 
 /**

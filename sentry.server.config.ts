@@ -43,13 +43,16 @@ if (isSentryEnabled()) {
       Sentry.httpIntegration(),
       Sentry.postgresIntegration(),
       Sentry.redisIntegration(),
+      Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
     ],
 
     // Filter sensitive data and operational errors
     beforeSend(event, hint) {
       // Skip operational errors (expected business logic errors)
       const errorMessage = event.exception?.values?.[0]?.value || "";
-      if (SKIP_ERROR_PATTERNS.some((pattern) => errorMessage.includes(pattern))) {
+      if (
+        SKIP_ERROR_PATTERNS.some((pattern) => errorMessage.includes(pattern))
+      ) {
         return null;
       }
 
