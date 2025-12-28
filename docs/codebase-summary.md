@@ -31,6 +31,7 @@ E:\zuno-marketplace-abis\
 │   └── settings.json          # Workspace settings
 ├── .opencode/                 # OpenCode integration
 ├── .repomixignore             # Repomix exclude patterns
+├── .sentryclirc               # Sentry CLI configuration
 ├── src/                       # Main application code
 ├── scripts/                   # Build and utility scripts
 ├── tests/                     # Test suites (unit, integration)
@@ -40,10 +41,13 @@ E:\zuno-marketplace-abis\
 ├── README.md                  # Project overview
 ├── package.json               # Dependencies and scripts
 ├── tsconfig.json              # TypeScript configuration
-├── next.config.ts             # Next.js configuration
+├── next.config.ts             # Next.js configuration (with Sentry wrapper)
 ├── drizzle.config.ts          # Database configuration
 ├── eslint.config.mjs          # Linting rules
 ├── postcss.config.mjs         # Tailwind CSS config
+├── sentry.server.config.ts    # Server-side Sentry configuration
+├── sentry.client.config.ts    # Client-side Sentry configuration
+├── sentry.edge.config.ts      # Edge runtime Sentry configuration
 └── components.json            # shadcn/ui configuration
 ```
 
@@ -266,17 +270,27 @@ IPFS/Pinata integration:
 
 ```
 src/infrastructure/storage/
-├── pinata.client.ts       # Pinata API client
-├── ipfs.service.ts        # IPFS operations
-├── content-hash.ts        # Hash generation
+├── ipfs/
+│   ├── ipfs.client.ts       # Pinata SDK client
+│   ├── pinata.adapter.ts    # Storage adapter with tracing
+│   └── index.ts
+├── content-hash.ts          # Hash generation
 └── index.ts
 ```
 
 **Operations**:
-- Pin ABI JSON to IPFS
-- Retrieve by IPFS hash
+- Pin ABI JSON to IPFS (with `tracedExternalCall`)
+- Retrieve by IPFS hash (with `tracedExternalCall`)
 - Generate content-addressed hashes
+- Unpin/remove operations (with `tracedExternalCall`)
 - Fallback to local storage if IPFS unavailable
+
+**IPFS Operation Tracing** (Phase 3):
+| Operation | Span Name | Op Type |
+|-----------|-----------|---------|
+| `store()` | `pinata.pin` | `http.client` |
+| `retrieve()` | `pinata.retrieve` | `http.client` |
+| `remove()` | `pinata.unpin` | `http.client` |
 
 #### 2.4 Authentication (`src/infrastructure/auth/`)
 
@@ -317,6 +331,39 @@ src/infrastructure/di/
 ```
 
 **Pattern**: Singleton container managing all service dependencies, lazy-loaded on first access.
+
+#### 2.6 Monitoring (`src/infrastructure/monitoring/`)
+
+Sentry performance monitoring (Phase 3):
+
+```
+src/infrastructure/monitoring/
+├── sentry-span.ts         # Custom span helpers for distributed tracing
+└── index.ts
+```
+
+**Custom Span Helpers**:
+- `tracedRepositoryCall()` - Wrap database operations for tracing
+- `tracedCacheCall()` - Wrap cache operations for tracing
+- `tracedExternalCall()` - Wrap external service calls for tracing
+
+**Usage Examples**:
+```typescript
+// Repository operations
+await tracedRepositoryCall("abi.findById", () =>
+  this.abiRepository.findById(id)
+);
+
+// Cache operations
+await tracedCacheCall("get:abi:123", () =>
+  this.cache.get("abi:123")
+);
+
+// External service calls (IPFS)
+await tracedExternalCall("pinata", "pin", () =>
+  this.ipfs.pin(data)
+);
+```
 
 ---
 
@@ -475,10 +522,14 @@ Utility functions:
 src/shared/lib/
 ├── utils/
 │   ├── logger.ts          # Structured logging
-│   ├── errors.ts          # Error handling
+│   ├── errors.ts          # Error handling utilities
 │   ├── api-helper.ts      # API utility functions
 │   ├── time.ts            # Date/time utilities
 │   ├── constants.ts       # App constants
+│   └── index.ts
+├── errors/
+│   ├── process-error-handler.ts  # Process-level error handling (Phase 2)
+│   ├── error-utils.ts            # Error utility functions
 │   └── index.ts
 ├── validation/
 │   ├── abi-validator.ts   # ABI schema validation
@@ -488,12 +539,15 @@ src/shared/lib/
 │   ├── auth-validator.ts
 │   └── index.ts
 ├── api/
-│   ├── api-wrapper.ts     # Standardized API wrapper
-│   ├── error-handler.ts   # Error response formatting
-│   ├── cache-wrapper.ts   # Cache operations
+│   ├── api-handler.ts     # API wrapper with Sentry error capture (Phase 2)
+│   ├── error-formatter.ts # Error response formatting
 │   └── index.ts
 └── index.ts
 ```
+
+**Error Handling Libraries** (Phase 2):
+- `process-error-handler.ts` - Handles uncaught exceptions, unhandled rejections, graceful shutdown
+- `api-handler.ts` - API wrapper with Sentry user context and error capture
 
 #### 4.3 Types (`src/shared/types/`)
 
@@ -617,6 +671,23 @@ tests/
 - Crypto-js 4.2: Cryptographic operations
 - Constant-time comparison: Timing attack prevention
 
+**Monitoring & Error Tracking**:
+- Sentry 10.32: Error tracking and performance monitoring (Phase 1-3)
+  - Server-side error tracking with enhanced sanitization
+  - Client-side error tracking
+  - Edge runtime error tracking
+  - **Distributed tracing**: 5% prod / 100% dev sampling (~1,500 traces/day for 30K requests)
+  - **Performance profiling**: 10% prod / 100% dev sampling for CPU analysis
+  - **Auto-instrumentation**: HTTP, PostgreSQL, Redis operations
+  - **Custom span helpers**: `tracedRepositoryCall`, `tracedCacheCall`, `tracedExternalCall`
+  - **IPFS operation tracing**: Pin, retrieve, unpin operations monitored
+  - Operational error filtering
+  - Privacy protection (headers/query params/messages scrubbed)
+  - User context tracking (API key + session auth)
+  - Fatal process error capture (uncaught exceptions, unhandled rejections)
+  - API error capture with request context
+  - Session replay on errors (10% sampling)
+
 **Caching**:
 - Upstash Redis: Serverless Redis client
 - Cache-aside pattern: Efficient caching strategy
@@ -651,8 +722,8 @@ tests/
 
 ## Dependencies Summary
 
-**Total Dependencies**: 87
-- **Production**: 26 direct packages
+**Total Dependencies**: 88
+- **Production**: 27 direct packages (including @sentry/nextjs)
 - **Development**: 61 dev packages
 - **Package Manager**: pnpm (recommended) or npm/yarn
 
@@ -660,6 +731,7 @@ tests/
 - Node.js 18.x minimum (20.x LTS recommended)
 - PostgreSQL 14+ (16+ recommended)
 - TypeScript 5.9+
+- Sentry 10.32+ (error tracking & performance monitoring)
 
 ---
 

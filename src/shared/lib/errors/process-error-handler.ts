@@ -17,6 +17,7 @@
 
 import { logger } from "../utils/logger";
 import { getErrorMessage, isError } from "./error-utils";
+import * as Sentry from "@sentry/node";
 
 /**
  * Configuration for process error handler
@@ -255,23 +256,30 @@ export class ProcessErrorHandler {
     type: "uncaughtException" | "unhandledRejection"
   ): void {
     try {
-      // Placeholder for monitoring service integration
-      // In production, integrate with Sentry, DataDog, etc.
+      // Only send to Sentry if enabled and in production (non-blocking)
+      if (
+        process.env.SENTRY_DSN &&
+        process.env.NODE_ENV === "production"
+      ) {
+        Promise.resolve().then(() =>
+          Sentry.captureException(error, {
+            level: "fatal",
+            tags: {
+              type,
+              processError: "true",
+            },
+            extra: {
+              processUptime: process.uptime(),
+              memoryUsage: process.memoryUsage(),
+            },
+          })
+        ).catch((e) => logger.debug("Failed to send fatal error to Sentry", { error: e }));
 
-      if (process.env.SENTRY_DSN) {
-        // Example Sentry integration:
-        // import * as Sentry from "@sentry/node";
-        // Sentry.captureException(error, {
-        //   level: "fatal",
-        //   tags: { type },
-        // });
-        logger.debug("Sentry integration not configured");
+        logger.info("Fatal error sent to Sentry", { type, message: error.message });
       }
 
-      if (process.env.DATADOG_API_KEY) {
-        // Example DataDog integration
-        logger.debug("DataDog integration not configured");
-      }
+      // Always log locally
+      logger.error("Process error", error, { type });
     } catch (monitoringError) {
       logger.error("Failed to send error to monitoring service", monitoringError);
     }

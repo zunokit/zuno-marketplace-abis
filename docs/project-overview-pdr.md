@@ -288,6 +288,7 @@ abi:versions:{contractId}
 | | Drizzle ORM | 0.44 | Database abstraction |
 | | PostgreSQL | 14+ | Primary database |
 | | Better Auth | 1.4 | Authentication |
+| **Monitoring** | Sentry | 10.32 | Error tracking & performance |
 | **Caching** | Upstash Redis | Latest | Distributed cache |
 | **Storage** | Pinata | 2.5 | IPFS gateway |
 | **Testing** | Jest | 30.2 | Unit testing |
@@ -377,6 +378,26 @@ Infrastructure Layer (Database, cache, external services)
 - **Health Monitoring**: `/api/health` endpoint with service status
 - **Automated Backups**: Daily database backups with restore testing
 
+### Monitoring & Observability
+
+- **Error Tracking**: Sentry integration for server, client, and edge runtime errors
+- **User Action Tracking**:
+  - **Breadcrumb Trail**: Records user actions for error context (auth, ABI operations, contract operations, admin operations)
+  - **Request Context**: Per-request tracking with request ID, path, and timestamp
+  - **Authentication Events**: Login (API key/session), logout, failures tracked
+  - **Operation Tracking**: Create, update, delete, view operations for ABIs and contracts
+  - **Rate Limit & Cache**: Breadcrumbs for rate limit hits and cache operations
+- **Performance Monitoring**:
+  - **Distributed Tracing**: 5% sampling (production), 100% (development) - ~1,500 traces/day for 30K requests
+  - **Performance Profiling**: 10% sampling (production), 100% (development) for CPU performance analysis
+  - **Auto-instrumentation**: HTTP, PostgreSQL, Redis operations automatically traced
+  - **Custom Span Helpers**: tracedRepositoryCall, tracedCacheCall, tracedExternalCall for custom tracing
+  - **IPFS Operation Tracing**: Pin, retrieve, unpin operations monitored
+- **Operational Error Filtering**: Automatic filtering of expected business errors
+- **Privacy Protection**: Headers and query params scrubbed before sending to Sentry
+- **Release Tracking**: Automatic release tracking via git SHA
+- **Alert Integration**: Configurable alerts for critical errors and performance degradation
+
 ### Security
 
 - **Authentication**: Session + API key dual auth
@@ -442,6 +463,10 @@ Infrastructure Layer (Database, cache, external services)
 ✅ Audit logging
 ✅ Multi-network support
 ✅ ABI versioning
+✅ Sentry error tracking (Phase 1: Foundation)
+✅ Sentry enhanced capture (Phase 2: Process & API errors)
+✅ Sentry performance monitoring (Phase 3: Distributed tracing & profiling)
+✅ Sentry user action tracking (Phase 4: Breadcrumb context for debugging)
 
 ### v0.2.0 (Q1 2025) - Public Marketplace
 🚧 Public marketplace UI
@@ -499,6 +524,7 @@ Infrastructure Layer (Database, cache, external services)
 - ✅ Health check endpoint responding
 - ✅ Database migrations working
 - ✅ Documentation complete
+- ✅ Sentry error tracking configured
 
 ### Production Readiness
 - ✅ 99.9% uptime SLA maintained

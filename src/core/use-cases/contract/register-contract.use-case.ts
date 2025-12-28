@@ -10,6 +10,7 @@ import { AbiNotFoundError } from "@/core/domain/abi/abi.entity";
 import type { ICacheService } from "@/infrastructure/di/container";
 import { isValidAddress, isValidChainId, ErrorCode } from "@/shared/types";
 import { ValidationError } from "@/shared/lib/utils/error-handler";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 export interface RegisterContractUseCaseInput {
   address: string;
@@ -82,6 +83,9 @@ export class RegisterContractUseCase {
 
     // 6. Save to database
     const savedContract = await this.contractRepository.create(contractEntity);
+
+    // Track contract registered
+    SentryTracker.trackContractRegistered(savedContract.address, savedContract.networkId);
 
     // 7. Cache the result
     await this.cacheService.set(`contract:${savedContract.id}`, savedContract, 3600);
