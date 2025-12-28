@@ -51,4 +51,5 @@ next-env.d.ts
 
 .factory
 !.env.example
+
 .sentryclirc
