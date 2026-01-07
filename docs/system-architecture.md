@@ -1049,6 +1049,35 @@ Response:
 }
 ```
 
+### CI/CD Keepalive Workflow
+
+**Purpose**: Prevents free tier service suspension by pinging health endpoint every 12 hours.
+
+**Configuration** (`.github/workflows/keepalive.yml`):
+- **Schedule**: Runs at 6 AM and 6 PM UTC (`cron: '0 6,18 * * *'`)
+- **Manual trigger**: Available via `workflow_dispatch`
+- **Retry strategy**: 3 attempts with 30s delay, 5-minute timeout
+- **Health check**: Calls `/api/health` endpoint via `NEXT_PUBLIC_APP_URL` secret
+- **Success criteria**: HTTP 200 + status != "unhealthy"
+- **Failure handling**: GitHub Actions notification on persistent failure
+
+**Implementation**:
+```yaml
+on:
+  schedule:
+    - cron: '0 6,18 * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health Check
+        run: curl -sf "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/health"
+```
+
+**Note**: Required secret `NEXT_PUBLIC_APP_URL` must be configured in repository settings.
+
 ### Logging Strategy
 
 - Structured logging with severity levels
