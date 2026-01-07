@@ -2,6 +2,7 @@ import { ContractRepository } from "@/core/domain/contract/contract.repository";
 import { ContractNotFoundError } from "@/core/domain/contract/contract.entity";
 import type { ICacheService } from "@/infrastructure/di/container";
 import { logger } from "@/shared/lib/utils/logger";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 /**
  * Input parameters for deleting a contract
@@ -112,6 +113,9 @@ export class DeleteContractUseCase {
 
     // 3. Invalidate all related caches
     await this.invalidateRelatedCaches(contract);
+
+    // Track contract deleted
+    SentryTracker.trackContractDeleted(contract.address);
 
     logger.info("Contract deleted successfully", {
       contractId: input.contractId,

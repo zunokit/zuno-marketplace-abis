@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -34,6 +35,8 @@ import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 import { constantTimeCompare } from "@/shared/lib/utils/compare-string";
+import { initRequestContext, clearRequestContext } from "@/infrastructure/monitoring/sentry-tracker";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 /**
  * Check if API key is a hardcoded admin key (bypasses rate limiting)
@@ -106,8 +109,15 @@ export class ApiWrapper {
       try {
         // 1. Extract request metadata
         const requestId = extractRequestId(request);
+        const path = request.nextUrl.pathname;
 
-        // 2. Parse and validate request data
+        // 2. Initialize Sentry context and track HTTP request
+        initRequestContext(requestId, path);
+        SentryTracker.addBreadcrumb("http", `${request.method} ${path}`, "info", {
+          requestId,
+        });
+
+        // 3. Parse and validate request data
         const params = context?.params ? await context.params : {};
         const parsedData = await this.parseRequest(
           request,
@@ -174,6 +184,10 @@ export class ApiWrapper {
         );
 
         return this.handleError(error, request);
+      } finally {
+        // Clear Sentry request context and user context after request completes
+        clearRequestContext();
+        Sentry.setUser(null); // Clear user context to prevent bleeding in serverless environments
       }
     };
   }
@@ -384,6 +398,13 @@ export class ApiWrapper {
           context.apiKey = apiKey;
           authenticated = true;
 
+          // Set Sentry user context for API key authentication
+          Sentry.setUser({
+            id: apiKey.userId,
+            apiKey: apiKey.id,
+            scopes: apiKey.scopes,
+          });
+
           logger.debug("API key authenticated", {
             keyId: apiKey.id,
             userId: apiKey.userId,
@@ -404,6 +425,13 @@ export class ApiWrapper {
         context.user = sessionData.user;
         context.session = sessionData.session;
         authenticated = true;
+
+        // Set Sentry user context for session authentication
+        Sentry.setUser({
+          id: sessionData.user.id,
+          email: sessionData.user.email,
+          role: sessionData.user.role,
+        });
 
         logger.debug("Session authenticated", {
           userId: sessionData.user.id,
@@ -460,6 +488,24 @@ export class ApiWrapper {
 
     if (error instanceof ApiError) {
       apiError = error;
+
+      // Send to Sentry for API errors in production (non-blocking)
+      if (process.env.NODE_ENV === "production") {
+        Promise.resolve().then(() =>
+          Sentry.captureException(error, {
+            level: "error",
+            tags: {
+              errorCode: apiError.code,
+              statusCode: apiError.statusCode.toString(),
+            },
+            extra: {
+              details: apiError.details,
+              path: request.nextUrl.pathname,
+              method: request.method,
+            },
+          })
+        ).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+      }
     } else if (error instanceof z.ZodError) {
       // Convert Zod validation errors to ApiError
       apiError = new ApiError(
@@ -479,7 +525,22 @@ export class ApiWrapper {
           customError.details
         );
       } else {
-        // Generic error handling
+        // Generic error handling - send unexpected errors to Sentry (non-blocking)
+        if (process.env.NODE_ENV === "production") {
+          Promise.resolve().then(() =>
+            Sentry.captureException(error, {
+              level: "error",
+              tags: {
+                errorType: "unexpected",
+              },
+              extra: {
+                path: request.nextUrl.pathname,
+                method: request.method,
+              },
+            })
+          ).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+        }
+
         apiError = new ApiError(
           error.message || "Internal server error",
           ErrorCode.INTERNAL_ERROR,

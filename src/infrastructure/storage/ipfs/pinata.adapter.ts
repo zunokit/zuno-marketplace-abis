@@ -1,5 +1,6 @@
 import { IPFSClient } from "./ipfs.client";
 import { logger } from "@/shared/lib/utils/logger";
+import { tracedExternalCall } from "@/infrastructure/monitoring/sentry-span";
 
 export interface StoragePort {
   store(data: unknown, metadata?: Record<string, unknown>): Promise<{ hash: string; url: string; groupId?: string } | null>;
@@ -20,14 +21,16 @@ export class PinataAdapter implements StoragePort {
     data: unknown,
     metadata?: Record<string, unknown>
   ): Promise<{ hash: string; url: string; groupId?: string } | null> {
-    const ipfsMetadata = {
-      name: metadata?.name as string,
-      description: metadata?.description as string,
-      keyvalues: metadata?.keyvalues as Record<string, string>,
-      groupName: metadata?.groupName as string | undefined,
-    };
+    return tracedExternalCall("pinata", "pin", async () => {
+      const ipfsMetadata = {
+        name: metadata?.name as string,
+        description: metadata?.description as string,
+        keyvalues: metadata?.keyvalues as Record<string, string>,
+        groupName: metadata?.groupName as string | undefined,
+      };
 
-    return this.ipfs.uploadJSON(data, ipfsMetadata);
+      return this.ipfs.uploadJSON(data, ipfsMetadata);
+    });
   }
 
   async retrieve<T>(hash: string): Promise<T | null> {
@@ -36,11 +39,15 @@ export class PinataAdapter implements StoragePort {
       return null;
     }
 
-    return this.ipfs.retrieve<T>(hash);
+    return tracedExternalCall("pinata", "retrieve", async () => {
+      return this.ipfs.retrieve<T>(hash);
+    });
   }
 
   async remove(hash: string): Promise<boolean> {
-    return this.ipfs.unpin(hash);
+    return tracedExternalCall("pinata", "unpin", async () => {
+      return this.ipfs.unpin(hash);
+    });
   }
 
   async exists(hash: string): Promise<boolean> {

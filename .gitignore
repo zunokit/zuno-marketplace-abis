@@ -46,12 +46,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-test-results
-
-playwright-report
-
 # backups
 /backups
 
 .factory
 !.env.example
+
+.sentryclirc

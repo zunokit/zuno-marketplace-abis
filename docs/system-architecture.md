@@ -795,6 +795,241 @@ Error
 
 ## Monitoring & Observability
 
+### Error Tracking with Sentry (Phase 1-4)
+
+**Configuration Files**:
+- `sentry.server.config.ts` - Server-side error tracking with enhanced sanitization
+- `sentry.client.config.ts` - Client-side error tracking
+- `sentry.edge.config.ts` - Edge runtime error tracking
+- `.sentryclirc` - Sentry CLI configuration
+- `next.config.ts` - Wrapped with `withSentryConfig`
+
+**Integration Points**:
+- `src/shared/lib/errors/process-error-handler.ts` - Fatal process error capture
+- `src/shared/lib/api/api-handler.ts` - API error capture with user context
+- `src/infrastructure/monitoring/sentry-tracker.ts` - User action tracking and breadcrumbs (Phase 4)
+- `src/infrastructure/monitoring/sentry-span.ts` - Custom span helpers (Phase 3)
+- `src/infrastructure/storage/ipfs/pinata.adapter.ts` - IPFS operation tracing (Phase 3)
+
+**Environment Variables**:
+```
+SENTRY_DSN           - Data Source Name for Sentry project
+SENTRY_AUTH_TOKEN    - Authentication token for Sentry API
+SENTRY_ORG           - Sentry organization slug
+SENTRY_PROJECT       - Sentry project name
+```
+
+**Features Implemented**:
+
+| Feature | Configuration | Purpose |
+|---------|--------------|---------|
+| **Error Tracking** | Server/Client/Edge configs | Capture unhandled errors |
+| **Distributed Tracing** | 5% prod / 100% dev | End-to-end request tracing |
+| **Performance Profiling** | 10% prod / 100% dev | CPU performance analysis |
+| **Auto-instrumentation** | HTTP, PostgreSQL, Redis | Automatic span creation |
+| **Custom Span Helpers** | `tracedRepositoryCall`, etc. | Custom operation tracing |
+| **User Action Tracking** | `SentryTracker` class (Phase 4) | Breadcrumb trail for debugging |
+| **Request Context** | `initRequestContext` (Phase 4) | Per-request tracking metadata |
+| **Operational Filtering** | `SKIP_ERROR_PATTERNS` | Filter expected business errors |
+| **Privacy Protection** | `SENSITIVE_PARAMS` + sanitization | Scrub headers/query params/messages |
+| **Release Tracking** | Git SHA via Vercel | Track errors by release |
+| **User Context** | Auto-set on auth | Track errors by user/session |
+| **Process Error Capture** | `process-error-handler.ts` | Fatal error monitoring |
+| **API Error Capture** | `api-handler.ts` | Request-scoped error tracking |
+| **Session Replay** | 10% on error (Phase 2) | User session playback for debugging |
+
+**Error Capture Points**:
+
+| Capture Point | File | Level | Context |
+|--------------|------|-------|---------|
+| **API Errors** | `api-handler.ts` | error | errorCode, statusCode, path, method |
+| **Process Errors** | `process-error-handler.ts` | fatal | type, processUptime, memoryUsage |
+| **Unexpected Errors** | `api-handler.ts` | error | errorType: "unexpected" |
+
+**User Context Tracking**:
+- API Key auth: `{ id, apiKey, scopes }`
+- Session auth: `{ id, email, role }`
+- Automatically set on successful authentication
+
+**Filtered Errors** (operational/business errors):
+- `RATE_LIMITED`
+- `VALIDATION_ERROR`
+- `UNAUTHORIZED`
+- `FORBIDDEN`
+- `NOT_FOUND`
+
+**Scrubbed Data** (privacy protection):
+- Headers: `authorization`, `x-api-key`, `cookie`
+- Query params: `token`, `password`, `secret`, `apiKey`, `api_key`
+- Error messages: Bearer tokens, API keys, passwords, secrets (via regex sanitization)
+
+**Ignored Sources** (denoising):
+- Chrome extensions (`/extensions//`, `chrome://`)
+- Browser extension errors (`top.GLOBALS`)
+- Random plugins (`cordova`, `sencha`)
+
+---
+
+### Performance Monitoring (Phase 3)
+
+**Distributed Tracing Configuration**:
+```typescript
+// sentry.server.config.ts
+tracesSampleRate: process.env.NODE_ENV === "production" ? 0.05 : 1.0,
+profilesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+```
+
+**Sampling Strategy**:
+- **Production**: 5% trace sampling (~1,500 traces/day for 30K requests)
+- **Development**: 100% trace sampling for debugging
+- **Profiling**: 10% in production for CPU flame graphs
+- **Free Tier Compliant**: Stays within Sentry's free tier limits
+
+**Auto-Instrumented Operations**:
+- **HTTP**: Incoming/outgoing HTTP requests
+- **PostgreSQL**: Database queries (Drizzle ORM)
+- **Redis**: Cache operations (Upstash)
+
+**Custom Span Helpers** (`src/infrastructure/monitoring/sentry-span.ts`):
+
+```typescript
+// Repository operations (database)
+await tracedRepositoryCall("abi.findById", () =>
+  this.abiRepository.findById(id)
+);
+
+// Cache operations (Redis)
+await tracedCacheCall("get:abi:123", () =>
+  this.cache.get("abi:123")
+);
+
+// External service calls (IPFS, APIs)
+await tracedExternalCall("pinata", "pin", () =>
+  this.ipfs.pin(data)
+);
+```
+
+**IPFS Operation Tracing** (`src/infrastructure/storage/ipfs/pinata.adapter.ts`):
+
+| Operation | Span Name | Op Type | Service |
+|-----------|-----------|---------|---------|
+| `store()` | `pinata.pin` | `http.client` | pinata |
+| `retrieve()` | `pinata.retrieve` | `http.client` | pinata |
+| `remove()` | `pinata.unpin` | `http.client` | pinata |
+
+**Performance Insights Available**:
+- End-to-end request latency breakdown
+- Database query performance
+- Cache hit/miss timing
+- IPFS operation latency
+- External service call timing
+- CPU profiling for bottleneck identification
+
+### User Action Tracking (Phase 4)
+
+**SentryTracker Class** (`src/infrastructure/monitoring/sentry-tracker.ts`):
+```typescript
+export class SentryTracker {
+  // Add generic breadcrumb
+  static addBreadcrumb(category, message, level, data)
+
+  // Track authentication events
+  static trackLogin(userId, method)
+  static trackLogout(userId)
+  static trackLoginFailure(reason)
+
+  // Track ABI operations
+  static trackAbiListed(filters)
+  static trackAbiViewed(abiId)
+  static trackAbiCreated(data)
+  static trackAbiUpdated(abiId, changes)
+  static trackAbiDeleted(abiId)
+  static trackAbiVersionsViewed(abiId)
+
+  // Track contract operations
+  static trackContractViewed(address, network)
+  static trackContractRegistered(address, network)
+  static trackContractUpdated(address)
+  static trackContractDeleted(address)
+
+  // Track admin operations
+  static trackApiKeysListed()
+  static trackApiKeyCreated(tier)
+  static trackApiKeyDeleted(keyId)
+  static trackNetworksModified(action, networkId)
+
+  // Track errors and operations
+  static trackError(category, message, error)
+  static trackRateLimitHit(endpoint, tier)
+  static trackCacheHit(key)
+  static trackCacheMiss(key)
+}
+```
+
+### Alert Testing Endpoints (Phase 5)
+
+**Temporary Test Endpoints**:
+- `GET /api/test-alert` - Triggers test error to verify alert delivery
+- `GET /api/test-slow` - Simulates slow response (2.5s) for P95 performance alert testing
+
+**Usage**:
+```bash
+# Test error alert delivery
+curl https://your-domain.com/api/test-alert
+
+# Test performance alert (run 100+ times to trigger P95)
+for i in {1..100}; do curl https://your-domain.com/api/test-slow & done
+```
+
+**Important**: These are temporary endpoints for manual validation only. Delete after testing complete (see `plans/251226-sentry-integration/phase-05-alerts.md` Test 5.3).
+
+**Request Context Management**:
+```typescript
+// Initialize at request start
+initRequestContext(requestId, path)
+
+// Clear at request end
+clearRequestContext()
+
+// Set user context (automatic in api-handler.ts)
+Sentry.setUser({ id, apiKey, scopes })  // API key auth
+Sentry.setUser({ id, email, role })     // Session auth
+Sentry.setUser(null)                    // Clear user context
+```
+
+**Breadcrumb Categories**:
+| Category | Usage | Examples |
+|----------|-------|----------|
+| `auth` | Authentication events | Login, logout, failures |
+| `abi` | ABI operations | Create, update, delete, view |
+| `contract` | Contract operations | Register, view, update, delete |
+| `admin` | Admin operations | API keys, networks |
+| `http` | HTTP requests | Method, path |
+| `ratelimit` | Rate limit events | Hits, warnings |
+| `cache` | Cache operations | Hits, misses |
+| `error` | Error events | With context |
+
+**Example Breadcrumb Trail**:
+```
+1. auth: User logged in via api_key
+2. http: GET /api/abis
+3. abi: ABI list viewed (filters: {network: "ethereum"})
+4. abi: ABI creation started (name: "USDC ABI")
+5. abi: ABI created successfully (abiId: "abi_v1_xyz123")
+[ERROR occurs here with full context]
+```
+
+**Integration Points**:
+| File | Integration Type | Usage |
+|------|-----------------|-------|
+| `api-handler.ts` | Request context | Initialize/clear context per request |
+| `auth-helpers.ts` | Authentication | Track login/logout/failure |
+| `create-abi.use-case.ts` | ABI operations | Track create/update/delete |
+| `get-abi-versions.use-case.ts` | ABI operations | Track versions viewed |
+| `register-contract.use-case.ts` | Contract operations | Track contract registered |
+| `get-contract.use-case.ts` | Contract operations | Track contract viewed |
+| `delete-contract.use-case.ts` | Contract operations | Track contract deleted |
+
 ### Health Check Endpoint
 
 ```
@@ -814,6 +1049,35 @@ Response:
 }
 ```
 
+### CI/CD Keepalive Workflow
+
+**Purpose**: Prevents free tier service suspension by pinging health endpoint every 12 hours.
+
+**Configuration** (`.github/workflows/keepalive.yml`):
+- **Schedule**: Runs at 6 AM and 6 PM UTC (`cron: '0 6,18 * * *'`)
+- **Manual trigger**: Available via `workflow_dispatch`
+- **Retry strategy**: 3 attempts with 30s delay, 5-minute timeout
+- **Health check**: Calls `/api/health` endpoint via `NEXT_PUBLIC_APP_URL` secret
+- **Success criteria**: HTTP 200 + status != "unhealthy"
+- **Failure handling**: GitHub Actions notification on persistent failure
+
+**Implementation**:
+```yaml
+on:
+  schedule:
+    - cron: '0 6,18 * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health Check
+        run: curl -sf "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/health"
+```
+
+**Note**: Required secret `NEXT_PUBLIC_APP_URL` must be configured in repository settings.
+
 ### Logging Strategy
 
 - Structured logging with severity levels
@@ -830,6 +1094,7 @@ Response:
 - IPFS operation times
 - Rate limit hits
 - Authentication failures
+- Error rates and types (via Sentry)
 
 ---
 
@@ -842,19 +1107,22 @@ Development
   ├── Local PostgreSQL
   ├── Upstash Redis (free tier)
   ├── Pinata IPFS (free tier)
-  └── Better Auth (local)
+  ├── Better Auth (local)
+  └── Sentry (development environment)
 
 Staging
   ├── PostgreSQL (managed)
   ├── Redis (production instance)
   ├── Pinata IPFS (production account)
-  └── Better Auth (staging keys)
+  ├── Better Auth (staging keys)
+  └── Sentry (staging environment)
 
 Production
   ├── PostgreSQL (HA setup)
   ├── Redis (production instance)
   ├── Pinata IPFS (production account)
   ├── Better Auth (production keys)
+  ├── Sentry (production environment)
   └── CDN (Vercel, CloudFront)
 ```
 
@@ -932,6 +1200,12 @@ CREATE INDEX idx_contracts_name_tsvector
 ## Integration Points
 
 ### External Services
+
+**Sentry**:
+- Error tracking (server, client, edge)
+- Performance monitoring and tracing
+- Release tracking via git SHA
+- Alert notifications
 
 **Pinata IPFS**:
 - Pin ABI JSON

@@ -4,6 +4,7 @@ import { ApiKey, user as userTable, apiKey as apiKeyTable } from "@/infrastructu
 import { db } from "@/infrastructure/database/drizzle/client";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 export interface AuthUser {
   id: string;
@@ -64,6 +65,7 @@ export async function verifyApiKey(
 
     if (!result || !result.valid || !result.key) {
       logger.debug("API key verification failed");
+      SentryTracker.trackLoginFailure("invalid_api_key");
       return null;
     }
 
@@ -118,6 +120,9 @@ export async function verifyApiKey(
       .update(apiKeyTable)
       .set({ lastRequest: new Date() })
       .where(eq(apiKeyTable.id, keyRecord.id));
+
+    // Track successful login
+    SentryTracker.trackLogin(keyRecord.userId, "api_key");
 
     return {
       id: keyRecord.id,
@@ -210,8 +215,12 @@ export async function verifySessionFromHeaders(headers: Headers): Promise<{
     const session = await auth.api.getSession({ headers });
 
     if (!session || !session.user || !session.session) {
+      SentryTracker.trackLoginFailure("invalid_session");
       return null;
     }
+
+    // Track successful login
+    SentryTracker.trackLogin(session.user.id, "session");
 
     return {
       user: {
@@ -234,6 +243,7 @@ export async function verifySessionFromHeaders(headers: Headers): Promise<{
     };
   } catch (error) {
     logger.error("Failed to verify session from headers", error);
+    SentryTracker.trackLoginFailure("session_error");
     return null;
   }
 }

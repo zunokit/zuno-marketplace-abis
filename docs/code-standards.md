@@ -435,6 +435,268 @@ throw new Error('Not found');
 throw new Error('Invalid input');
 ```
 
+### Sentry Integration
+
+**Error Reporting**:
+```typescript
+// ✅ CORRECT - Capture exceptions with context
+import * as Sentry from "@sentry/nextjs";
+
+export async function GET(request: Request) {
+  try {
+    const result = await someOperation();
+    return ApiWrapper.success(result);
+  } catch (error) {
+    // Capture error with Sentry
+    Sentry.captureException(error, {
+      tags: {
+        component: "abi-api",
+        operation: "get-abi",
+      },
+      extra: {
+        url: request.url,
+        method: request.method,
+      },
+    });
+
+    if (error instanceof DomainError) {
+      return ApiWrapper.error(error.code, error.message, error.statusCode);
+    }
+    return ApiWrapper.error('INTERNAL_ERROR', 'Internal server error', 500);
+  }
+}
+```
+
+**Process Error Handler (Phase 2)**:
+```typescript
+// ✅ CORRECT - Initialize process error handler at app startup
+// In instrumentation.ts or server entry point
+import { initProcessErrorHandler } from "@/shared/lib/errors/process-error-handler";
+
+initProcessErrorHandler({
+  exitOnUncaughtException: true,  // Exit on fatal errors in production
+  exitOnUnhandledRejection: false, // Log but continue for promise rejections
+  gracePeriodMs: 5000,             // Allow cleanup before exit
+  onError: (error, type) => {
+    // Custom error handling ( Sentry already notified internally)
+    console.error(`Process error (${type}):`, error);
+  },
+});
+```
+
+**User Context Tracking (Phase 2)**:
+```typescript
+// ✅ CORRECT - Set user context on authentication (automatically done in api-handler.ts)
+// API Key authentication
+Sentry.setUser({
+  id: apiKey.userId,
+  apiKey: apiKey.id,
+  scopes: apiKey.scopes,
+});
+
+// Session authentication
+Sentry.setUser({
+  id: sessionData.user.id,
+  email: sessionData.user.email,
+  role: sessionData.user.role,
+});
+
+// Clear context on logout
+Sentry.setUser(null);
+```
+
+**API Error Capture (Phase 2)**:
+```typescript
+// ✅ CORRECT - Non-blocking error capture in API handler
+// Automatically handled in src/shared/lib/api/api-handler.ts
+
+// For API errors (captured non-blocking in production):
+if (process.env.NODE_ENV === "production") {
+  Promise.resolve().then(() =>
+    Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        errorCode: apiError.code,
+        statusCode: apiError.statusCode.toString(),
+      },
+      extra: {
+        details: apiError.details,
+        path: request.nextUrl.pathname,
+        method: request.method,
+      },
+    })
+  ).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+}
+
+// For unexpected errors:
+Promise.resolve().then(() =>
+  Sentry.captureException(error, {
+    level: "error",
+    tags: {
+      errorType: "unexpected",
+    },
+    extra: {
+      path: request.nextUrl.pathname,
+      method: request.method,
+    },
+  })
+).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+```
+
+**Operational Error Filtering**:
+```typescript
+// ✅ CORRECT - Don't report operational errors to Sentry
+const SKIP_ERROR_PATTERNS = [
+  "RATE_LIMITED",      // Expected user behavior
+  "VALIDATION_ERROR",  // Bad input
+  "UNAUTHORIZED",      // Auth failure
+  "FORBIDDEN",         // Permission denied
+  "NOT_FOUND",         // Resource missing
+];
+
+// Sentry's beforeSend hook filters these automatically
+// See sentry.server.config.ts
+```
+
+**Custom Context with Sentry**:
+```typescript
+// ✅ CORRECT - Add custom context for debugging
+Sentry.captureException(error, {
+  user: {
+    id: userId,
+    email: userEmail,
+  },
+  tags: {
+    tier: apiTier,
+    network: contractNetwork,
+  },
+  extra: {
+    contractAddress: address,
+    abiId: abiId,
+    requestId: requestId,
+  },
+  level: "error",
+});
+```
+
+**Performance Monitoring**:
+```typescript
+// ✅ CORRECT - Track performance with transactions
+import * as Sentry from "@sentry/nextjs";
+
+async function processAbiCreation(abiData: AbiInput) {
+  // Start a performance transaction
+  return await Sentry.startSpan(
+    { name: "process_abi_creation", op: "abi.create" },
+    async (span) => {
+      // Child span for IPFS operation
+      const ipfsHash = await Sentry.startSpan(
+        { name: "pin_to_ipfs", op: "ipfs.pin" },
+        async () => await ipfsService.pin(abiData)
+      );
+
+      // Child span for database operation
+      const abi = await Sentry.startSpan(
+        { name: "save_to_db", op: "db.insert" },
+        async () => await abiRepository.save(abiData)
+      );
+
+      return { ipfsHash, abi };
+    }
+  );
+}
+```
+
+**Breadcrumbs for Debugging**:
+```typescript
+// ✅ CORRECT - Use SentryTracker for consistent breadcrumb management
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
+
+// Add breadcrumb before operation
+SentryTracker.addBreadcrumb("abi", "Starting ABI validation", "info");
+
+// Add breadcrumb with data
+SentryTracker.addBreadcrumb("abi", "ABI validation passed", "info", {
+  abiSize: abiData.length,
+  functionCount: abiData.filter(f => f.type === "function").length,
+});
+
+// When error occurs, breadcrumbs help trace the execution path
+```
+
+**User Action Tracking (Phase 4)**:
+```typescript
+// ✅ CORRECT - Track user actions via SentryTracker helper methods
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
+
+// Track authentication events
+SentryTracker.trackLogin(userId, "api_key");        // API key authentication
+SentryTracker.trackLogin(userId, "session");        // Session authentication
+SentryTracker.trackLogout(userId);                  // Logout event
+SentryTracker.trackLoginFailure("invalid_key");     // Failed login attempt
+
+// Track ABI operations
+SentryTracker.trackAbiViewed(abiId);                // ABI details viewed
+SentryTracker.trackAbiListed(filters);              // ABI list viewed
+SentryTracker.trackAbiCreated({ abiId, network });  // ABI created successfully
+SentryTracker.trackAbiUpdated(abiId, changes);      // ABI updated
+SentryTracker.trackAbiDeleted(abiId);               // ABI deleted
+SentryTracker.trackAbiVersionsViewed(abiId);        // ABI versions viewed
+
+// Track contract operations
+SentryTracker.trackContractViewed(address, network);     // Contract viewed
+SentryTracker.trackContractRegistered(address, network); // Contract registered
+SentryTracker.trackContractUpdated(address);             // Contract updated
+SentryTracker.trackContractDeleted(address);             // Contract deleted
+
+// Track admin operations
+SentryTracker.trackApiKeysListed();              // API keys list viewed
+SentryTracker.trackApiKeyCreated(tier);          // API key created
+SentryTracker.trackApiKeyDeleted(keyId);         // API key deleted
+SentryTracker.trackNetworksModified(action, id); // Network modified
+
+// Track errors with context
+SentryTracker.trackError("category", "message", error);
+
+// Track rate limit and cache operations
+SentryTracker.trackRateLimitHit(endpoint, tier);  // Rate limit hit
+SentryTracker.trackCacheHit(key);                 // Cache hit
+SentryTracker.trackCacheMiss(key);                // Cache miss
+```
+
+**Request Context Management (Phase 4)**:
+```typescript
+// ✅ CORRECT - Initialize and clear request context (handled in api-handler.ts)
+import { initRequestContext, clearRequestContext } from "@/infrastructure/monitoring/sentry-tracker";
+
+// At the start of each API request:
+initRequestContext(requestId, path);
+
+// At the end of each API request (in finally block):
+clearRequestContext();
+```
+
+**Breadcrumb Categories**:
+```typescript
+// Standard breadcrumb categories used throughout the application:
+"auth"      - Authentication events (login, logout, failures)
+"abi"       - ABI operations (create, update, delete, view)
+"contract"  - Contract operations (register, view, update, delete)
+"admin"     - Admin operations (API keys, networks)
+"http"      - HTTP requests (method, path)
+"ratelimit" - Rate limit events (hits, warnings)
+"cache"     - Cache operations (hits, misses)
+"error"     - Error events with context
+```
+
+**Replay Integration (Phase 2)**:
+```typescript
+// Session replay configuration (enabled in Phase 2)
+// See sentry.server.config.ts
+replaysSessionSampleRate: 0,           // Normal session sampling (disabled)
+replaysOnErrorSampleRate: 0.1,         // Capture replay on errors (10%)
+```
+
 ### Error Handling in API Routes
 
 ```typescript
@@ -463,6 +725,66 @@ export async function GET(request: Request) {
   return Response.json(abi);
 }
 ```
+
+---
+
+## Temporary Testing Code
+
+### Test Endpoints Pattern
+
+When creating temporary endpoints for manual testing or validation:
+
+```typescript
+// ✅ CORRECT - Clear documentation for temporary code
+/**
+ * Test Alert Endpoint
+ *
+ * TEMPORARY ENDPOINT FOR SENTRY ALERT TESTING
+ *
+ * This endpoint sends a test exception to Sentry to verify alert delivery.
+ * Use this to test Slack notifications, GitHub issue creation, and email alerts.
+ *
+ * DELETE THIS ENDPOINT AFTER TESTING (see phase-05-alerts.md Test 5.3)
+ *
+ * Usage: GET /api/test-alert
+ *
+ * Expected behavior:
+ * - Sentry captures the exception
+ * - Slack receives notification (if configured)
+ * - GitHub issue created (if configured)
+ * - Email alert sent (if configured)
+ */
+
+export async function GET() {
+  // Capture test exception in Sentry
+  Sentry.captureException(new Error("Test alert - please ignore"), {
+    tags: { test: "true", phase: "05-alerts" },
+  });
+
+  return NextResponse.json({
+    test: "alert-sent",
+    message: "Test exception sent to Sentry. Check your dashboard for alerts.",
+    instructions: [
+      "1. Check Sentry dashboard for new issue",
+      "2. Verify Slack notification received",
+      "3. Verify GitHub issue created",
+      "4. Verify email notification sent",
+      "5. Delete this endpoint after testing",
+    ],
+  });
+}
+```
+
+**Requirements for temporary test code**:
+1. **Top-of-file warning**: "TEMPORARY ENDPOINT FOR..." comment block
+2. **Clear deletion instructions**: Reference the plan/file that documents cleanup
+3. **Return usage instructions**: Include expected behavior and verification steps
+4. **Use descriptive test tags**: Sentry tags like `{ test: "true", phase: "..." }`
+5. **Delete after validation**: Remove endpoints once alerts verified working
+
+**Locations**:
+- `src/app/api/test-alert/route.ts` - Error alert testing
+- `src/app/api/test-slow/route.ts` - Performance alert testing
 
 ---
 
@@ -518,7 +840,6 @@ describe('AbiTest', () => {
 
 - **Unit Tests**: >80% code coverage
 - **Integration Tests**: All API endpoints
-- **E2E Tests**: Critical user flows
 - **Skipped Tests**: Mark with `.skip` and add comment with issue/reason
 
 ```typescript
@@ -901,6 +1222,11 @@ export const env = {
   REDIS_URL: process.env.UPSTASH_REDIS_REST_URL!,
   PINATA_JWT: process.env.PINATA_JWT!,
   NODE_ENV: process.env.NODE_ENV || 'development',
+  // Sentry environment variables
+  SENTRY_DSN: process.env.SENTRY_DSN,
+  SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+  SENTRY_ORG: process.env.SENTRY_ORG,
+  SENTRY_PROJECT: process.env.SENTRY_PROJECT,
 };
 
 // Validation happens at module load time
@@ -911,6 +1237,23 @@ if (!env.DATABASE_URL) {
 // ❌ INCORRECT - No validation
 const dbUrl = process.env.DATABASE_URL; // Could be undefined
 ```
+
+### Sentry Configuration
+
+**Environment Variables** (via Vercel Integration):
+```
+SENTRY_DSN           - Data Source Name (auto-configured by Vercel)
+SENTRY_AUTH_TOKEN    - Auth token (auto-configured by Vercel)
+SENTRY_ORG           - Organization slug (auto-configured by Vercel)
+SENTRY_PROJECT       - Project name (auto-configured by Vercel)
+```
+
+**Configuration Files**:
+- `sentry.server.config.ts` - Server-side configuration
+- `sentry.client.config.ts` - Client-side configuration
+- `sentry.edge.config.ts` - Edge runtime configuration
+- `.sentryclirc` - Sentry CLI configuration
+- `next.config.ts` - Wrapped with `withSentryConfig`
 
 ### Feature Flags
 

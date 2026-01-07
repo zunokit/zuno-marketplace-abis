@@ -1,0 +1,5 @@
+[defaults]
+project=zuno-marketplace-abis
+
+[auth]
+token=

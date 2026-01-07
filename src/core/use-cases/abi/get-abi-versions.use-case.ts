@@ -5,6 +5,7 @@ import {
 } from "@/core/domain/abi/abi.entity";
 import { AbiRepository } from "@/core/domain/abi/abi.repository";
 import { CacheService, CacheKeys } from "@/infrastructure/cache/cache.adapter";
+import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 export interface GetAbiVersionsUseCaseInput {
   abiId: string;
@@ -24,6 +25,9 @@ export class GetAbiVersionsUseCase {
   ) {}
 
   async execute(input: GetAbiVersionsUseCaseInput): Promise<GetAbiVersionsUseCaseOutput> {
+    // Track ABI versions viewed
+    SentryTracker.trackAbiVersionsViewed(input.abiId);
+
     // 1. Find the ABI
     const abi = await this.abiRepository.findById(input.abiId);
     if (!abi) {

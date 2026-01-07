@@ -13,6 +13,14 @@ import os
 import sys
 from pathlib import Path
 
+# Fix Windows console encoding for Unicode output (emojis, arrows)
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except AttributeError:
+        pass  # Python < 3.7
+
 # Color codes for terminal output
 GREEN = '\033[92m'
 YELLOW = '\033[93m'
@@ -289,7 +297,13 @@ def main():
         print_info("\nNext steps:")
         print("  • Read SKILL.md for usage examples")
         print("  • Try: python scripts/gemini_batch_process.py --help")
-        print("  • Generate image: python scripts/gemini_batch_process.py --task generate --prompt 'A sunset' --model gemini-2.5-flash-image")
+        print("\nImage generation models:")
+        print("  • gemini-2.5-flash-image    - Nano Banana Flash (DEFAULT - fast)")
+        print("  • imagen-4.0-generate-001   - Imagen 4 (alternative - production)")
+        print("  • gemini-3-pro-image-preview - Nano Banana Pro (4K text, reasoning)")
+        print("\nExample (uses default model):")
+        print("  python scripts/gemini_batch_process.py --task generate \\")
+        print("    --prompt 'A sunset over mountains' --aspect-ratio 16:9 --size 2K")
     else:
         print_error("❌ Some checks failed. Please fix the issues above.")
         sys.exit(1)
