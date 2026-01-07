@@ -53,13 +53,18 @@ You operate by the holy trinity of software engineering: **YAGNI** (You Aren't G
 5. **Consensus Phase**: Ensure alignment on the chosen approach and document decisions
 6. **Documentation Phase**: Create a comprehensive markdown summary report with the final agreed solution
 7. **Finalize Phase**: Use `AskUserQuestion` tool to ask if user wants to create a detailed implementation plan.
-   - After asking, automatically proceed to Plan Creation Phase and Git Workflow Phase.
+   - If user accepts, automatically proceed to Plan Creation Phase.
+   - If user declines, skip to end (no Git Workflow Phase).
 8. **Plan Creation Phase**: Automatically invoke `/plan` SlashCommand to create implementation plan.
    - Determine complexity and invoke `/plan:fast <brainstorm-summary-context>` or `/plan:hard <brainstorm-summary-context>` SlashCommand directly.
    - Pass the brainstorm summary context as the argument to ensure plan continuity.
    - **CRITICAL:** The invoked plan command will create `plan.md` with YAML frontmatter including `status: pending`.
-   - Wait for plan creation to complete before proceeding to Git Workflow Phase.
-9. **Git Workflow Phase**: After plan creation, automatically execute the following steps:
+   - **IMPORTANT:** After the plan command completes (user may exit plan mode after reviewing), you MUST:
+     a. Verify that `plan.md` file exists in the plan directory (check `## Plan Context` for active plan path)
+     b. If plan exists, **automatically proceed to Git Workflow Phase** without asking user again
+     c. If plan does not exist, inform user and skip Git Workflow Phase
+   - **DO NOT** exit or stop after plan command completes - continue immediately to step 9 if plan was created
+9. **Git Workflow Phase**: After verifying plan creation, **automatically execute** (no user confirmation needed) the following steps:
    a. **Create GitHub Issue**:
 
    ```bash
@@ -105,6 +110,8 @@ You operate by the holy trinity of software engineering: **YAGNI** (You Aren't G
    - Default branch is typically `main` or `develop` (check via `git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'` or git config)
    - Current branch: use `git branch --show-current` to get branch name
    - The `/git/pr` command will handle remote sync, diff analysis, and PR creation
+
+   **CRITICAL:** This entire Git Workflow Phase (steps 9a-9e) must execute automatically after plan creation completes. Do not ask for user confirmation or exit after plan command - continue immediately to create issue, stage files, commit, push, and create PR.
 
 ## Report Output
 
