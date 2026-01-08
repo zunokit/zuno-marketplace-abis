@@ -55,12 +55,8 @@ jobs:
           echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
           pnpm exec tsx scripts/backup/create-backup.ts
         env:
-          # CRITICAL: These secrets MUST be configured in GitHub repository settings
+          # CRITICAL: This secret MUST be configured in GitHub repository settings
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          PINATA_JWT: ${{ secrets.PINATA_JWT }}
-          PINATA_GATEWAY_URL: ${{ secrets.PINATA_GATEWAY_URL }}
 
       - name: Compress backup
         id: compress
@@ -284,10 +280,8 @@ jobs:
       - name: Check database connectivity
         run: pnpm exec tsx scripts/health-check.ts
         env:
-          # CRITICAL: These secrets MUST be configured in GitHub repository settings
+          # CRITICAL: This secret MUST be configured in GitHub repository settings
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
       - name: Notify health check results
         if: failure()
