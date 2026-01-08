@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   PNPM_VERSION: "10"
 
 jobs:
@@ -15,6 +15,9 @@ jobs:
     name: Backup Database
     runs-on: ubuntu-latest
     environment: production
+
+    # Timeout for the entire job (30 minutes)
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -47,43 +50,192 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Create database backup
-        run: pnpm exec tsx scripts/backup/create-backup.ts
+        id: backup
+        run: |
+          echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+          pnpm exec tsx scripts/backup/create-backup.ts
         env:
+          # CRITICAL: This secret MUST be configured in GitHub repository settings
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          PINATA_JWT: ${{ secrets.PINATA_JWT }}
-          PINATA_GATEWAY_URL: ${{ secrets.PINATA_GATEWAY_URL }}
+
+      - name: Compress backup
+        id: compress
+        run: |
+          # Compress the backup file with gzip (maximum compression)
+          gzip -9 backups/backup-*.json
+
+          # Get file sizes
+          COMPRESSED_SIZE=$(du -h backups/backup-*.json.gz | cut -f1)
+          ORIGINAL_SIZE=$(du -h backups/backup-*.json | cut -f1)
+
+          # Export sizes as environment variables
+          echo "COMPRESSED_SIZE=${COMPRESSED_SIZE}" >> $GITHUB_ENV
+          echo "ORIGINAL_SIZE=${ORIGINAL_SIZE}" >> $GITHUB_ENV
+
+          # Export to outputs for use in subsequent steps
+          echo "compressed_size=${COMPRESSED_SIZE}" >> $GITHUB_OUTPUT
+          echo "original_size=${ORIGINAL_SIZE}" >> $GITHUB_OUTPUT
+
+          # Calculate compression ratio
+          COMPRESSED_BYTES=$(du -b backups/backup-*.json.gz | cut -f1)
+          ORIGINAL_BYTES=$(du -b backups/backup-*.json | cut -f1)
+          RATIO=$(echo "scale=1; 100 - ($COMPRESSED_BYTES * 100 / $ORIGINAL_BYTES)" | bc)
+          echo "compression_ratio=${RATIO}%" >> $GITHUB_OUTPUT
+
+          echo "✅ Backup compressed successfully"
+          echo "   Original: ${ORIGINAL_SIZE}"
+          echo "   Compressed: ${COMPRESSED_SIZE}"
+          echo "   Reduction: ${RATIO}%"
+
+      - name: Collect backup metrics
+        id: metrics
+        run: |
+          # Calculate duration
+          START_TIME=${{ steps.backup.outputs.start_time }}
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+
+          # Extract record counts from backup metadata
+          TOTAL_RECORDS=$(jq '.metadata.totalRecords' backups/backup-*.json)
+
+          # Get table breakdown
+          NETWORKS=$(jq '.metadata.tables.networks' backups/backup-*.json)
+          ABIS=$(jq '.metadata.tables.abis' backups/backup-*.json)
+          CONTRACTS=$(jq '.metadata.tables.contracts' backups/backup-*.json)
+          USERS=$(jq '.metadata.tables.users' backups/backup-*.json)
+          API_KEYS=$(jq '.metadata.tables.apiKeys' backups/backup-*.json)
+
+          # Export metrics
+          echo "duration=${DURATION}s" >> $GITHUB_OUTPUT
+          echo "total_records=${TOTAL_RECORDS}" >> $GITHUB_OUTPUT
+          echo "networks=${NETWORKS}" >> $GITHUB_OUTPUT
+          echo "abis=${ABIS}" >> $GITHUB_OUTPUT
+          echo "contracts=${CONTRACTS}" >> $GITHUB_OUTPUT
+          echo "users=${USERS}" >> $GITHUB_OUTPUT
+          echo "api_keys=${API_KEYS}" >> $GITHUB_OUTPUT
+
+          echo "📊 Backup metrics collected"
+          echo "   Duration: ${DURATION}s"
+          echo "   Total records: ${TOTAL_RECORDS}"
+
+      - name: Calculate backup checksum
+        id: checksum
+        run: |
+          # Generate SHA256 checksum for integrity verification
+          CHECKSUM=$(sha256sum backups/backup-*.json.gz | awk '{print $1}')
+          echo "checksum=${CHECKSUM}" >> $GITHUB_OUTPUT
+          echo "🔐 Checksum: ${CHECKSUM}"
 
       - name: Upload backup to cloud storage
         uses: actions/upload-artifact@v4
         with:
-          name: db-backup-${{ github.run_number }}
-          path: backups/
+          name: db-backup-${{ github.run_number }}.gz
+          path: backups/*.gz
           retention-days: 30
+          if-no-files-found: error
 
-      - name: Notify backup completion
+      - name: Notify backup success
         if: success()
-        uses: 8398a7/action-slack@v3
+        uses: slackapi/slack-github-action@v2.0.0
         with:
-          status: success
-          text: "✅ Database backup completed successfully"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "✅ Database backup completed successfully"
+            blocks:
+              - type: "header"
+                text:
+                  type: "plain_text"
+                  text: "✅ Database Backup - Success"
+                  emoji: true
+              - type: "context"
+                elements:
+                  - type: "mrkdwn"
+                    text: |-
+                      *Repository:* ${{ github.repository }}
+                      *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|#${{ github.run_number }}>
+                      *Triggered by:* ${{ github.actor }}
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: |-
+                      *Size:*
+                      ${{ steps.compress.outputs.compressed_size }} (from ${{ steps.compress.outputs.original_size }})
+                  - type: "mrkdwn"
+                    text: |-
+                      *Compression:*
+                      ${{ steps.compress.outputs.compression_ratio }} reduction"
+                  - type: "mrkdwn"
+                    text: |-
+                      *Duration:*
+                      ${{ steps.metrics.outputs.duration }}"
+                  - type: "mrkdwn"
+                    text: |-
+                      *Records:*
+                      ${{ steps.metrics.outputs.total_records }} total"
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |-
+                    *Table Breakdown:*
+                    • Networks: ${{ steps.metrics.outputs.networks }}
+                    • ABIs: ${{ steps.metrics.outputs.abis }}
+                    • Contracts: ${{ steps.metrics.outputs.contracts }}
+                    • Users: ${{ steps.metrics.outputs.users }}
+                    • API Keys: ${{ steps.metrics.outputs.api_keys }}"
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |-
+                    *Checksum:* `${{ steps.checksum.outputs.checksum }}`
+                    <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|📥 Download Backup>"
+              - type: "context"
+                elements:
+                  - type: "mrkdwn"
+                    text: "|_Scheduled workflow ran at `$(date -u +'%Y-%m-%d %H:%M:%S UTC')`_|"
 
       - name: Notify backup failure
         if: failure()
-        uses: 8398a7/action-slack@v3
+        uses: slackapi/slack-github-action@v2.0.0
         with:
-          status: failure
-          text: "❌ Database backup failed"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "❌ Database backup failed"
+            blocks:
+              - type: "header"
+                text:
+                  type: "plain_text"
+                  text: "❌ Database Backup - Failed"
+                  emoji: true
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |-
+                    *Repository:* ${{ github.repository }}
+                    *Workflow:* ${{ github.workflow }}
+                    *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|#${{ github.run_number }}>
+                    *Actor:* ${{ github.actor }}
+                    *Branch:* ${{ github.ref_name }}"
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |-
+                    *Error Details:*
+                    Check the workflow logs for more information:
+                    <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+              - type: "context"
+                elements:
+                  - type: "mrkdwn"
+                    text: "|_Failed at $(date -u +'%Y-%m-%d %H:%M:%S UTC')_|"
 
   health-check:
     name: System Health Check
     runs-on: ubuntu-latest
     environment: production
+
+    # Timeout for the entire job (15 minutes)
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -128,15 +280,39 @@ jobs:
       - name: Check database connectivity
         run: pnpm exec tsx scripts/health-check.ts
         env:
+          # CRITICAL: This secret MUST be configured in GitHub repository settings
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
       - name: Notify health check results
         if: failure()
-        uses: 8398a7/action-slack@v3
+        uses: slackapi/slack-github-action@v2.0.0
         with:
-          status: failure
-          text: "⚠️ System health check detected issues"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "⚠️ System health check detected issues"
+            blocks:
+              - type: "header"
+                text:
+                  type: "plain_text"
+                  text: "⚠️ Health Check - Issues Detected"
+                  emoji: true
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |-
+                    *Repository:* ${{ github.repository }}
+                    *Workflow:* ${{ github.workflow }}
+                    *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|#${{ github.run_number }}>
+                    *Actor:* ${{ github.actor }}"
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |-
+                    *Action Required:*
+                    Check the workflow logs for health check failure details:
+                    <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+              - type: "context"
+                elements:
+                  - type: "mrkdwn"
+                    text: "|_Health check failed at $(date -u +'%Y-%m-%d %H:%M:%S UTC')_|"
