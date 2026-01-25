@@ -169,19 +169,28 @@ export class UserSeeder implements Seeder {
       // Use fixed ID for public user
       const publicUserId = env.PUBLIC_API_USER_ID || "usr_v1_public_system";
 
-      await context.db.insert(user).values({
-        id: publicUserId,
-        email: "public@zuno.marketplace",
-        emailVerified: true,
-        name: "Public API User",
-        image: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        role: "user",
-        banned: true, // Prevent login - this user is for API keys only
-        banReason: "System account - API keys only. Direct login is not permitted.",
-        banExpires: null, // Permanent ban
-      });
+      const [inserted] = await context.db
+        .insert(user)
+        .values({
+          id: publicUserId,
+          email: "public@zuno.marketplace",
+          emailVerified: true,
+          name: "Public API User",
+          image: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          role: "user",
+          banned: true, // Prevent login - this user is for API keys only
+          banReason: "System account - API keys only. Direct login is not permitted.",
+          banExpires: null, // Permanent ban
+        })
+        .onConflictDoNothing({ target: user.email })
+        .returning();
+
+      if (!inserted) {
+        context.logger?.info("Public user already exists, skipping...");
+        return false;
+      }
 
       context.logger?.info(`Created public user: ${publicUserId}`);
       context.logger?.info(
@@ -275,11 +284,16 @@ Password: ${credentials.password}
   }
 
   private isUniqueConstraintError(error: any): boolean {
+    // PostgreSQL error code 23505 = unique_violation
+    if (error?.code === "23505") return true;
     const message = error.message?.toLowerCase() || "";
+    const causeMessage = error?.cause?.message?.toLowerCase() || "";
     return (
       message.includes("duplicate key") ||
       message.includes("unique constraint") ||
-      message.includes("already exists")
+      message.includes("already exists") ||
+      causeMessage.includes("duplicate key") ||
+      causeMessage.includes("unique constraint")
     );
   }
 }
