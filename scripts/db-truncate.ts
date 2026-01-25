@@ -19,7 +19,7 @@ const TABLES_TO_TRUNCATE = [
   // Middle level
   'abis',
   'api_versions',
-  'rate_limits',
+  'rate_limit',
   
   // Auth tables
   'session',
