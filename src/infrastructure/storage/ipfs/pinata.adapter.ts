@@ -1,6 +1,10 @@
 import { IPFSClient } from "./ipfs.client";
 import { logger } from "@/shared/lib/utils/logger";
 import { tracedExternalCall } from "@/infrastructure/monitoring/sentry-span";
+import { env } from "@/shared/config/env";
+
+// App identifier for Pinata file tagging (enables safe cleanup)
+const APP_NAME = "zuno-marketplace-abis";
 
 export interface StoragePort {
   store(data: unknown, metadata?: Record<string, unknown>): Promise<{ hash: string; url: string; groupId?: string } | null>;
@@ -21,6 +25,14 @@ export class PinataAdapter implements StoragePort {
     data: unknown,
     metadata?: Record<string, unknown>
   ): Promise<{ hash: string; url: string; groupId?: string } | null> {
+    // Early return if Pinata uploads disabled
+    if (!env.PINATA_UPLOAD_ENABLED) {
+      logger.warn("Pinata upload disabled via PINATA_UPLOAD_ENABLED env variable", {
+        name: metadata?.name,
+      });
+      return null;
+    }
+
     return tracedExternalCall("pinata", "pin", async () => {
       const ipfsMetadata = {
         name: metadata?.name as string,
@@ -98,6 +110,7 @@ export class IPFSStorageService {
       description: `ABI for ${contractName}`,
       groupName: metadata.groupName, // Group for organization
       keyvalues: {
+        appName: APP_NAME, // App identifier for safe cleanup
         type: "abi",
         name: metadata.name,
         contractName,
@@ -133,6 +146,7 @@ export class IPFSStorageService {
       name: `${metadata.name} - v${metadata.version}`,
       description: `ABI version ${metadata.version} for ${metadata.name}`,
       keyvalues: {
+        appName: APP_NAME, // App identifier for safe cleanup
         type: "abi-version",
         name: metadata.name,
         version: metadata.version,
