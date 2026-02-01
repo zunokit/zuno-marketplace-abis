@@ -35,7 +35,10 @@ import { appConfig } from "@/shared/config/app.config";
 import { getAuditLogRepository } from "@/infrastructure/di/container";
 import { AuditLogService } from "@/core/services/audit-log/audit-log.service";
 import { constantTimeCompare } from "@/shared/lib/utils/compare-string";
-import { initRequestContext, clearRequestContext } from "@/infrastructure/monitoring/sentry-tracker";
+import {
+  initRequestContext,
+  clearRequestContext,
+} from "@/infrastructure/monitoring/sentry-tracker";
 import { SentryTracker } from "@/infrastructure/monitoring/sentry-tracker";
 
 /**
@@ -69,7 +72,7 @@ export interface ApiContext extends AuthContext {
 
 export type ApiHandler<TInput = unknown, TOutput = unknown> = (
   input: TInput,
-  context: ApiContext
+  context: ApiContext,
 ) => Promise<TOutput>;
 
 export interface ApiRouteConfig {
@@ -96,7 +99,7 @@ export interface ApiRouteConfig {
 export class ApiWrapper {
   static create<TInput = unknown, TOutput = unknown>(
     handler: ApiHandler<TInput, TOutput>,
-    config: ApiRouteConfig = {}
+    config: ApiRouteConfig = {},
   ) {
     return async (
       request: NextRequest,
@@ -113,9 +116,14 @@ export class ApiWrapper {
 
         // 2. Initialize Sentry context and track HTTP request
         initRequestContext(requestId, path);
-        SentryTracker.addBreadcrumb("http", `${request.method} ${path}`, "info", {
-          requestId,
-        });
+        SentryTracker.addBreadcrumb(
+          "http",
+          `${request.method} ${path}`,
+          "info",
+          {
+            requestId,
+          },
+        );
 
         // 3. Parse and validate request data
         const params = context?.params ? await context.params : {};
@@ -123,7 +131,7 @@ export class ApiWrapper {
           request,
           config.validation,
           params,
-          config.bodySize
+          config.bodySize,
         );
 
         // 3. Create API context
@@ -153,15 +161,15 @@ export class ApiWrapper {
         if (apiContext.rateLimit) {
           response.headers.set(
             "X-RateLimit-Limit",
-            apiContext.rateLimit.limit.toString()
+            apiContext.rateLimit.limit.toString(),
           );
           response.headers.set(
             "X-RateLimit-Remaining",
-            apiContext.rateLimit.remaining.toString()
+            apiContext.rateLimit.remaining.toString(),
           );
           response.headers.set(
             "X-RateLimit-Reset",
-            apiContext.rateLimit.reset.toString()
+            apiContext.rateLimit.reset.toString(),
           );
         }
 
@@ -180,7 +188,7 @@ export class ApiWrapper {
           { request, requestId } as ApiContext,
           statusCode,
           startTime,
-          error
+          error,
         );
 
         return this.handleError(error, request);
@@ -196,7 +204,7 @@ export class ApiWrapper {
     request: NextRequest,
     validation?: ApiRouteConfig["validation"],
     routeParams: Record<string, string> = {},
-    bodySizeConfig?: ApiRouteConfig["bodySize"]
+    bodySizeConfig?: ApiRouteConfig["bodySize"],
   ) {
     const url = new URL(request.url);
     const method = request.method;
@@ -221,7 +229,7 @@ export class ApiWrapper {
         if (size > maxBytes) {
           throw new ApiError(
             `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
-              maxBytes / 1024
+              maxBytes / 1024,
             )}KB)`,
             ErrorCode.VALIDATION_ERROR,
             413,
@@ -230,7 +238,7 @@ export class ApiWrapper {
               actualSize: size,
               maxSizeFormatted: `${Math.round(maxBytes / 1024)}KB`,
               actualSizeFormatted: `${Math.round(size / 1024)}KB`,
-            }
+            },
           );
         }
       }
@@ -245,7 +253,7 @@ export class ApiWrapper {
           if (actualSize > maxBytes) {
             throw new ApiError(
               `Request body too large. Maximum size: ${maxBytes} bytes (${Math.round(
-                maxBytes / 1024
+                maxBytes / 1024,
               )}KB)`,
               ErrorCode.VALIDATION_ERROR,
               413,
@@ -254,7 +262,7 @@ export class ApiWrapper {
                 actualSize,
                 maxSizeFormatted: `${Math.round(maxBytes / 1024)}KB`,
                 actualSizeFormatted: `${Math.round(actualSize / 1024)}KB`,
-              }
+              },
             );
           }
 
@@ -311,7 +319,7 @@ export class ApiWrapper {
 
   private static async handleAuth(
     context: ApiContext,
-    authConfig?: ApiRouteConfig["auth"]
+    authConfig?: ApiRouteConfig["auth"],
   ) {
     const { request } = context;
     let authenticated = false;
@@ -363,7 +371,7 @@ export class ApiWrapper {
                 {
                   ip: clientIp,
                   origin,
-                }
+                },
               );
               const rateLimit = unwrapOrThrow(rateLimitResult);
               context.rateLimit = {
@@ -418,7 +426,7 @@ export class ApiWrapper {
     if (!authenticated && authConfig?.allowSession !== false) {
       // Let Better Auth's bearer plugin/cookies handle it via headers
       const sessionData = await verifySessionFromHeaders(
-        request.headers as any
+        request.headers as any,
       );
 
       if (sessionData) {
@@ -445,7 +453,7 @@ export class ApiWrapper {
       throw new ApiError(
         "Authentication required. Provide a valid API key or session.",
         ErrorCode.UNAUTHORIZED,
-        401
+        401,
       );
     }
 
@@ -457,7 +465,7 @@ export class ApiWrapper {
     ) {
       const hasRequiredPermissions = hasPermission(
         context,
-        authConfig.requiredPermissions
+        authConfig.requiredPermissions,
       );
 
       if (!hasRequiredPermissions) {
@@ -470,10 +478,10 @@ export class ApiWrapper {
 
         throw new ApiError(
           `Insufficient permissions. Required: ${authConfig.requiredPermissions.join(
-            ", "
+            ", ",
           )}`,
           ErrorCode.FORBIDDEN,
-          403
+          403,
         );
       }
     }
@@ -481,7 +489,7 @@ export class ApiWrapper {
 
   private static handleError(
     error: unknown,
-    request: NextRequest
+    request: NextRequest,
   ): NextResponse {
     // Convert all errors to ApiError for consistent handling
     let apiError: ApiError;
@@ -491,20 +499,24 @@ export class ApiWrapper {
 
       // Send to Sentry for API errors in production (non-blocking)
       if (process.env.NODE_ENV === "production") {
-        Promise.resolve().then(() =>
-          Sentry.captureException(error, {
-            level: "error",
-            tags: {
-              errorCode: apiError.code,
-              statusCode: apiError.statusCode.toString(),
-            },
-            extra: {
-              details: apiError.details,
-              path: request.nextUrl.pathname,
-              method: request.method,
-            },
-          })
-        ).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+        Promise.resolve()
+          .then(() =>
+            Sentry.captureException(error, {
+              level: "error",
+              tags: {
+                errorCode: apiError.code,
+                statusCode: apiError.statusCode.toString(),
+              },
+              extra: {
+                details: apiError.details,
+                path: request.nextUrl.pathname,
+                method: request.method,
+              },
+            }),
+          )
+          .catch((e) =>
+            logger.debug("Failed to send error to Sentry", { error: e }),
+          );
       }
     } else if (error instanceof z.ZodError) {
       // Convert Zod validation errors to ApiError
@@ -512,7 +524,7 @@ export class ApiWrapper {
         "Validation failed. Please check your input.",
         ErrorCode.VALIDATION_ERROR,
         400,
-        { issues: error.issues }
+        { issues: error.issues },
       );
     } else if (error instanceof Error) {
       // Check if error has custom code and statusCode properties (e.g., ContractError, AbiError)
@@ -522,29 +534,33 @@ export class ApiWrapper {
           error.message,
           customError.code,
           customError.statusCode,
-          customError.details
+          customError.details,
         );
       } else {
         // Generic error handling - send unexpected errors to Sentry (non-blocking)
         if (process.env.NODE_ENV === "production") {
-          Promise.resolve().then(() =>
-            Sentry.captureException(error, {
-              level: "error",
-              tags: {
-                errorType: "unexpected",
-              },
-              extra: {
-                path: request.nextUrl.pathname,
-                method: request.method,
-              },
-            })
-          ).catch((e) => logger.debug("Failed to send error to Sentry", { error: e }));
+          Promise.resolve()
+            .then(() =>
+              Sentry.captureException(error, {
+                level: "error",
+                tags: {
+                  errorType: "unexpected",
+                },
+                extra: {
+                  path: request.nextUrl.pathname,
+                  method: request.method,
+                },
+              }),
+            )
+            .catch((e) =>
+              logger.debug("Failed to send error to Sentry", { error: e }),
+            );
         }
 
         apiError = new ApiError(
           error.message || "Internal server error",
           ErrorCode.INTERNAL_ERROR,
-          500
+          500,
         );
       }
     } else {
@@ -552,7 +568,7 @@ export class ApiWrapper {
       apiError = new ApiError(
         "An unexpected error occurred",
         ErrorCode.INTERNAL_ERROR,
-        500
+        500,
       );
     }
 
@@ -591,7 +607,7 @@ export class ApiWrapper {
     context: ApiContext,
     statusCode: number,
     startTime: number,
-    error?: Error | unknown
+    error?: Error | unknown,
   ): void {
     try {
       const duration = Date.now() - startTime;
@@ -668,7 +684,7 @@ export class ApiError extends Error {
     message: string,
     public code: ErrorCode,
     public statusCode: number = 500,
-    public details?: unknown
+    public details?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -700,7 +716,7 @@ export const commonSchemas = {
       {
         message: `Pagination offset cannot exceed ${appConfig.api.pagination.maxOffset}. Reduce page number or limit.`,
         path: ["page"],
-      }
+      },
     ),
 
   sort: z.object({
