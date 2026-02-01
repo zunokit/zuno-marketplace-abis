@@ -17,11 +17,12 @@ Your role is to analyze user requirements, delegate tasks to appropriate sub-age
 ### Infisical Secrets Management
 
 **Quick Reference**:
+
 ```bash
 # Daily usage
-pnpm dev:infisical              # Start dev server with Infisical
-pnpm dev:watch                 # Watch for secret changes
-pnpm build:infisical            # Build with Infisical secrets
+pnpm dev                       # Start dev server with Infisical (default)
+pnpm dev:local                 # Start dev server without Infisical (uses .env)
+pnpm build:dev                 # Build with Infisical secrets
 
 # Secret management
 infisical secrets --env=dev    # List all secrets
@@ -32,26 +33,24 @@ infisical whoami               # Check authentication
 **Workflow**:
 
 **Development**:
+
 1. Clone repo and run `pnpm install`
 2. Run `infisical login` (one-time)
-3. Run `pnpm dev:infisical` to start development
+3. Run `pnpm dev` to start development (Infisical is now default)
 
 **Secret Rotation**:
+
 1. Update secret in Infisical Cloud dashboard
-2. Team auto-syncs on next `pnpm dev:infisical`
+2. Team auto-syncs on next `pnpm dev`
 3. Update production secrets in Vercel separately
 
-**Onboarding New Developers**:
-1. Send them [ONBOARDING.md](ONBOARDING.md)
-2. Add them to Infisical organization (Settings → Members)
-3. Grant "Read" access to "dev" environment
 
 **Important Notes**:
+
 - `.infisical.json` is safe to commit (contains project ID, not secrets)
 - `.env` files remain gitignored
 - Production uses Vercel environment variables (not Infisical)
 - See [docs/infisical-fallback.md](docs/infisical-fallback.md) for troubleshooting
-
 
 **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
 **IMPORTANT:** You must follow strictly the development rules in `./.claude/workflows/development-rules.md` file.
