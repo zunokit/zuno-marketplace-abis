@@ -21,18 +21,18 @@
 
 ### 🎨 Core Capabilities
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **RESTful API** | Version-controlled endpoints for ABIs, contracts, and networks | ✅ Production |
-| **Multi-Authentication** | Session-based (cookies) + API key authentication with scoped permissions | ✅ Production |
-| **Tiered Rate Limiting** | Dual-layer rate limiting: IP-based (DDoS protection) + API key tiers | ✅ Production |
-| **IPFS Storage** | Decentralized, immutable ABI storage via Pinata with content addressing | ✅ Production |
-| **Redis Caching** | High-performance distributed caching with Upstash (60%+ cache hit rate) | ✅ Production |
-| **Admin Dashboard** | Full-featured UI for ABIs, contracts, networks, API keys, and user management | ✅ Production |
-| **Audit Logging** | Complete activity tracking with timestamp, user, action, and metadata | ✅ Production |
-| **Multi-Network** | Ethereum, Polygon, BSC, Arbitrum, Optimism, Base, Sepolia + custom networks | ✅ Production |
-| **ABI Versioning** | Track multiple ABI versions per contract with rollback capability | ✅ Production |
-| **Search & Filter** | Advanced filtering by network, address, name, verification status | ✅ Production |
+| Feature                  | Description                                                                   | Status        |
+| ------------------------ | ----------------------------------------------------------------------------- | ------------- |
+| **RESTful API**          | Version-controlled endpoints for ABIs, contracts, and networks                | ✅ Production |
+| **Multi-Authentication** | Session-based (cookies) + API key authentication with scoped permissions      | ✅ Production |
+| **Tiered Rate Limiting** | Dual-layer rate limiting: IP-based (DDoS protection) + API key tiers          | ✅ Production |
+| **IPFS Storage**         | Decentralized, immutable ABI storage via Pinata with content addressing       | ✅ Production |
+| **Redis Caching**        | High-performance distributed caching with Upstash (60%+ cache hit rate)       | ✅ Production |
+| **Admin Dashboard**      | Full-featured UI for ABIs, contracts, networks, API keys, and user management | ✅ Production |
+| **Audit Logging**        | Complete activity tracking with timestamp, user, action, and metadata         | ✅ Production |
+| **Multi-Network**        | Ethereum, Polygon, BSC, Arbitrum, Optimism, Base, Sepolia + custom networks   | ✅ Production |
+| **ABI Versioning**       | Track multiple ABI versions per contract with rollback capability             | ✅ Production |
+| **Search & Filter**      | Advanced filtering by network, address, name, verification status             | ✅ Production |
 
 ### 🏗️ Technical Architecture
 
@@ -41,6 +41,7 @@
 <td width="50%" valign="top">
 
 **Frontend**
+
 - ⚡ Next.js 15 with Turbopack
 - ⚛️ React 19 with Server Components
 - 🎨 TailwindCSS v4 + shadcn/ui
@@ -52,6 +53,7 @@
 <td width="50%" valign="top">
 
 **Backend**
+
 - 🗄️ PostgreSQL 14+ with Drizzle ORM
 - ⚡ Upstash Redis for caching
 - 🔐 Better Auth for authentication
@@ -84,13 +86,13 @@
 
 **Complete documentation available in `./docs/` directory**:
 
-| Document | Purpose |
-|----------|---------|
-| **[docs/project-overview-pdr.md](docs/project-overview-pdr.md)** | Product requirements, business goals, roadmap |
-| **[docs/codebase-summary.md](docs/codebase-summary.md)** | Project structure, file organization, dependencies |
-| **[docs/code-standards.md](docs/code-standards.md)** | Coding conventions, patterns, best practices |
-| **[docs/system-architecture.md](docs/system-architecture.md)** | Architecture layers, data flows, components |
-| **[CLAUDE.md](CLAUDE.md)** | Development workflows and CI/CD |
+| Document                                                         | Purpose                                            |
+| ---------------------------------------------------------------- | -------------------------------------------------- |
+| **[docs/project-overview-pdr.md](docs/project-overview-pdr.md)** | Product requirements, business goals, roadmap      |
+| **[docs/codebase-summary.md](docs/codebase-summary.md)**         | Project structure, file organization, dependencies |
+| **[docs/code-standards.md](docs/code-standards.md)**             | Coding conventions, patterns, best practices       |
+| **[docs/system-architecture.md](docs/system-architecture.md)**   | Architecture layers, data flows, components        |
+| **[CLAUDE.md](CLAUDE.md)**                                       | Development workflows and CI/CD                    |
 
 ---
 
@@ -113,13 +115,14 @@
 
 ### Prerequisites
 
-| Requirement | Minimum Version | Recommended | Purpose |
-|-------------|----------------|-------------|---------|
-| **Node.js** | 18.x | 20.x LTS | Runtime environment |
-| **pnpm** | 8.x | 9.x | Package manager |
-| **PostgreSQL** | 14.x | 16.x | Primary database |
-| **Upstash Redis** | - | Cloud | Caching & rate limiting |
-| **Pinata Account** | - | Cloud | IPFS storage |
+| Requirement        | Minimum Version | Recommended | Purpose                                     |
+| ------------------ | --------------- | ----------- | ------------------------------------------- |
+| **Node.js**        | 18.x            | 20.x LTS    | Runtime environment                         |
+| **pnpm**           | 8.x             | 9.x         | Package manager                             |
+| **Infisical CLI**  | Latest          | Latest      | Secrets management (devDependency included) |
+| **PostgreSQL**     | 14.x            | 16.x        | Primary database                            |
+| **Upstash Redis**  | -               | Cloud       | Caching & rate limiting                     |
+| **Pinata Account** | -               | Cloud       | IPFS storage                                |
 
 ### Installation (5 Minutes Setup)
 
@@ -134,37 +137,24 @@ cd zuno-marketplace-abis
 pnpm install
 ```
 
-#### 2️⃣ Configure Environment Variables
-
-Create `.env` file in project root:
+#### 2️⃣ Setup Infisical for Secrets Management
 
 ```bash
-# Database (Required)
-DATABASE_URL="postgresql://user:password@localhost:5432/zuno_marketplace"
-
-# Authentication (Required - Generate with: openssl rand -base64 32)
-BETTER_AUTH_SECRET="your-secret-key-min-32-characters-long"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# Cache - Upstash Redis (Required - Free tier available)
-UPSTASH_REDIS_REST_URL="https://your-redis.upstash.io"
-UPSTASH_REDIS_REST_TOKEN="your-upstash-token"
-
-# IPFS Storage - Pinata (Required - Free tier available)
-PINATA_JWT="your-pinata-jwt-token"
-PINATA_GATEWAY_URL="https://gateway.pinata.cloud"
-
-# Client-Side (Optional - defaults to localhost:3000)
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-
-# Admin Account (Optional - for seeding)
-DEFAULT_ADMIN_EMAIL="admin@example.com"
-DEFAULT_ADMIN_PASSWORD="admin123"
+# Login to Infisical Cloud
+infisical login
 ```
 
-**🔑 Get Free Credentials:**
-- **Upstash Redis**: [console.upstash.com](https://console.upstash.com) (Free tier: 10K requests/day)
-- **Pinata**: [app.pinata.cloud](https://app.pinata.cloud) (Free tier: 1GB storage)
+This opens your browser. Login with your email and authorize CLI access.
+
+> **Note**: If you don't have Infisical access, contact team lead to be added to the organization.
+
+**Why Infisical?**
+
+- ✅ Single command to start development with all secrets
+- ✅ No manual `.env` file setup required
+- ✅ Secure secrets storage in Infisical Cloud
+- ✅ Team-friendly: All developers access same secrets
+- ✅ Production still uses Vercel environment variables
 
 #### 3️⃣ Setup Database
 
@@ -185,19 +175,19 @@ pnpm db:seed
 #### 4️⃣ Start Development Server
 
 ```bash
-# Start with Turbopack (fast HMR)
+# Start with Turbopack (fast HMR) and Infisical secrets
 pnpm dev
 ```
 
 ### 🌐 Access Points
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Frontend** | http://localhost:3000 | Public marketplace (coming soon) |
-| **Admin Dashboard** | http://localhost:3000/admin | ABI management interface |
-| **API** | http://localhost:3000/api | RESTful API endpoints |
-| **Health Check** | http://localhost:3000/api/health | System status & version |
-| **Database Studio** | `pnpm db:studio` | Visual database browser |
+| Service             | URL                              | Description                      |
+| ------------------- | -------------------------------- | -------------------------------- |
+| **Frontend**        | http://localhost:3000            | Public marketplace (coming soon) |
+| **Admin Dashboard** | http://localhost:3000/admin      | ABI management interface         |
+| **API**             | http://localhost:3000/api        | RESTful API endpoints            |
+| **Health Check**    | http://localhost:3000/api/health | System status & version          |
+| **Database Studio** | `pnpm db:studio`                 | Visual database browser          |
 
 ### 🔐 Default Admin Credentials
 
@@ -227,6 +217,7 @@ curl http://localhost:3000/api/health
 ```
 
 **Expected Output**:
+
 ```json
 {
   "status": "healthy",
@@ -239,6 +230,74 @@ curl http://localhost:3000/api/health
   }
 }
 ```
+
+---
+
+## 🔐 Secrets Management with Infisical
+
+This project uses **Infisical CLI** for local development secrets management.
+
+### Why Infisical?
+
+- ✅ Single command to start development with all secrets
+- ✅ No manual `.env` file setup required
+- ✅ Secure secrets storage in Infisical Cloud
+- ✅ Team-friendly: All developers access same secrets
+- ✅ Production still uses Vercel environment variables
+
+### Quick Reference
+
+```bash
+# Daily usage
+pnpm dev                       # Start dev server with Infisical (default)
+pnpm dev:local                 # Start dev server without Infisical (uses .env)
+pnpm build:dev                 # Build with Infisical secrets
+
+# Secret management
+infisical secrets --env=dev    # List all secrets
+infisical login                # Authenticate
+infisical whoami               # Check authentication
+```
+
+### Managing Secrets
+
+**View all secrets**:
+
+```bash
+infisical secrets --env=dev
+```
+
+**Export secrets (backup)**:
+
+```bash
+infisical export --env=dev --format=dotenv-export > backup.env
+```
+
+**Note**: The default `pnpm dev` command now uses Infisical automatically. No need for a separate `dev:infisical` command.
+
+### Need Help?
+
+- See [docs/infisical-fallback.md](docs/infisical-fallback.md) for troubleshooting
+- Check [Infisical Documentation](https://infisical.com/docs/cli)
+
+---
+
+### Alternative: Local .env File
+
+If you prefer not to use Infisical (not recommended for team members):
+
+```bash
+# Copy example file
+cp .env.example .env
+
+# Fill in your values (ask team lead for secrets)
+# Edit .env file with your credentials
+
+# Start dev server with local env
+pnpm dev:local
+```
+
+> **Note**: Using local `.env` file is discouraged for team collaboration. Secrets managed in Infisical ensure consistency across team.
 
 ---
 
@@ -311,28 +370,31 @@ src/
 
 ### 🌐 Base URLs
 
-| Environment | Base URL | Notes |
-|-------------|----------|-------|
-| **Production** | `https://api.zuno-marketplace.com` | Replace with your domain |
-| **Staging** | `https://staging-api.zuno-marketplace.com` | Pre-production testing |
-| **Development** | `http://localhost:3000` | Local development |
+| Environment     | Base URL                                   | Notes                    |
+| --------------- | ------------------------------------------ | ------------------------ |
+| **Production**  | `https://api.zuno-marketplace.com`         | Replace with your domain |
+| **Staging**     | `https://staging-api.zuno-marketplace.com` | Pre-production testing   |
+| **Development** | `http://localhost:3000`                    | Local development        |
 
 ### 🔐 Authentication Methods
 
 #### 1. API Key Authentication (Recommended for Programmatic Access)
 
 **Header-Based**:
+
 ```bash
 curl -H "X-API-Key: sk_live_abc123xyz..." \
      https://api.zuno-marketplace.com/api/abis
 ```
 
 **Query Parameter** (Not recommended for production):
+
 ```bash
 curl "https://api.zuno-marketplace.com/api/abis?api_key=sk_live_abc123..."
 ```
 
 **Get Your API Key**:
+
 1. Login to Admin Dashboard: `/admin`
 2. Navigate to **API Keys** section
 3. Click **Create New Key**
@@ -372,20 +434,22 @@ curl -H "Accept-Version: v1" \
 ```
 
 **Version Behavior**:
+
 - Missing header → defaults to `v1`
 - Invalid version → `400 Bad Request`
 - Deprecated version → `410 Gone` (with migration guide)
 
 ### ⚡ Rate Limits
 
-| Tier | Requests/Hour | Requests/Day | Burst Limit | Price |
-|------|---------------|--------------|-------------|-------|
-| **Public** | 100 | 1,000 | 10/min | Free |
-| **Free** | 500 | 5,000 | 30/min | Free |
-| **Pro** | 5,000 | 50,000 | 100/min | $29/mo |
-| **Enterprise** | Unlimited | Unlimited | Unlimited | Custom |
+| Tier           | Requests/Hour | Requests/Day | Burst Limit | Price  |
+| -------------- | ------------- | ------------ | ----------- | ------ |
+| **Public**     | 100           | 1,000        | 10/min      | Free   |
+| **Free**       | 500           | 5,000        | 30/min      | Free   |
+| **Pro**        | 5,000         | 50,000       | 100/min     | $29/mo |
+| **Enterprise** | Unlimited     | Unlimited    | Unlimited   | Custom |
 
 **Rate Limit Headers** (included in every response):
+
 ```
 X-RateLimit-Limit: 500
 X-RateLimit-Remaining: 487
@@ -394,6 +458,7 @@ X-RateLimit-Tier: free
 ```
 
 **Rate Limit Exceeded Response**:
+
 ```json
 {
   "success": false,
@@ -419,6 +484,7 @@ X-RateLimit-Tier: free
 <summary><b>GET /api/abis</b> - List ABIs (paginated)</summary>
 
 **Query Parameters**:
+
 ```
 network     : string   (ethereum, polygon, bsc, arbitrum, optimism, base, sepolia)
 page        : number   (default: 1)
@@ -427,12 +493,14 @@ verified    : boolean  (filter by verification status)
 ```
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/abis?network=ethereum&page=1&limit=20"
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -455,18 +523,21 @@ curl -H "X-API-Key: sk_live_..." \
   }
 }
 ```
+
 </details>
 
 <details>
 <summary><b>GET /api/abis/{id}</b> - Get single ABI</summary>
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/abis/abi_v1_xyz123"
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -487,12 +558,14 @@ curl -H "X-API-Key: sk_live_..." \
   }
 }
 ```
+
 </details>
 
 <details>
 <summary><b>POST /api/abis</b> - Create new ABI (requires authentication)</summary>
 
 **Request Body**:
+
 ```json
 {
   "contractAddress": "0x1234567890abcdef...",
@@ -501,7 +574,7 @@ curl -H "X-API-Key: sk_live_..." \
     {
       "inputs": [],
       "name": "totalSupply",
-      "outputs": [{"type": "uint256"}],
+      "outputs": [{ "type": "uint256" }],
       "stateMutability": "view",
       "type": "function"
     }
@@ -515,6 +588,7 @@ curl -H "X-API-Key: sk_live_..." \
 ```
 
 **Example Request**:
+
 ```bash
 curl -X POST https://api.zuno-marketplace.com/api/abis \
   -H "X-API-Key: sk_live_..." \
@@ -523,6 +597,7 @@ curl -X POST https://api.zuno-marketplace.com/api/abis \
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -535,6 +610,7 @@ curl -X POST https://api.zuno-marketplace.com/api/abis \
   }
 }
 ```
+
 </details>
 
 #### Contracts
@@ -543,6 +619,7 @@ curl -X POST https://api.zuno-marketplace.com/api/abis \
 <summary><b>GET /api/contracts</b> - List contracts</summary>
 
 **Query Parameters**:
+
 ```
 network     : string   (filter by network)
 verified    : boolean  (filter by verification)
@@ -551,42 +628,50 @@ limit       : number
 ```
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/contracts?network=ethereum&verified=true"
 ```
+
 </details>
 
 <details>
 <summary><b>GET /api/contracts/{address}</b> - Get contract by address</summary>
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/contracts/0x1234...?network=ethereum"
 ```
+
 </details>
 
 <details>
 <summary><b>GET /api/contracts/{address}/abi</b> - Get contract's current ABI</summary>
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/contracts/0x1234.../abi?network=ethereum"
 ```
+
 </details>
 
 <details>
 <summary><b>GET /api/contracts/{address}/versions</b> - List ABI versions for contract</summary>
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/contracts/0x1234.../versions?network=ethereum"
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -606,6 +691,7 @@ curl -H "X-API-Key: sk_live_..." \
   ]
 }
 ```
+
 </details>
 
 #### Networks
@@ -614,11 +700,13 @@ curl -H "X-API-Key: sk_live_..." \
 <summary><b>GET /api/networks</b> - List supported networks</summary>
 
 **Example Request**:
+
 ```bash
 curl "https://api.zuno-marketplace.com/api/networks"
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -639,16 +727,19 @@ curl "https://api.zuno-marketplace.com/api/networks"
   ]
 }
 ```
+
 </details>
 
 <details>
 <summary><b>GET /api/networks/{chainId}/contracts</b> - Get contracts by network</summary>
 
 **Example Request**:
+
 ```bash
 curl -H "X-API-Key: sk_live_..." \
      "https://api.zuno-marketplace.com/api/networks/1/contracts"
 ```
+
 </details>
 
 #### System
@@ -657,6 +748,7 @@ curl -H "X-API-Key: sk_live_..." \
 <summary><b>GET /api/health</b> - Health check</summary>
 
 **Response**:
+
 ```json
 {
   "status": "healthy",
@@ -670,6 +762,7 @@ curl -H "X-API-Key: sk_live_..." \
   "uptime": 3600
 }
 ```
+
 </details>
 
 #### Monitoring & Testing (Temporary Endpoints)
@@ -682,15 +775,18 @@ curl -H "X-API-Key: sk_live_..." \
 **Purpose**: Triggers a test exception to verify Sentry alert delivery
 
 **Expected behavior**:
+
 - Sentry captures the test exception
 - Slack receives notification (if configured)
 - GitHub issue created (if configured)
 - Email alert sent (if configured)
 
 **Usage**:
+
 ```bash
 curl https://your-domain.com/api/test-alert
 ```
+
 </details>
 
 <details>
@@ -701,12 +797,14 @@ curl https://your-domain.com/api/test-alert
 **Purpose**: Simulates slow response (2.5s) to test P95 performance alerts
 
 **Usage**:
+
 ```bash
 # Run 100+ times to trigger P95 alert
 for i in {1..100}; do curl https://your-domain.com/api/test-slow & done
 ```
 
 **Note**: Response takes 2.5 seconds (exceeds 2000ms threshold for performance alerts)
+
 </details>
 
 ### Response Format
@@ -770,10 +868,10 @@ for i in {1..100}; do curl https://your-domain.com/api/test-slow & done
 
 ```bash
 # Development
-pnpm dev                 # Start dev server with Turbopack
+pnpm dev                 # Start dev server with Turbopack + Infisical (default)
+pnpm dev:local           # Start dev server without Infisical (uses .env)
 pnpm typecheck          # Type checking
 pnpm lint               # ESLint
-pnpm format             # Prettier formatting
 
 # Database
 pnpm db:generate        # Generate migrations & types
@@ -958,6 +1056,7 @@ describe("AbiService", () => {
 ### 📋 Pre-Deployment Checklist
 
 #### Security & Configuration
+
 - [ ] Generate strong `BETTER_AUTH_SECRET` (use: `openssl rand -base64 32`)
 - [ ] Update `BETTER_AUTH_URL` to production domain
 - [ ] Configure production `DATABASE_URL` with SSL (`?sslmode=require`)
@@ -970,6 +1069,7 @@ describe("AbiService", () => {
 - [ ] Review and restrict database permissions
 
 #### Infrastructure
+
 - [ ] PostgreSQL database provisioned (recommended: 14+ with 2GB+ RAM)
 - [ ] Upstash Redis instance created (Pro tier recommended for production)
 - [ ] Pinata account with production plan (Free tier: 1GB, consider Pro)
@@ -980,6 +1080,7 @@ describe("AbiService", () => {
 - [ ] Log aggregation configured (optional: Logtail, Papertrail)
 
 #### Code Quality
+
 - [ ] All tests passing (`pnpm test`)
 - [ ] Type checking clean (`pnpm typecheck`)
 - [ ] Linting clean (`pnpm lint`)
@@ -987,6 +1088,7 @@ describe("AbiService", () => {
 - [ ] Environment variables documented
 
 #### Database
+
 - [ ] All migrations applied (`pnpm db:migrate`)
 - [ ] Better Auth migrations applied (`pnpm auth:migrate`)
 - [ ] Database seeded with networks (`pnpm db:seed`)
@@ -1016,11 +1118,13 @@ vercel
 #### 3️⃣ Configure Environment Variables
 
 **Via Vercel Dashboard**:
+
 1. Go to Project Settings → Environment Variables
 2. Add all required variables from your `.env` file
 3. Select environments (Production, Preview, Development)
 
 **Via CLI**:
+
 ```bash
 # Add production environment variables
 vercel env add DATABASE_URL production
@@ -1057,6 +1161,7 @@ curl https://your-domain.vercel.app/api/health
 ```
 
 **Vercel Configuration** (`vercel.json`):
+
 ```json
 {
   "buildCommand": "pnpm build",
@@ -1138,7 +1243,7 @@ CMD ["node", "server.js"]
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -1215,6 +1320,7 @@ docker-compose exec app pnpm db:seed
 6. Setup Auto Scaling group
 
 **Recommended AWS Services**:
+
 - **Compute**: ECS Fargate
 - **Database**: RDS PostgreSQL (db.t3.medium minimum)
 - **Cache**: ElastiCache Redis (cache.t3.micro minimum)
@@ -1269,6 +1375,7 @@ curl https://your-domain.com/api/health
 ```
 
 **Expected Response**:
+
 ```json
 {
   "status": "healthy",
@@ -1300,6 +1407,7 @@ curl https://your-domain.com/api/health
 #### 4️⃣ Configure Monitoring
 
 **Setup Error Tracking (Sentry)**:
+
 ```bash
 # Install Sentry
 pnpm add @sentry/nextjs
@@ -1311,6 +1419,7 @@ npx @sentry/wizard@latest -i nextjs
 ```
 
 **Setup Uptime Monitoring**:
+
 - Use UptimeRobot, Pingdom, or Checkly
 - Monitor `/api/health` endpoint every 5 minutes
 - Alert on downtime or slow response times
@@ -1318,6 +1427,7 @@ npx @sentry/wizard@latest -i nextjs
 #### 5️⃣ Setup Backups
 
 **Automated Daily Backups** (PostgreSQL):
+
 ```bash
 # Create backup script (backup.sh)
 #!/bin/bash
@@ -1329,6 +1439,7 @@ pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
 ```
 
 **Test Restore**:
+
 ```bash
 # Test backup restoration
 psql $DATABASE_URL < backup-20250119.sql
@@ -1481,41 +1592,45 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Current Status (v0.1.0)
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Core API** | ✅ Production Ready | RESTful API with versioning |
-| **Admin Dashboard** | ✅ Production Ready | Full CRUD operations |
-| **Authentication** | ✅ Production Ready | Session + API key auth |
-| **IPFS Storage** | ✅ Production Ready | Pinata integration with tracing |
-| **Rate Limiting** | ✅ Production Ready | Dual-layer protection |
-| **Caching** | ✅ Production Ready | Redis-backed |
-| **Audit Logging** | ✅ Production Ready | Complete activity tracking |
-| **Multi-Network** | ✅ Production Ready | 8+ networks supported |
-| **ABI Versioning** | ✅ Production Ready | Full version history |
-| **Database Backups** | ✅ Production Ready | Automated backups |
+| Component               | Status              | Notes                                            |
+| ----------------------- | ------------------- | ------------------------------------------------ |
+| **Core API**            | ✅ Production Ready | RESTful API with versioning                      |
+| **Admin Dashboard**     | ✅ Production Ready | Full CRUD operations                             |
+| **Authentication**      | ✅ Production Ready | Session + API key auth                           |
+| **IPFS Storage**        | ✅ Production Ready | Pinata integration with tracing                  |
+| **Rate Limiting**       | ✅ Production Ready | Dual-layer protection                            |
+| **Caching**             | ✅ Production Ready | Redis-backed                                     |
+| **Audit Logging**       | ✅ Production Ready | Complete activity tracking                       |
+| **Multi-Network**       | ✅ Production Ready | 8+ networks supported                            |
+| **ABI Versioning**      | ✅ Production Ready | Full version history                             |
+| **Database Backups**    | ✅ Production Ready | Automated backups                                |
 | **Monitoring (Sentry)** | ✅ Production Ready | Error tracking + distributed tracing + profiling |
 
 ### Roadmap
 
 #### v0.2.0 (Q1 2025) - Public Marketplace
+
 - 🚧 Public marketplace UI for browsing ABIs
 - 🚧 Advanced search with filters
 - 🚧 Contract verification workflow
 - 🚧 User documentation portal
 
 #### v0.3.0 (Q2 2025) - Analytics & Insights
+
 - 📋 Analytics dashboard for API usage
 - 📋 Contract popularity metrics
 - 📋 Network usage statistics
 - 📋 Real-time monitoring dashboard
 
 #### v0.4.0 (Q3 2025) - Enhanced Features
+
 - 📋 GraphQL API endpoint
 - 📋 Webhook notifications for contract updates
 - 📋 Contract change detection
 - 📋 Automated ABI imports from verified contracts
 
 #### v1.0.0 (Q4 2025) - Enterprise Features
+
 - 📋 Multi-tenancy support
 - 📋 Custom branding for enterprise
 - 📋 Advanced RBAC (Role-Based Access Control)
@@ -1533,6 +1648,7 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
 ### How to Contribute
 
 1. **Fork the Repository**
+
    ```bash
    # Click "Fork" on GitHub, then clone your fork
    git clone https://github.com/YOUR_USERNAME/zuno-marketplace-abis.git
@@ -1540,6 +1656,7 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
    ```
 
 2. **Create Feature Branch**
+
    ```bash
    git checkout -b feature/amazing-feature
    # or
@@ -1553,6 +1670,7 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
    - Follow commit message conventions
 
 4. **Test Your Changes**
+
    ```bash
    pnpm typecheck  # Type checking
    pnpm lint       # Linting
@@ -1560,6 +1678,7 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
    ```
 
 5. **Commit Your Changes**
+
    ```bash
    # Use conventional commits format
    git commit -m "feat(abis): add bulk import functionality"
@@ -1586,6 +1705,7 @@ type(scope): description
 ```
 
 **Types**:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -1596,6 +1716,7 @@ type(scope): description
 - `chore`: Build process or tooling changes
 
 **Examples**:
+
 ```
 feat(api): add contract search endpoint
 fix(cache): resolve Redis connection timeout
@@ -1639,16 +1760,19 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ### What This Means
 
 ✅ **You can**:
+
 - Use this software commercially
 - Modify and distribute the software
 - Use this software privately
 - Use this software for patent purposes
 
 ❌ **You cannot**:
+
 - Hold the authors liable
 - Use contributors' names for endorsement
 
 📋 **You must**:
+
 - Include the original license and copyright notice
 - State significant changes made to the software
 
@@ -1660,16 +1784,16 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 This project is built on the shoulders of giants:
 
-| Technology | Purpose | Why We Chose It |
-|------------|---------|-----------------|
-| [Next.js 15](https://nextjs.org/) | React framework | Best-in-class DX, Turbopack, Server Components |
-| [Drizzle ORM](https://orm.drizzle.team/) | Database ORM | Type-safe, lightweight, excellent migration system |
-| [Better Auth](https://better-auth.com/) | Authentication | Modern auth with API keys, admin features built-in |
-| [TanStack Query](https://tanstack.com/query) | Data fetching | Industry-standard React data management |
-| [shadcn/ui](https://ui.shadcn.com/) | UI components | Beautiful, accessible, customizable components |
-| [Upstash Redis](https://upstash.com/) | Caching | Serverless Redis with generous free tier |
-| [Pinata](https://pinata.cloud/) | IPFS storage | Reliable IPFS pinning with excellent API |
-| [PostgreSQL](https://www.postgresql.org/) | Database | Rock-solid reliability, rich feature set |
+| Technology                                   | Purpose         | Why We Chose It                                    |
+| -------------------------------------------- | --------------- | -------------------------------------------------- |
+| [Next.js 15](https://nextjs.org/)            | React framework | Best-in-class DX, Turbopack, Server Components     |
+| [Drizzle ORM](https://orm.drizzle.team/)     | Database ORM    | Type-safe, lightweight, excellent migration system |
+| [Better Auth](https://better-auth.com/)      | Authentication  | Modern auth with API keys, admin features built-in |
+| [TanStack Query](https://tanstack.com/query) | Data fetching   | Industry-standard React data management            |
+| [shadcn/ui](https://ui.shadcn.com/)          | UI components   | Beautiful, accessible, customizable components     |
+| [Upstash Redis](https://upstash.com/)        | Caching         | Serverless Redis with generous free tier           |
+| [Pinata](https://pinata.cloud/)              | IPFS storage    | Reliable IPFS pinning with excellent API           |
+| [PostgreSQL](https://www.postgresql.org/)    | Database        | Rock-solid reliability, rich feature set           |
 
 ### Inspiration & Resources
 
@@ -1737,6 +1861,7 @@ For enterprise support, custom development, or consulting:
 Instead, email us at: **security@zuno-marketplace.com** (update with actual email)
 
 Include:
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
@@ -1747,6 +1872,7 @@ We'll acknowledge receipt within 48 hours and provide a detailed response within
 ### Security Best Practices
 
 When deploying:
+
 - ✅ Use strong, randomly generated secrets
 - ✅ Enable database SSL connections
 - ✅ Keep dependencies updated (`pnpm update`)

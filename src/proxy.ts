@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateApiVersion, getSupportedApiVersions } from "@/shared/lib/utils/api-version";
+import {
+  validateApiVersion,
+  getSupportedApiVersions,
+} from "@/shared/lib/utils/api-version";
 import { withRequestLogging } from "@/shared/lib/middleware/request-logging";
 import { addSecurityHeaders } from "@/shared/lib/middleware/security-headers";
 import { withCORS } from "@/shared/lib/middleware/cors";
 import { appConfig } from "@/shared/config/app.config";
 
 /**
- * Next.js Middleware
+ * Next.js Proxy (formerly Middleware)
  *
  * Handles:
  * - CORS for API routes
@@ -16,27 +19,27 @@ import { appConfig } from "@/shared/config/app.config";
  *
  * Protected routes (/admin, /dashboard) are handled by layout server components
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Apply CORS to all matched routes
   return withCORS(request, async (req) => {
     // Wrap with request/response logging if enabled
     if (appConfig.logging.enabled) {
       return withRequestLogging(req, async (loggedReq, requestId) => {
-        return middlewareHandler(loggedReq, requestId);
+        return proxyHandler(loggedReq, requestId);
       });
     }
 
     // Skip logging if disabled
-    return middlewareHandler(req, "logging-disabled");
+    return proxyHandler(req, "logging-disabled");
   });
 }
 
 /**
- * Core middleware logic
+ * Core proxy logic
  */
-async function middlewareHandler(
+async function proxyHandler(
   request: NextRequest,
-  requestId: string
+  requestId: string,
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
@@ -53,7 +56,11 @@ async function middlewareHandler(
     const validatedVersion = isValid ? clientVersion : "v1";
 
     // If invalid version provided, return error
-    if (!isValid && (request.headers.get("X-API-Version") || request.headers.get("Accept-Version"))) {
+    if (
+      !isValid &&
+      (request.headers.get("X-API-Version") ||
+        request.headers.get("Accept-Version"))
+    ) {
       const supportedVersions = await getSupportedApiVersions();
       const errorResponse = NextResponse.json(
         {
@@ -61,7 +68,7 @@ async function middlewareHandler(
           message: `API version '${clientVersion}' is not supported. Supported versions: ${supportedVersions.join(", ")}`,
           supportedVersions,
         },
-        { status: 400 }
+        { status: 400 },
       );
 
       // Add request ID to error response
