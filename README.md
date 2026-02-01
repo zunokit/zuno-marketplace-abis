@@ -117,6 +117,7 @@
 |-------------|----------------|-------------|---------|
 | **Node.js** | 18.x | 20.x LTS | Runtime environment |
 | **pnpm** | 8.x | 9.x | Package manager |
+| **Infisical CLI** | Latest | Latest | Secrets management (devDependency included) |
 | **PostgreSQL** | 14.x | 16.x | Primary database |
 | **Upstash Redis** | - | Cloud | Caching & rate limiting |
 | **Pinata Account** | - | Cloud | IPFS storage |
@@ -134,37 +135,23 @@ cd zuno-marketplace-abis
 pnpm install
 ```
 
-#### 2️⃣ Configure Environment Variables
-
-Create `.env` file in project root:
+#### 2️⃣ Setup Infisical for Secrets Management
 
 ```bash
-# Database (Required)
-DATABASE_URL="postgresql://user:password@localhost:5432/zuno_marketplace"
-
-# Authentication (Required - Generate with: openssl rand -base64 32)
-BETTER_AUTH_SECRET="your-secret-key-min-32-characters-long"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# Cache - Upstash Redis (Required - Free tier available)
-UPSTASH_REDIS_REST_URL="https://your-redis.upstash.io"
-UPSTASH_REDIS_REST_TOKEN="your-upstash-token"
-
-# IPFS Storage - Pinata (Required - Free tier available)
-PINATA_JWT="your-pinata-jwt-token"
-PINATA_GATEWAY_URL="https://gateway.pinata.cloud"
-
-# Client-Side (Optional - defaults to localhost:3000)
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-
-# Admin Account (Optional - for seeding)
-DEFAULT_ADMIN_EMAIL="admin@example.com"
-DEFAULT_ADMIN_PASSWORD="admin123"
+# Login to Infisical Cloud
+infisical login
 ```
 
-**🔑 Get Free Credentials:**
-- **Upstash Redis**: [console.upstash.com](https://console.upstash.com) (Free tier: 10K requests/day)
-- **Pinata**: [app.pinata.cloud](https://app.pinata.cloud) (Free tier: 1GB storage)
+This opens your browser. Login with your email and authorize CLI access.
+
+> **Note**: If you don't have Infisical access, contact team lead to be added to the organization.
+
+**Why Infisical?**
+- ✅ Single command to start development with all secrets
+- ✅ No manual `.env` file setup required
+- ✅ Secure secrets storage in Infisical Cloud
+- ✅ Team-friendly: All developers access same secrets
+- ✅ Production still uses Vercel environment variables
 
 #### 3️⃣ Setup Database
 
@@ -185,8 +172,8 @@ pnpm db:seed
 #### 4️⃣ Start Development Server
 
 ```bash
-# Start with Turbopack (fast HMR)
-pnpm dev
+# Start with Turbopack (fast HMR) and Infisical secrets
+pnpm dev:infisical
 ```
 
 ### 🌐 Access Points
@@ -235,10 +222,81 @@ curl http://localhost:3000/api/health
   "services": {
     "database": "connected",
     "cache": "connected",
-    "ipfs": "connected"
+  "ipfs": "connected"
   }
 }
 ```
+
+---
+
+## 🔐 Secrets Management with Infisical
+
+This project uses **Infisical CLI** for local development secrets management.
+
+### Why Infisical?
+
+- ✅ Single command to start development with all secrets
+- ✅ No manual `.env` file setup required
+- ✅ Secure secrets storage in Infisical Cloud
+- ✅ Team-friendly: All developers access same secrets
+- ✅ Production still uses Vercel environment variables
+
+### Quick Reference
+
+```bash
+# Daily usage
+pnpm dev:infisical              # Start dev server with Infisical
+pnpm dev:watch                 # Watch for secret changes
+pnpm build:infisical            # Build with Infisical secrets
+
+# Secret management
+infisical secrets --env=dev    # List all secrets
+infisical login                # Authenticate
+infisical whoami               # Check authentication
+```
+
+### Managing Secrets
+
+**View all secrets**:
+```bash
+infisical secrets --env=dev
+```
+
+**Export secrets (backup)**:
+```bash
+infisical export --env=dev --format=dotenv-export > backup.env
+```
+
+**Watch mode (auto-reload on secret changes)**:
+```bash
+pnpm dev:watch
+```
+
+### Need Help?
+
+- See [ONBOARDING.md](ONBOARDING.md) for detailed setup guide
+- See [docs/infisical-fallback.md](docs/infisical-fallback.md) for troubleshooting
+- Check [Infisical Documentation](https://infisical.com/docs/cli)
+- Ask team lead for access to Infisical organization
+
+---
+
+### Alternative: Local .env File
+
+If you prefer not to use Infisical (not recommended for team members):
+
+```bash
+# Copy example file
+cp .env.example .env
+
+# Fill in your values (ask team lead for secrets)
+# Edit .env file with your credentials
+
+# Start dev server with local env
+pnpm dev:local
+```
+
+> **Note**: Using local `.env` file is discouraged for team collaboration. Secrets managed in Infisical ensure consistency across team.
 
 ---
 

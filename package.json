@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "dev:local": "next dev --turbopack",
     "dev:infisical": "infisical run --env=dev -- next dev --turbopack",
+    "dev:watch": "infisical run --watch --env=dev -- next dev --turbopack",
     "build": "next build --turbopack",
     "build:infisical": "infisical run --env=prod -- next build --turbopack",
     "start": "next start",
