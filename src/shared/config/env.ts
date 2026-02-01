@@ -18,6 +18,10 @@ export const env = createEnv({
     // IPFS Storage
     PINATA_JWT: z.string(),
     PINATA_GATEWAY_URL: z.string(),
+    PINATA_UPLOAD_ENABLED: z
+      .string()
+      .default('false')
+      .transform((val) => val === 'true'),
 
     // Optional Monitoring
     // SENTRY_DSN: z.string().url().optional(),
@@ -56,6 +60,7 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     PINATA_JWT: process.env.PINATA_JWT,
     PINATA_GATEWAY_URL: process.env.PINATA_GATEWAY_URL,
+    PINATA_UPLOAD_ENABLED: process.env.PINATA_UPLOAD_ENABLED,
     // SENTRY_DSN: process.env.SENTRY_DSN,
     NODE_ENV: process.env.NODE_ENV,
 

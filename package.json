@@ -17,6 +17,8 @@
     "db:seed": "tsx scripts/seed/index.ts",
     "db:truncate": "tsx scripts/db-truncate.ts",
     "db:reset": "tsx scripts/db-truncate.ts && tsx scripts/seed/index.ts",
+    "pinata:cleanup": "tsx scripts/pinata-cleanup.ts",
+    "pinata:cleanup:dry": "tsx scripts/pinata-cleanup.ts --dry-run",
     "test": "jest --config tests/setup/jest.config.js",
     "test:watch": "jest --watch --config tests/setup/jest.config.js",
     "auth:generate": "better-auth generate",

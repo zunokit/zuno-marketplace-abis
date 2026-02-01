@@ -31,9 +31,20 @@ export class ApiVersionSeeder implements Seeder {
 
       for (const version of versionData) {
         try {
-          await context.db.insert(apiVersions).values(version);
-          context.logger?.info(`Created API version: ${version.id}`);
-          created++;
+          const result = await context.db
+            .insert(apiVersions)
+            .values(version)
+            .onConflictDoNothing({ target: apiVersions.id })
+            .returning();
+          if (result.length > 0) {
+            context.logger?.info(`Created API version: ${version.id}`);
+            created++;
+          } else {
+            context.logger?.info(
+              `API version ${version.id} already exists, skipping...`
+            );
+            skipped++;
+          }
         } catch (error: any) {
           if (this.isUniqueConstraintError(error)) {
             context.logger?.info(
@@ -81,11 +92,16 @@ export class ApiVersionSeeder implements Seeder {
   }
 
   private isUniqueConstraintError(error: any): boolean {
+    // PostgreSQL error code 23505 = unique_violation
+    if (error?.code === "23505") return true;
     const message = error.message?.toLowerCase() || "";
+    const causeMessage = error?.cause?.message?.toLowerCase() || "";
     return (
       message.includes("duplicate key") ||
       message.includes("unique constraint") ||
-      message.includes("already exists")
+      message.includes("already exists") ||
+      causeMessage.includes("duplicate key") ||
+      causeMessage.includes("unique constraint")
     );
   }
 }

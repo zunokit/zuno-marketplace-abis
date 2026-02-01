@@ -7,6 +7,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
 import { env } from '@/shared/config/env';
+import { logger } from '@/shared/lib/utils/logger';
 
 // Tables in order (children first, parents last)
 const TABLES_TO_TRUNCATE = [
@@ -18,7 +19,7 @@ const TABLES_TO_TRUNCATE = [
   // Middle level
   'abis',
   'api_versions',
-  'rate_limits',
+  'rate_limit',
   
   // Auth tables
   'session',
@@ -31,6 +32,35 @@ const TABLES_TO_TRUNCATE = [
   'user',
 ];
 
+/**
+ * Cleanup Pinata files before database truncation
+ * Only deletes files tagged with appName: "zuno-marketplace-abis"
+ */
+async function cleanupPinata(): Promise<void> {
+  console.log('🧹 Cleaning up Pinata files...\n');
+
+  try {
+    // Dynamic import to avoid loading when not needed
+    const { cleanupPinataFiles } = await import('./pinata-cleanup');
+
+    const result = await cleanupPinataFiles({ dryRun: false, force: true });
+
+    if (result.deleted > 0 || result.failed > 0) {
+      console.log(`✅ Pinata cleanup completed!`);
+      console.log(`   Deleted: ${result.deleted}`);
+      if (result.failed > 0) {
+        console.log(`   Failed: ${result.failed}`);
+      }
+      console.log();
+    } else {
+      console.log('✅ No Pinata files to cleanup\n');
+    }
+  } catch (error: any) {
+    logger.warn(`Pinata cleanup failed: ${error.message}`);
+    console.log('⚠️  Pinata cleanup failed, continuing with database truncation...\n');
+  }
+}
+
 async function truncateAll(): Promise<void> {
   console.log('🗑️  Database Truncate Script');
   console.log('================================\n');
@@ -42,6 +72,15 @@ async function truncateAll(): Promise<void> {
   const db = drizzle(env.DATABASE_URL);
 
   console.log('📡 Connected to database\n');
+
+  // Cleanup Pinata files (unless skipped)
+  const skipPinataCleanup = process.argv.includes('--skip-pinata-cleanup');
+
+  if (!skipPinataCleanup) {
+    await cleanupPinata();
+  } else {
+    console.log('⏭️  Skipping Pinata cleanup (--skip-pinata-cleanup flag)\n');
+  }
 
   // Option 1: TRUNCATE CASCADE (faster, resets sequences)
   const useCascade = process.argv.includes('--cascade');
