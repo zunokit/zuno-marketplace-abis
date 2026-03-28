@@ -1,4 +1,6 @@
 import { neon } from "@neondatabase/serverless";
+import { createHash } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -7,6 +9,7 @@ export const maxDuration = 300;
 
 interface NotificationResult {
   ok: boolean;
+  skipped?: boolean;
   error?: string;
 }
 
@@ -18,6 +21,8 @@ interface BackupSummary {
   totalRecords: number;
   totalTables: number;
   backupSizeBytes: number;
+  rawBackupSizeBytes: number;
+  checksum: string;
   tables: Record<string, number>;
 }
 
@@ -31,6 +36,20 @@ function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "Unknown error";
+}
+
+function sanitizeAccounts(rows: Array<Record<string, unknown>>) {
+  return rows.map((account) => {
+    const { password, ...accountWithoutPassword } = account;
+    return accountWithoutPassword;
+  });
+}
+
+function sanitizeApiKeys(rows: Array<Record<string, unknown>>) {
+  return rows.map((apiKey) => {
+    const { key, ...apiKeyWithoutSecret } = apiKey;
+    return apiKeyWithoutSecret;
+  });
 }
 
 function buildSuccessPayload(summary: BackupSummary) {
@@ -68,7 +87,9 @@ function buildSuccessPayload(summary: BackupSummary) {
           },
           {
             type: "mrkdwn",
-            text: `*Backup Size:*\n${summary.backupSizeBytes.toLocaleString()} bytes`,
+            text:
+              `*Backup Size:*\n${summary.backupSizeBytes.toLocaleString()} bytes gzip` +
+              `\n(raw ${summary.rawBackupSizeBytes.toLocaleString()} bytes)`,
           },
         ],
       },
@@ -108,11 +129,9 @@ function buildFailurePayload(error: string, totalMs: number, jobId: string) {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: [
-            `*Job ID:* \`${jobId}\``,
-            `*Duration:* ${totalMs}ms`,
-            `*Error:* \`${error}\``,
-          ].join("\n"),
+          text: [`*Job ID:* \`${jobId}\``, `*Duration:* ${totalMs}ms`, `*Error:* \`${error}\``].join(
+            "\n",
+          ),
         },
       },
       {
@@ -132,8 +151,8 @@ async function sendSlackPayload(payload: object): Promise<NotificationResult> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) {
     return {
-      ok: false,
-      error: "SLACK_WEBHOOK_URL is not configured",
+      ok: true,
+      skipped: true,
     };
   }
 
@@ -201,15 +220,8 @@ export async function GET(req: NextRequest) {
       sql`SELECT * FROM api_versions`,
     ]);
 
-    const accounts = (accountRows as Array<Record<string, unknown>>).map((account) => {
-      const { password, ...accountWithoutPassword } = account;
-      return accountWithoutPassword;
-    });
-
-    const apiKeys = (apiKeyRows as Array<Record<string, unknown>>).map((apiKey) => {
-      const { key, ...apiKeyWithoutSecret } = apiKey;
-      return apiKeyWithoutSecret;
-    });
+    const accounts = sanitizeAccounts(accountRows as Array<Record<string, unknown>>);
+    const apiKeys = sanitizeApiKeys(apiKeyRows as Array<Record<string, unknown>>);
 
     const tables = {
       networks: networks.length,
@@ -243,6 +255,8 @@ export async function GET(req: NextRequest) {
         apiVersions,
       },
     };
+    const serializedBackup = Buffer.from(JSON.stringify(backup));
+    const compressedBackup = gzipSync(serializedBackup, { level: 9 });
 
     const summary: BackupSummary = {
       jobId,
@@ -251,22 +265,23 @@ export async function GET(req: NextRequest) {
       totalMs: Date.now() - startedAt,
       totalRecords,
       totalTables: Object.keys(tables).length,
-      backupSizeBytes: Buffer.byteLength(JSON.stringify(backup)),
+      backupSizeBytes: compressedBackup.byteLength,
+      rawBackupSizeBytes: serializedBackup.byteLength,
+      checksum: createHash("sha256").update(compressedBackup).digest("hex"),
       tables,
     };
 
     const notification = await sendSlackPayload(buildSuccessPayload(summary));
-    const ok = notification.ok;
 
     return NextResponse.json(
       {
-        ok,
+        ok: true,
         jobOk: true,
         timestamp: summary.completedAt,
         summary,
         notification,
       },
-      { status: ok ? 200 : 207 },
+      { status: 200 },
     );
   } catch (error) {
     const totalMs = Date.now() - startedAt;

@@ -16,6 +16,7 @@ interface PingResult {
 
 interface NotificationResult {
   ok: boolean;
+  skipped?: boolean;
   error?: string;
 }
 
@@ -198,8 +199,8 @@ async function sendSlackNotification(
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) {
     return {
-      ok: false,
-      error: "SLACK_WEBHOOK_URL is not configured",
+      ok: true,
+      skipped: true,
     };
   }
 
@@ -246,17 +247,16 @@ export async function GET(req: NextRequest) {
   const totalMs = Date.now() - startedAt;
   const jobOk = results.every((result) => result.ok);
   const notification = await sendSlackNotification(results, totalMs);
-  const ok = jobOk && notification.ok;
 
   return NextResponse.json(
     {
-      ok,
+      ok: jobOk,
       jobOk,
       timestamp: new Date().toISOString(),
       totalMs,
       results,
       notification,
     },
-    { status: ok ? 200 : 207 },
+    { status: jobOk ? 200 : 207 },
   );
 }
