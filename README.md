@@ -137,6 +137,34 @@ cd zuno-marketplace-abis
 pnpm install
 ```
 
+#### Local Docker Dev Stack (optional, no cloud creds needed for infra)
+
+A `docker-compose.yml` is included that brings up:
+
+| Service | Host port | Purpose |
+|---|---|---|
+| `abis-postgres` | `5434` | Postgres 16 (db `zuno_abis`, user/pass `zuno_user`/`zuno_pass`) — used by `drizzle-kit` migrations / `pnpm db:*` |
+| `abis-redis` | `6380` | Plain Redis 7 backing the proxy below |
+| `abis-upstash-proxy` | `8079` | `hiett/serverless-redis-http` — drop-in Upstash REST replacement, so `@upstash/redis` (rate-limiting / cache) works locally with **no code changes** |
+
+```bash
+docker compose up -d                   # postgres + redis + upstash proxy
+docker compose --profile app up -d     # ALSO run the Next.js app in a container
+docker compose down                    # stop
+docker compose down -v                 # also wipe volumes
+```
+
+`.env.example` defaults `DATABASE_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` at this stack — copy it to `.env` to use them.
+
+> **⚠️ Important: `DATABASE_URL` at runtime.** The app's runtime DB driver is `drizzle-orm/neon-http` (see [`src/infrastructure/database/drizzle/client.ts`](src/infrastructure/database/drizzle/client.ts)). That driver speaks Neon's HTTP API and does **not** connect to a plain Postgres. The local Postgres above works fine for:
+> - `pnpm db:generate` / `pnpm db:migrate` / `pnpm db:push` / `pnpm db:studio` — `drizzle-kit` uses TCP
+> - `psql`, `pgcli`, raw inspection
+>
+> For full app runtime locally you have three options:
+> 1. **(Recommended)** Use a free Neon dev branch and put its `DATABASE_URL` in `.env`.
+> 2. Switch the runtime to `drizzle-orm/postgres-js` in dev (code change in `drizzle/client.ts`).
+> 3. Run a Neon HTTP shim (e.g. `neondatabase/neon-local`) and override `neonConfig.fetchEndpoint` in the same client file.
+
 #### 2️⃣ Setup Infisical for Secrets Management
 
 ```bash
