@@ -1,0 +1,107 @@
+# Local development infrastructure for zuno-marketplace-abis.
+#
+# Brings up:
+#   * postgres            - Postgres backing Drizzle migrations / db:* scripts
+#   * redis               - real Redis used by the Upstash-compatible HTTP proxy
+#   * upstash-redis-http  - hiett/serverless-redis-http acts as a drop-in
+#                           replacement for the Upstash REST API so the
+#                           @upstash/redis client works locally unchanged
+#
+# Next.js app stays on the host (`pnpm dev:local`) for fast HMR.
+#
+# Usage:
+#   docker compose up -d                   # postgres + redis + upstash proxy
+#   docker compose --profile app up -d     # also run the Next.js app in a container
+#   docker compose down                    # stop
+#   docker compose down -v                 # stop AND wipe volumes
+#
+# !! READ THIS !!
+# The app's runtime DB driver is `drizzle-orm/neon-http` (Neon's HTTP API),
+# NOT plain Postgres. The local Postgres in this stack works fine for:
+#   - drizzle-kit (migrations / generate / push / studio) - uses TCP
+#   - psql, pgcli, raw inspection
+# But the Next.js runtime cannot talk to plain Postgres directly. To run the
+# full app end-to-end locally you have three options:
+#   1. (Recommended) Use a free Neon dev branch and point DATABASE_URL at it.
+#   2. Switch the runtime to drizzle-orm/postgres-js in dev (code change in
+#      src/infrastructure/database/drizzle/client.ts).
+#   3. Run a Neon HTTP shim (e.g. neondatabase/neon-local) and override
+#      `neonConfig.fetchEndpoint` in the same client file.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: abis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zuno_user
+      POSTGRES_PASSWORD: zuno_pass
+      POSTGRES_DB: zuno_abis
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zuno_user -d zuno_abis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: abis-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Upstash-compatible REST API in front of the local Redis above.
+  # Lets the `@upstash/redis` client work locally with no code changes.
+  upstash-redis-http:
+    image: hiett/serverless-redis-http:latest
+    container_name: abis-upstash-proxy
+    restart: unless-stopped
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: zuno_local_dev_token
+      SRH_CONNECTION_STRING: redis://redis:6379
+    ports:
+      - "8079:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: abis-app
+    profiles: ["app"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://zuno_user:zuno_pass@postgres:5432/zuno_abis
+      UPSTASH_REDIS_REST_URL: http://upstash-redis-http:80
+      UPSTASH_REDIS_REST_TOKEN: zuno_local_dev_token
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      upstash-redis-http:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  postgres_data:
+  redis_data:
